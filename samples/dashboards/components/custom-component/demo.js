@@ -6,6 +6,7 @@ class YouTubeComponent extends Component {
 
         this.type = 'YouTube';
         this.youTubeElement = document.createElement('iframe');
+
         this.options.editableOptions = [{
             name: 'videoId',
             propertyPath: ['videoId'],
@@ -21,10 +22,6 @@ class YouTubeComponent extends Component {
         }];
 
         return this;
-    }
-
-    resize(width, height) {
-        super.resize(width, height);
     }
 
     async load() {
@@ -70,7 +67,10 @@ Dashboards.board('container', {
     editMode: {
         enabled: true,
         lang: {
-            videoId: 'Video ID'
+            videoId: 'Video ID',
+            sidebar: {
+                YouTube: 'YouTube'
+            }
         },
         contextMenu: {
             enabled: true

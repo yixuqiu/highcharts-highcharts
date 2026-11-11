@@ -1,12 +1,14 @@
 /* *
  *
- *  (c) 2009-2024 Øystein Moseng
+ *  (c) 2009-2026 Highsoft AS
+ *  Author: Øystein Moseng
  *
  *  Accessibility component class definition
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  * */
 
@@ -19,12 +21,13 @@
  * */
 
 import type Accessibility from './Accessibility';
-import type EventCallback from '../Core/EventCallback';
+import type { EventCallback } from '../Core/Callback';
 import type { DOMElementType } from '../Core/Renderer/DOMElementType';
 import type HTMLElement from '../Core/Renderer/HTML/HTMLElement';
 import type KeyboardNavigationHandler from './KeyboardNavigationHandler';
 import type SVGElement from '../Core/Renderer/SVG/SVGElement';
 import type ProxyProvider from './ProxyProvider';
+import type { EventOptions } from '../Shared/Utilities.js';
 
 import CU from './Utils/ChartUtilities.js';
 const { fireEventOnWrappedOrUnwrappedElement } = CU;
@@ -32,8 +35,6 @@ import DOMElementProvider from './Utils/DOMElementProvider.js';
 import EventProvider from './Utils/EventProvider.js';
 import HU from './Utils/HTMLUtilities.js';
 const { getFakeMouseEvent } = HU;
-import U from '../Core/Utilities.js';
-const { extend } = U;
 
 /* *
  *
@@ -47,15 +48,17 @@ const { extend } = U;
  * create a custom accessibility component for a chart.
  *
  * Components should take care to destroy added elements and unregister event
- * handlers on destroy. This is handled automatically if using this.addEvent and
- * this.createElement.
+ * handlers on destroy. This is handled automatically if using `this.addEvent`
+ * and `this.createElement`.
  *
  * @sample highcharts/accessibility/custom-component
  *         Custom accessibility component
  *
- * @requires module:modules/accessibility
+ * @requires modules/accessibility
  * @class
  * @name Highcharts.AccessibilityComponent
+ *
+ * @internal
  */
 class AccessibilityComponent {
 
@@ -77,6 +80,47 @@ class AccessibilityComponent {
      *
      * */
 
+    /**
+     * Called when accessibility is disabled or chart is destroyed.
+     *
+     * @function Highcharts.AccessibilityComponent#destroy
+     */
+    public destroy(): void {}
+
+    /**
+     * Get keyboard navigation handler for this component.
+     *
+     * @function Highcharts.AccessibilityComponent#getKeyboardNavigation
+     * @return   {Highcharts.KeyboardNavigationHandler|Array<Highcharts.KeyboardNavigationHandler>}
+     *           The keyboard navigation handler(s) for this component.
+     */
+    public getKeyboardNavigation(): (
+    KeyboardNavigationHandler|Array<KeyboardNavigationHandler>
+    ) {
+        return [];
+    }
+
+    /**
+     * Called on component initialization.
+     *
+     * @function Highcharts.AccessibilityComponent#init
+     */
+    public init(): void {}
+
+    /**
+     * Called on every chart render.
+     *
+     * @function Highcharts.AccessibilityComponent#onChartRender
+     */
+    public onChartRender(): void {}
+
+    /**
+     * Called on updates to the chart, including options changes.
+     * Note that this is also called on first render of chart.
+     *
+     * @function Highcharts.AccessibilityComponent#onChartUpdate
+     */
+    public onChartUpdate(): void {}
 
     /**
      * Initialize the class
@@ -121,7 +165,7 @@ class AccessibilityComponent {
         el: (T|Class<T>),
         type: string,
         fn: (Function|EventCallback<T>),
-        options?: U.EventOptions
+        options?: EventOptions
     ): Function {
         return this.eventProvider.addEvent<T>(el, type, fn, options);
     }
@@ -143,6 +187,7 @@ class AccessibilityComponent {
     /**
      * Fire a fake click event on an element. It is useful to have this on
      * AccessibilityComponent for users of custom components.
+     * @private
      */
     public fakeClickEvent(
         el: (HTMLElement|SVGElement|DOMElementType)
@@ -165,55 +210,9 @@ class AccessibilityComponent {
 
 /* *
  *
- *  Class Prototype
- *
- * */
-
-interface AccessibilityComponent {
-    destroy(): void;
-    getKeyboardNavigation(): (KeyboardNavigationHandler|Array<KeyboardNavigationHandler>);
-    init(): void;
-    onChartRender(): void;
-    onChartUpdate(): void;
-}
-
-extend(
-    AccessibilityComponent.prototype,
-    /** @lends Highcharts.AccessibilityComponent */
-    {
-        /**
-         * Called on component initialization.
-         */
-        init(): void {},
-
-        /**
-         * Get keyboard navigation handler for this component.
-         * @private
-         */
-        getKeyboardNavigation: function (): void {} as any,
-
-        /**
-         * Called on updates to the chart, including options changes.
-         * Note that this is also called on first render of chart.
-         */
-        onChartUpdate(): void {},
-
-        /**
-         * Called on every chart render.
-         */
-        onChartRender(): void {},
-
-        /**
-         * Called when accessibility is disabled or chart is destroyed.
-         */
-        destroy(): void {}
-    }
-);
-
-/* *
- *
  *  Default Export
  *
  * */
 
+/** @internal */
 export default AccessibilityComponent;

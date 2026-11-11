@@ -1,10 +1,11 @@
 /* *
  *
- *  (c) 2009-2024 Highsoft AS
+ *  (c) 2009-2026 Highsoft AS
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  *  Authors:
  *  - Sebastian Bochan
@@ -31,26 +32,33 @@ import type {
 } from '../../Plugins/HighchartsTypes';
 import type Options from './KPIComponentOptions';
 import type SidebarPopup from '../../EditMode/SidebarPopup';
-import type Types from '../../../Shared/Types';
+import type { DeepPartial } from '../../../Shared/Types';
 
 import AST from '../../../Core/Renderer/HTML/AST.js';
 import Component from '../Component.js';
 import KPISyncs from './KPISyncs/KPISyncs.js';
 import KPIComponentDefaults from './KPIComponentDefaults.js';
-import Templating from '../../../Core/Templating.js';
-const {
-    format
-} = Templating;
-import U from '../../../Core/Utilities.js';
-const {
+import SUM from '../../../Data/Formula/Functions/SUM.js';
+import AVERAGE from '../../../Data/Formula/Functions/AVERAGE.js';
+import MEDIAN from '../../../Data/Formula/Functions/MEDIAN.js';
+import MAX from '../../../Data/Formula/Functions/MAX.js';
+import MIN from '../../../Data/Formula/Functions/MIN.js';
+import COUNT from '../../../Data/Formula/Functions/COUNT.js';
+import PRODUCT from '../../../Data/Formula/Functions/PRODUCT.js';
+import {
     createElement,
     css,
     defined,
     diffObjects,
     isArray,
+    isFunction,
     isNumber,
     merge
-} = U;
+} from '../../../Shared/Utilities.js';
+import Templating from '../../../Core/Templating.js';
+const {
+    format
+} = Templating;
 
 /* *
  *
@@ -64,47 +72,6 @@ const {
  *
  */
 class KPIComponent extends Component {
-
-    /* *
-     *
-     *  Static functions
-     *
-     * */
-
-    /**
-     * Creates component from JSON.
-     *
-     * @param json
-     * Set of component options, used for creating the KPI component.
-     *
-     * @param cell
-     * Instance of cell, where component is attached.
-     *
-     * @returns
-     * KPI component based on config from JSON.
-     *
-     * @internal
-     */
-    public static fromJSON(
-        json: KPIComponent.ClassJSON,
-        cell: Cell
-    ): KPIComponent {
-        const options = json.options;
-        const chartOptions =
-            options.chartOptions && JSON.parse(options.chartOptions);
-        const subtitle = JSON.parse(options.subtitle || '{}');
-        const title = options.title && JSON.parse(options.title);
-
-        return new KPIComponent(
-            cell,
-            merge(options as any, {
-                chartOptions,
-                title,
-                subtitle
-            })
-        );
-    }
-
     /* *
      *
      *  Static properties
@@ -133,7 +100,6 @@ class KPIComponent extends Component {
      * @default {
         chart: {
             type: 'spline',
-            styledMode: true,
             zooming: {
                 mouseWheel: {
                     enabled: false
@@ -170,10 +136,9 @@ class KPIComponent extends Component {
         }
     }
      */
-    public static defaultChartOptions: Types.DeepPartial<ChartOptions> = {
+    public static defaultChartOptions: DeepPartial<ChartOptions> = {
         chart: {
             type: 'spline',
-            styledMode: true,
             zooming: {
                 mouseWheel: {
                     enabled: false
@@ -185,13 +150,13 @@ class KPIComponent extends Component {
         },
         xAxis: {
             visible: false
-        } as Types.DeepPartial<ChartOptions['xAxis']>,
+        } as DeepPartial<ChartOptions['xAxis']>,
         yAxis: {
             visible: false,
             title: {
                 text: null
             }
-        } as Types.DeepPartial<ChartOptions['yAxis']>,
+        } as DeepPartial<ChartOptions['yAxis']>,
         legend: {
             enabled: false
         },
@@ -209,6 +174,19 @@ class KPIComponent extends Component {
             }
         }
     };
+
+    /**
+     * The formula option's default formula functions map.
+     */
+    public static formulaFunctions = {
+        SUM,
+        AVERAGE,
+        MEDIAN,
+        MAX,
+        MIN,
+        COUNT,
+        PRODUCT
+    } as const;
 
     /* *
      *
@@ -407,6 +385,52 @@ class KPIComponent extends Component {
         this.chart?.destroy();
         super.destroy();
     }
+
+    /**
+     * Gets a proper value, according to the provided formula option.
+     *
+     * @returns
+     * The formula value. Can be a number internally, or a string from the
+     * callback function.
+     *
+     * @internal
+     */
+    private getFormulaValue(): string|number|undefined {
+        const formula = this.options.formula;
+        const table = this.getDataTable();
+        const column = table?.getColumn(this.options.columnId);
+
+        if (!column || !formula) {
+            return;
+        }
+
+        if (isFunction(formula)) {
+            return formula.call(this, column);
+        }
+
+        let filteredColumn = Array.isArray(column) ?
+            column.slice().filter(defined) : Array.from(column);
+
+        // Filter NaN values and empty strings since the formula functions don't
+        // handle it internally.
+        if (formula === 'MIN' || formula === 'MAX' || formula === 'MEDIAN') {
+            filteredColumn = filteredColumn.filter(
+                (val): boolean => val !== '' && !isNaN(Number(val))
+            );
+        }
+
+        // Sort values since the formula function don't handle it internally.
+        if (formula === 'MEDIAN') {
+            filteredColumn.sort((a, b): number => Number(a) - Number(b));
+        }
+
+        try {
+            return KPIComponent.formulaFunctions[formula](filteredColumn);
+        } catch {
+            console.warn('Invalid formula option provided.'); // eslint-disable-line no-console
+        }
+    }
+
     /**
      * Gets the default value that should be displayed in the KPI.
      *
@@ -418,14 +442,16 @@ class KPIComponent extends Component {
             return this.options.value;
         }
 
-        const connector = this.getFirstConnector();
+        const dataTable = this.getDataTable()?.getModified();
+        if (dataTable && this.options.columnId) {
+            if (defined(this.options.formula)) {
+                return this.getFormulaValue();
+            }
 
-        if (connector && this.options.columnName) {
-            const table = connector.table.modified,
-                column = table.getColumn(this.options.columnName),
+            const column = dataTable.getColumn(this.options.columnId),
                 length = column?.length || 0;
 
-            return table.getCellAsString(this.options.columnName, length - 1);
+            return String(dataTable.getCell(this.options.columnId, length - 1));
         }
     }
 
@@ -448,14 +474,20 @@ class KPIComponent extends Component {
             }
 
             if (valueFormatter) {
-                value = valueFormatter.call(this, value);
+                AST.setElementHTML(
+                    this.value,
+                    '' + valueFormatter.call(this, value)
+                );
             } else if (valueFormat) {
-                value = format(valueFormat, { value });
-            } else if (isNumber(value)) {
-                value = value.toLocaleString();
+                AST.setElementHTML(
+                    this.value,
+                    '' + format(valueFormat, { value })
+                );
+            } else {
+                this.value.textContent = isNumber(value) ?
+                    value.toLocaleString() : '' + value;
             }
 
-            AST.setElementHTML(this.value, '' + value);
             this.linkValueToChart(prevValue);
 
             this.prevValue = prevValue;
@@ -638,7 +670,6 @@ class KPIComponent extends Component {
         const connectorsIds =
             sidebar.editMode.board.dataPool.getConnectorIds();
         let options: Partial<Options> = {
-            cell: '',
             type: 'KPI'
         };
 
@@ -655,40 +686,9 @@ class KPIComponent extends Component {
     }
 
     /**
-     * Converts the class instance to a class JSON.
-     *
-     * @returns
-     * Class JSON of this Component instance.
-     *
-     * @internal
-     */
-    public toJSON(): KPIComponent.ClassJSON {
-        const base = super.toJSON();
-        const json: KPIComponent.ClassJSON = {
-            ...base,
-            type: 'KPI',
-            options: {
-                ...base.options,
-                type: 'KPI',
-                value: this.options.value,
-                subtitle: JSON.stringify(this.options.subtitle),
-                title: JSON.stringify(this.options.title),
-                threshold: this.options.threshold,
-                thresholdColors: this.options.thresholdColors,
-                chartOptions: JSON.stringify(this.options.chartOptions),
-                valueFormat: this.options.valueFormat
-            }
-        };
-
-        this.emit({ type: 'toJSON', json: base });
-
-        return json;
-    }
-
-    /**
      * Get the KPI component's options.
      * @returns
-     * The JSON of KPI component's options.
+     * KPI component's options.
      *
      * @internal
      *
@@ -703,38 +703,15 @@ class KPIComponent extends Component {
 
 /* *
  *
- *  Class Namespace
+ *  Type Declarations
  *
  * */
 
-namespace KPIComponent {
+/** @internal */
+export type ComponentType = KPIComponent;
 
-    /* *
-    *
-    *  Declarations
-    *
-    * */
-
-    /** @internal */
-    export type ComponentType = KPIComponent;
-
-    /** @internal */
-    export interface ClassJSON extends Component.JSON {
-        options: ComponentJSONOptions;
-    }
-
-    /** @internal */
-    export interface ComponentJSONOptions extends Component.ComponentOptionsJSON {
-        title?: string;
-        chartOptions?: string;
-        threshold?: number|Array<number>;
-        thresholdColors?: Array<string>;
-        type: 'KPI';
-        value?: number|string;
-        subtitle?: string;
-        valueFormat?: string;
-    }
-}
+/** @internal */
+export type FormulaType = keyof typeof KPIComponent.formulaFunctions;
 
 /* *
  *

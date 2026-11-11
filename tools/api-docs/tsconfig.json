@@ -1,0 +1,11 @@
+{
+    "compilerOptions": {
+        "allowJs": true,
+        "module": "NodeNext",
+        "moduleResolution": "NodeNext",
+        "rootDir": "..",
+        "strict": false,
+        "target": "ES2021",
+        "types": ["node"]
+    }
+}

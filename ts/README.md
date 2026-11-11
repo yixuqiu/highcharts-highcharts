@@ -16,6 +16,7 @@ similarities.
 Content
 -------
 * [Coding Recommendations](#coding-rules)
+  * [Keep the code lean](#keep-the-code-lean)
   * [Use alphabetical order](#use-alphabetical-order)
   * [Use common ES6 (ES2015) patterns](#use-common-es6-es2015-patterns)
   * [Use TypeScript syntax](#use-typescript-syntax)
@@ -32,6 +33,25 @@ Content
 
 Coding Recommendations
 ----------------------
+
+### Keep the code lean
+
+Code added to the core is loaded by almost every Highcharts user, and small
+additions quickly add up. Keep each change as small as the problem allows.
+
+- **Choose the right place.** Add code to the core only for general features
+  that most charts need. Code for a specific series type or feature belongs in
+  its module. When only a few users need a feature, start with a plugin in a
+  sample. It can move into the library later if there is wider demand.
+- **Keep module fixes out of the core.** Fix a bug in a module inside that
+  module. If the module needs support from the core, add only a minimal hook,
+  such as an event or a simple property, and keep the logic in the module.
+- **Reuse before you add.** Check the existing utility functions, events and
+  hooks before writing new code. Adapting existing code to cover a new case is
+  welcome, as it often fixes a bug without adding size.
+- **Keep the cost proportional.** The size of a change should match how many
+  users the problem affects. A fix for a rare edge case should be small.
+
 
 ### Use alphabetical order
 
@@ -81,16 +101,16 @@ You can also test your knowledge on the TypeScript
   ([handbook](https://www.typescriptlang.org/docs/handbook/utility-types.html))
 - Make use of parentheses around type lists. (`Array<(number|null|string)>`)
 - Do not use `any` type in new code as it is only used for the migration phase
-- Add paragraphs around conditional types `(A extends B ? C : D)`, type lists
-  `(A|B)`, and type unions `(A&B)`.
+- Add parentheses around conditional types `(A extends B ? C : D)`, type unions
+  `(A|B)`, and type intersections `(A&B)`.
 
 
 ### Use TypeScript definition files
 
 If a type is created by multiple files, it should go into its own `*.d.ts` file.
 That way multiple files can add properties to an interface in an `*.d.ts` file.
-A good example for this kind of type interface extension is the 
-[`SeriesLike`](./Core/Series/SeriesLike.d.ts) interface.
+A good example for this kind of type interface extension is the
+[`SeriesBase`](./Core/Series/SeriesBase.d.ts) interface.
 
 
 ### Combine the class pattern with class types
@@ -125,7 +145,7 @@ Coding Limitations
 
 ### Code with strict rules in mind
 
-Even though the migration is a work in progess, source will gradually comply to
+Even though the migration is a work in progress, source will gradually comply to
 strict rules of ESLint and TypeScript. You should therefor avoid insecure type
 assurance and instead use preferred
 [patterns](https://www.typescriptlang.org/docs/handbook/2/narrowing.html).
@@ -143,6 +163,8 @@ in the sources. As a consequence, types in sources and doclets share only a few
 similarities. Public interfaces for example have to be defined twice, once in
 TypeScript and a second time as JSDoclets.
 
+[More about the Doclets](./DOCLETS.md).
+
 
 
 Testing
@@ -152,6 +174,10 @@ You can run `npm test` to test code changes with automated unit tests.
 
 For tests in a browser, run `npx gulp` and use then the `highcharts-utils`
 repository for a local test server.
+
+The default test browser is `FirefoxHeadless`, but you can also other browser
+except `ChromeHeadless`, which is since version 109 not suitable as it lacks a
+WebGL context as required by boost.
 
 For tests in a local npm-based project, run `npx gulp --dts` and then install in
 your project the local Highcharts repository with `npm i ../highcharts/code`.

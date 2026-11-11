@@ -1,10 +1,12 @@
 /* *
  *
- *  (c) 2010-2024 Torstein Honsi
+ *  (c) 2010-2026 Highsoft AS
+ *  Author: Torstein Hønsi
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  * */
 
@@ -26,12 +28,7 @@ import SplinePoint from './Spline/SplinePoint';
 const { prototype: columnProto } = ColumnSeries;
 import Series from '../Core/Series/Series.js';
 const { prototype: seriesProto } = Series;
-import U from '../Core/Utilities.js';
-const {
-    defined,
-    pushUnique,
-    stableSort
-} = U;
+import { defined, pushUnique, stableSort } from '../Shared/Utilities.js';
 
 /* *
  *
@@ -39,6 +36,7 @@ const {
  *
  * */
 
+/** @internal */
 namespace OnSeriesComposition {
 
     /* *
@@ -47,16 +45,19 @@ namespace OnSeriesComposition {
      *
      * */
 
+    /** @internal */
     export declare class PointComposition extends Point {
         stackIndex?: number;
     }
 
+    /** @internal */
     export declare class SeriesComposition extends Series {
         options: SeriesOptions;
         onSeries?: SeriesComposition;
         points: Array<PointComposition>;
     }
 
+    /** @internal */
     export interface SeriesOptions extends CoreSeriesOptions {
         onSeries?: (string|null);
     }
@@ -68,7 +69,7 @@ namespace OnSeriesComposition {
      * */
 
     /**
-     * @private
+     * @internal
      */
     export function compose<T extends typeof Series>(
         SeriesClass: T
@@ -88,7 +89,7 @@ namespace OnSeriesComposition {
      * Override getPlotBox. If the onSeries option is valid, return the plot box
      * of the onSeries, otherwise proceed as usual.
      *
-     * @private
+     * @internal
      */
     export function getPlotBox(
         this: SeriesComposition,
@@ -106,7 +107,7 @@ namespace OnSeriesComposition {
     /**
      * Extend the translate method by placing the point on the related series
      *
-     * @private
+     * @internal
      */
     export function translate(
         this: SeriesComposition
@@ -347,4 +348,5 @@ namespace OnSeriesComposition {
  *
  * */
 
+/** @internal */
 export default OnSeriesComposition;

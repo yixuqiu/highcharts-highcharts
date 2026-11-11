@@ -28,6 +28,14 @@ QUnit.test('Outside tooltip and styledMode (#11783)', function (assert) {
         'path',
         'A label box should be generated'
     );
+
+    const { container } = chart.tooltip;
+
+    assert.ok(
+        container.offsetWidth < chart.chartWidth &&
+            container.offsetHeight < chart.chartHeight,
+        'The tooltip container should not stretch to the page size (#25518)'
+    );
 });
 
 QUnit.test('Outside tooltip styling and correct position', function (assert) {
@@ -125,6 +133,52 @@ QUnit.test('Outside tooltip styling and correct position', function (assert) {
     );
 
 });
+
+QUnit.test(
+    'Outside tooltip with positioner and container margin',
+    function (assert) {
+        const container = document.getElementById('container');
+        container.style.marginLeft = '60px';
+
+        const chart = Highcharts.chart('container', {
+            chart: { width: 400, height: 400 },
+            tooltip: {
+                outside: true,
+                hideDelay: 0,
+                positioner(labelWidth, labelHeight, point) {
+                    return this.chart.tooltip.getPosition(
+                        labelWidth,
+                        labelHeight,
+                        point
+                    );
+                }
+            },
+            series: [{ data: [1, 3, 2, 4] }]
+        });
+
+        const point = chart.series[0].points[0];
+        const tooltip = chart.tooltip;
+
+        point.onMouseOver();
+
+        delete chart.pointer.chartPosition;
+        tooltip.refresh(point);
+
+        const pointerLeft = chart.pointer.getChartPosition().left;
+        const tooltipX = tooltip.label.x + tooltip.label.anchorX;
+        const pointX = point.plotX + chart.plotLeft + pointerLeft;
+
+        assert.close(
+            tooltipX,
+            pointX,
+            8,
+            'Tooltip with positioner returning getPosition should be correct ' +
+            'when container has margin-left'
+        );
+
+        container.style.marginLeft = '';
+    }
+);
 
 QUnit.test('Tooltip when markers are outside, #17929.', function (assert) {
     const chart =  Highcharts.chart('container', {

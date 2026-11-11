@@ -2,13 +2,14 @@
  *
  *  Highcharts funnel3d series module
  *
- *  (c) 2010-2024 Highsoft AS
+ *  (c) 2010-2026 Highsoft AS
  *
  *  Author: Kacper Madej
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  * */
 
@@ -22,14 +23,8 @@
 
 import type Funnel3DPointOptions from './Funnel3DPointOptions';
 import type Funnel3DSeries from './Funnel3DSeries';
-import SeriesRegistry from '../../Core/Series/SeriesRegistry.js';
-const {
-    seriesTypes: {
-        column: ColumnSeries
-    }
-} = SeriesRegistry;
-import U from '../../Core/Utilities.js';
-const { extend } = U;
+import ColumnSeries from '../Column/ColumnSeries.js';
+import { extend } from '../../Shared/Utilities.js';
 
 /* *
  *
@@ -45,12 +40,15 @@ class Funnel3DPoint extends ColumnSeries.prototype.pointClass {
      *
      * */
 
+    /** @internal */
     public dlBoxRaw!: Record<string, number>;
 
     public options!: Funnel3DPointOptions;
 
+    /** @internal */
     public series!: Funnel3DSeries;
 
+    /** @internal */
     public y!: number;
 
 }
@@ -62,6 +60,7 @@ class Funnel3DPoint extends ColumnSeries.prototype.pointClass {
  * */
 
 interface Funnel3DPoint {
+    /** @internal */
     shapeType: string;
 }
 extend(Funnel3DPoint.prototype, {

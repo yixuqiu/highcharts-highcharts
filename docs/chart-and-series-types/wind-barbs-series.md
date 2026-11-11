@@ -1,3 +1,10 @@
+---
+description: >-
+  Encode wind direction with a stem and speed with barbs, using x, value,
+  and direction data. The article explains knot-based barb conventions and
+  how to place and size symbols alongside another series.
+---
+
 Wind barbs
 ===
 
@@ -5,7 +12,7 @@ Wind barbs visualize wind speed and direction in one graphical form. The stem di
 
 _For more detailed samples and documentation check the [API.](https://api.highcharts.com/highcharts/plotOptions.windbarb)_
 
-<iframe style="width: 100%; height: 332px; border: none;" src=https://www.highcharts.com/samples/embed/highcharts/demo/windbarb-series allow="fullscreen"></iframe>
+<iframe style="width: 100%; height: 332px; border: none;" src="https://www.highcharts.com/samples/embed/highcharts/demo/windbarb-series" allow="fullscreen"></iframe>
 
 Click [here](https://jsfiddle.net/gh/get/library/pure/highcharts/highcharts/tree/master/samples/highcharts/demo/windbarb-series/) to check the code.
 

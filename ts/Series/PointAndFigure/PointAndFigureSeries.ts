@@ -1,0 +1,384 @@
+/* *
+ *
+ *  (c) 2010-2026 Highsoft AS
+ *  Author: Kamil Musiałowski
+ *
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
+ *
+ *
+ * */
+
+'use strict';
+
+/* *
+ *  Imports
+ *
+ * */
+
+import DataTableCore from '../../Data/DataTableCore.js';
+import PointAndFigurePoint from './PointAndFigurePoint.js';
+import PointAndFigureSeriesDefaults from './PointAndFigureSeriesDefaults.js';
+import ColumnSeries from '../Column/ColumnSeries.js';
+import ScatterSeries from '../Scatter/ScatterSeries.js';
+import SeriesRegistry from '../../Core/Series/SeriesRegistry.js';
+import CrossSymbol from '../CrossSymbol.js';
+
+import type Point from '../../Core/Series/Point.js';
+import type SVGAttributes from '../../Core/Renderer/SVG/SVGAttributes.js';
+import type PointAndFigureSeriesOptions from './PointAndFigureSeriesOptions';
+import type SVGRenderer from '../../Core/Renderer/SVG/SVGRenderer.js';
+
+import H from '../../Core/Globals.js';
+import type Series from '../../Core/Series/Series.js';
+import {
+    extend,
+    isNumber,
+    merge,
+    pushUnique,
+    relativeLength
+} from '../../Shared/Utilities.js';
+const { composed } = H;
+
+
+/* *
+ *
+ *  Declarations
+ *
+ * */
+
+
+/* *
+ *
+ *  Functions
+ *
+ * */
+
+
+/* *
+ *
+ *  Class
+ *
+ * */
+
+/**
+ * The series type
+ *
+ * @class
+ * @name Highcharts.seriesTypes.pointandfigure
+ *
+ * @augments Highcharts.Series
+ */
+class PointAndFigureSeries extends ScatterSeries {
+
+    /* *
+     *
+     *  Static Properties
+     *
+    * */
+
+    /** @internal */
+    public static defaultOptions: PointAndFigureSeriesOptions = merge(
+        ScatterSeries.defaultOptions,
+        PointAndFigureSeriesDefaults
+    );
+
+    /* *
+     *
+     *  Static Functions
+     *
+     * */
+
+    /** @internal */
+    public static compose(
+        SVGRendererClass: typeof SVGRenderer
+    ): void {
+        if (pushUnique(composed, 'pointandfigure')) {
+            CrossSymbol.compose(SVGRendererClass);
+        }
+    }
+
+    /* *
+     *
+     *  Properties
+     *
+     * */
+
+    public options!: PointAndFigureSeriesOptions;
+
+    public points!: Array<PointAndFigurePoint>;
+
+    /** @internal */
+    public xData!: Array<number>;
+
+    /** @internal */
+    public yData!: Array<number>;
+
+    /** @internal */
+    public allowDG = false;
+
+    /* *
+     *
+     *  Functions
+     *
+     * */
+
+    /** @internal */
+    public init(): void {
+        super.init.apply(this, arguments);
+
+        this.pnfDataGroups = [];
+    }
+
+    /** @internal */
+    public getProcessedData(): Series.ProcessedDataObject {
+        if (!this.pnfDataGroups) {
+            return {
+                modified: this.dataTable.getModified(),
+                cropped: false,
+                cropStart: 0,
+                closestPointRange: 1
+            };
+        }
+
+        const series = this,
+            options = series.options,
+            xData = series.getColumn('x', true),
+            yData = series.getColumn('y', true),
+            boxSize = options.boxSize,
+            calculatedBoxSize = isNumber(boxSize) ?
+                boxSize : relativeLength(boxSize, yData[0]),
+            pnfDataGroups = series.pnfDataGroups,
+            reversal = calculatedBoxSize * options.reversalAmount,
+            dataTable = this.dataTable.getModified(),
+            modified = dataTable === this.dataTable ?
+                dataTable :
+                new DataTableCore();
+
+        series.calculatedBoxSize = calculatedBoxSize;
+
+        let upTrend: boolean;
+
+        /**
+         * Get the Y value of last data point, from the last PNF group.
+         * @internal
+         * @function Highcharts.seriesTypes.pointandfigure#getLastPoint
+         */
+        function getLastPoint(pnfDataGroups: Array<PointAndFigureGroup>): number {
+            const y = pnfDataGroups[pnfDataGroups.length - 1].y;
+            return y[y.length - 1];
+        }
+
+        /**
+         * Push new data point to the last PNF group.
+         * @internal
+         * @function Highcharts.seriesTypes.pointandfigure#pushNewPoint
+         */
+        function pushNewPoint(
+            y: number,
+            upTrend: boolean,
+            lastPoint: number
+        ): void {
+            const currPointGroup = pnfDataGroups[pnfDataGroups.length - 1],
+                flipFactor = upTrend ? 1 : -1,
+                times = Math.floor(
+                    flipFactor * (y - lastPoint) / calculatedBoxSize
+                );
+
+            for (let i = 1; i <= times; i++) {
+                const newPoint =
+                    lastPoint + flipFactor * (calculatedBoxSize * i);
+                currPointGroup.y.push(newPoint);
+            }
+        }
+
+        if (this.isDirtyData || pnfDataGroups.length === 0) {
+
+            this.pnfDataGroups.length = 0;
+
+            // Get first point and determine its symbol and trend
+            for (let i = 0; i < yData.length; i++) {
+                const x = xData[i],
+                    close = yData[i],
+                    firstPoint = yData[0];
+
+                if (close - firstPoint >= calculatedBoxSize) {
+                    upTrend = true;
+                    pnfDataGroups.push({ x, y: [close], upTrend });
+                    break;
+                }
+                if (firstPoint - close >= calculatedBoxSize) {
+                    upTrend = false;
+                    pnfDataGroups.push({ x, y: [close], upTrend });
+                    break;
+                }
+            }
+
+            yData.forEach((close, i): void => {
+                const x = xData[i],
+                    lastPoint = getLastPoint(pnfDataGroups);
+
+                if (upTrend) {
+                    // Add point going UP
+                    if (close - lastPoint >= calculatedBoxSize) {
+                        pushNewPoint(close, upTrend, lastPoint);
+                    }
+
+                    if (lastPoint - close >= reversal) { // Handle reversal
+                        upTrend = false;
+
+                        pnfDataGroups.push({ x, y: [], upTrend });
+                        pushNewPoint(close, upTrend, lastPoint);
+                    }
+                }
+
+                if (!upTrend) {
+                    // Add point going DOWN
+                    if (lastPoint - close >= calculatedBoxSize) {
+                        pushNewPoint(close, upTrend, lastPoint);
+                    }
+
+                    if (close - lastPoint >= reversal) { // Handle reversal
+                        upTrend = true;
+
+                        pnfDataGroups.push({ x, y: [], upTrend });
+                        pushNewPoint(close, upTrend, lastPoint);
+                    }
+                }
+            });
+        }
+
+        // Process the pnfDataGroups to HC series format
+        const finalData: {x: number, y: number, upTrend: boolean}[] = [];
+
+        const processedXData: number[] = [];
+        const processedYData: number[] = [];
+        const processedUpTrendData: boolean[] = [];
+
+        pnfDataGroups.forEach((point): void => {
+            const x = point.x,
+                upTrend = point.upTrend;
+
+            point.y.forEach((y): void => {
+                processedXData.push(x);
+                processedYData.push(y);
+                processedUpTrendData.push(upTrend);
+                finalData.push({
+                    x,
+                    y,
+                    upTrend
+                });
+            });
+        });
+        modified.setColumn('x', processedXData);
+        modified.setColumn('y', processedYData);
+        modified.setColumn('upTrend', processedUpTrendData);
+        series.pnfDataGroups = pnfDataGroups;
+        series.hasProcessedDataTable = true;
+
+        return {
+            modified,
+            cropped: false,
+            cropStart: 0,
+            closestPointRange: 1
+        };
+    }
+
+    /** @internal */
+    public markerAttribs(
+        point: Point
+    ): SVGAttributes {
+        const series = this,
+            options = series.options,
+            attribs: SVGAttributes = {},
+            pos = point.pos();
+
+        attribs.width = series.markerWidth;
+        attribs.height = series.markerHeight;
+        if (pos && attribs.width && attribs.height) {
+            attribs.x = pos[0] - Math.round(attribs.width) / 2;
+            attribs.y = pos[1] - Math.round(attribs.height) / 2;
+        }
+        if (options.crisp && attribs.x) {
+        // Math.floor for #1843:
+            attribs.x = Math.floor(attribs.x);
+        }
+
+        return attribs;
+    }
+
+    /** @internal */
+    public translate(): void {
+        const metrics = this.getColumnMetrics(),
+            calculatedBoxSize = this.calculatedBoxSize;
+
+        this.markerWidth = metrics.width + metrics.paddedWidth + metrics.offset;
+        this.markerHeight =
+            this.yAxis.toPixels(0) - this.yAxis.toPixels(calculatedBoxSize);
+
+        super.translate();
+    }
+}
+
+/* *
+ *
+ *  Class Prototype
+ *
+ * */
+
+/** @internal */
+interface PointAndFigureGroup {
+    /** @internal */
+    x: number;
+    /** @internal */
+    y: Array<number>;
+    /** @internal */
+    upTrend: boolean;
+}
+
+/** @internal */
+interface PointAndFigureSeries {
+    /** @internal */
+    takeOrdinalPosition: boolean;
+    /** @internal */
+    pnfDataGroups: Array<PointAndFigureGroup>;
+    /** @internal */
+    getColumnMetrics: typeof ColumnSeries.prototype.getColumnMetrics;
+    /** @internal */
+    markerWidth: number;
+    /** @internal */
+    markerHeight: number;
+    /** @internal */
+    calculatedBoxSize: number;
+}
+
+extend(PointAndFigureSeries.prototype, {
+    takeOrdinalPosition: true,
+    pnfDataGroups: [],
+    getColumnMetrics: ColumnSeries.prototype.getColumnMetrics,
+    pointClass: PointAndFigurePoint,
+    sorted: true
+});
+
+/* *
+ *
+ *  Registry
+ *
+ * */
+
+declare module '../../Core/Series/SeriesType' {
+    interface SeriesTypeRegistry {
+        pointandfigure: typeof PointAndFigureSeries;
+    }
+}
+
+SeriesRegistry.registerSeriesType('pointandfigure', PointAndFigureSeries);
+
+/* *
+ *
+ *  Default Export
+ *
+ * */
+
+export default PointAndFigureSeries;

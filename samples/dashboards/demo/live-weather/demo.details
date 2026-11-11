@@ -5,9 +5,9 @@ authors:
 requiresManualTesting: true
 js_wrap: b
 tags:
-- Highcharts Dashboards demo
+  - Highcharts Dashboards demo
 categories:
-  - General:
-        priority: 2
+  - Advanced:
+        priority: 20
 use_png_thumbnail: true
 ...

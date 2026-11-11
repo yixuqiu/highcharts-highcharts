@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: LicenseRef-Highcharts
 /**
  * @license Highcharts JS v@product.version@ (@product.date@)
  * @module highcharts/modules/boost
@@ -5,10 +6,11 @@
  *
  * Boost module
  *
- * (c) 2010-2024 Highsoft AS
- * Author: Torstein Honsi
+ * (c) 2010-2026 Highsoft AS
+ * Author: Torstein Hønsi
  *
- * License: www.highcharts.com/license
+ * A commercial license may be required depending on use,
+ * see www.highcharts.com/license
  *
  * */
 
@@ -25,6 +27,7 @@ Boost.compose(
     G.Axis,
     G.Series,
     G.seriesTypes,
+    G.Point,
     G.Color
 );
 

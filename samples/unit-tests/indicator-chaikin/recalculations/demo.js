@@ -134,10 +134,10 @@ QUnit.test('Test algorithm on data updates.', function (assert) {
     );
 
     assert.strictEqual(
-        mainSeries.points.length,
         chaikinSeries.points.length +
             chaikinSeries.options.params.periods[1] -
             1,
+        mainSeries.data.length,
         'After setData number of Chaikin points is correct'
     );
 
@@ -150,7 +150,7 @@ QUnit.test('Test algorithm on data updates.', function (assert) {
     });
 
     assert.deepEqual(
-        toChaikinWithRound(chaikinSeries.yData),
+        toChaikinWithRound(chaikinSeries.getColumn('y')),
         [
             -14939.5329,
             -12021.9458,
@@ -177,7 +177,7 @@ QUnit.test('Test algorithm on data updates.', function (assert) {
     volumeSeries.points[volumeSeries.points.length - 1].remove();
 
     assert.deepEqual(
-        toChaikinWithRound(chaikinSeries.yData),
+        toChaikinWithRound(chaikinSeries.getColumn('y')),
         [
             -14939.5329,
             -12021.9458,

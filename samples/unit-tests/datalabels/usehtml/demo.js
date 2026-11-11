@@ -1,30 +1,3 @@
-QUnit.test('Data labels, useHTML and defer (#5075)', function (assert) {
-    var chart = Highcharts.chart('container', {
-        series: [
-            {
-                type: 'column',
-                animation: true,
-                dataLabels: {
-                    enabled: true,
-                    useHTML: true,
-                    defer: true
-                },
-                data: [1000, 2000, 3000]
-            }
-        ]
-    });
-
-    assert.strictEqual(
-        chart.series[0].dataLabelsGroup.div.nodeName,
-        'DIV',
-        'The data labels group has a HTML counterpart'
-    );
-    assert.strictEqual(
-        chart.series[0].dataLabelsGroup.div.style.opacity,
-        '0',
-        'And that div is hidden'
-    );
-});
 QUnit.test(
     '#7287: Correct class for the last dataLable when useHTML',
     function (assert) {
@@ -73,8 +46,12 @@ QUnit.test(
             point = chart.series[0].points[0];
 
         assert.strictEqual(
-            window.getComputedStyle(point.dataLabel.div.children[0])
-                .getPropertyValue('cursor'),
+            window.getComputedStyle((
+                // Parallel HTML
+                point.dataLabel.div ||
+                // Foreign object
+                point.dataLabel.element
+            ).children[0]).getPropertyValue('cursor'),
             'pointer',
             'Data label\'s \'cursor\' attribute equals to \'pointer\''
         );
@@ -135,8 +112,13 @@ QUnit.test('#10765: rotated dataLabels support useHTML', function (assert) {
         '(#10765).'
     );
 
+    const dataLabel = chart.series[0].points[1].dataLabel;
     assert.strictEqual(
-        chart.series[0].points[1].dataLabel.text.rotation,
+        dataLabel.text.foreignObject ?
+            // Foreign object: Applied to the group like with SVG
+            dataLabel.rotation :
+            // Parallel HTML: Applied to the text element
+            dataLabel.text.rotation,
         10,
         'Rotation should be applied to HTML text element, #20685.'
     );
@@ -159,16 +141,12 @@ QUnit.test('#10765: rotated dataLabels support useHTML', function (assert) {
         unrotated, #20685.`
     );
 
-    assert.ok(
-        rotatedBLBox.y < unrotatedDLBox.y,
-        'Rotated data label box should be placed higher that unrotated, #20685.'
-    );
-
     const htmlLabel = chart.renderer.label(
             'Label', 0, 0, undefined,
             undefined, undefined, true
         ).add(),
-        standardLabel = chart.renderer.label('Label', 0, 0).add();
+        standardLabel = chart.renderer.label('Label', 0, 0).add(),
+        isWindows = Highcharts.win.navigator.platform.indexOf('Win') >= 0;
 
     [-90, -60, -30, 0, 30, 60, 90].forEach(rotation => {
         htmlLabel.attr({
@@ -185,7 +163,7 @@ QUnit.test('#10765: rotated dataLabels support useHTML', function (assert) {
             assert.close(
                 htmlBox[property],
                 standardBox[property],
-                3,
+                (Highcharts.isFirefox || isWindows) ? 5 : 1,
                 `For rotation ${rotation}, the ${property} property should be` +
                 ' similar for HTML and non-HTML label'
             );

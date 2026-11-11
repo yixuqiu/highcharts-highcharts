@@ -1,10 +1,12 @@
 /* *
  *
- *  (c) 2010-2024 Pawel Lysy
+ *  (c) 2010-2026 Highsoft AS
+ *  Author: Paweł Lysy
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  * */
 
@@ -37,6 +39,7 @@ class TreemapNode {
     childrenTotal = 0;
     ignore?: boolean;
     isLeaf?: boolean;
+    isGroup?: boolean;
     levelDynamic?: number;
     name?: string;
     parent?: string;

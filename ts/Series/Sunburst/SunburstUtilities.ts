@@ -2,13 +2,14 @@
  *
  *  This module implements sunburst charts in Highcharts.
  *
- *  (c) 2016-2024 Highsoft AS
+ *  (c) 2016-2026 Highsoft AS
  *
- *  Authors: Jon Arild Nygard
+ *  Authors: Jon Arild Nygård
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  * */
 
@@ -21,19 +22,9 @@
  * */
 
 import type { SunburstSeriesLevelOptions } from './SunburstSeriesOptions';
-import SeriesRegistry from '../../Core/Series/SeriesRegistry.js';
-const {
-    seriesTypes: {
-        treemap: TreemapSeries
-    }
-} = SeriesRegistry;
-import U from '../../Core/Utilities.js';
+import TreemapSeries from '../Treemap/TreemapSeries.js';
 import type SunburstNode from './SunburstNode.js';
-const {
-    isNumber,
-    isObject,
-    merge
-} = U;
+import { isNumber, isObject, merge } from '../../Shared/Utilities.js';
 
 /* *
  *
@@ -42,7 +33,7 @@ const {
  * */
 
 /**
- * @private
+ * @internal
  * @function calculateLevelSizes
  *
  * @param {Object} levelOptions
@@ -134,7 +125,7 @@ function calculateLevelSizes(
 }
 
 /**
- * @private
+ * @internal
  */
 function getLevelFromAndTo(
     { level, height }: SunburstNode
@@ -147,7 +138,7 @@ function getLevelFromAndTo(
 
 /**
  * TODO introduce step, which should default to 1.
- * @private
+ * @internal
  */
 function range(from: unknown, to: unknown): Array<number> {
     const result: Array<number> = [];
@@ -167,6 +158,7 @@ function range(from: unknown, to: unknown): Array<number> {
  *
  * */
 
+/** @internal */
 const SunburstUtilities = {
     calculateLevelSizes,
     getLevelFromAndTo,
@@ -174,4 +166,5 @@ const SunburstUtilities = {
     recursive: TreemapSeries.prototype.utils.recursive
 };
 
+/** @internal */
 export default SunburstUtilities;

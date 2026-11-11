@@ -61,9 +61,10 @@ QUnit.test('All zero values', function (assert) {
         data: [-1, -2]
     });
 
-    assert.strictEqual(
-        Math.round(chart.series[0].points[0].shapeArgs.y),
+    assert.close(
+        chart.series[0].points[0].shapeArgs.y,
         0,
+        0.51,
         'Zero values should only be drawn as positive when there is room for ' +
         'it (#14876)'
     );
@@ -76,4 +77,26 @@ QUnit.test('All zero values', function (assert) {
         'Only points below threshold should have point.negative set to true.'
     );
 
+    // Issue #23307
+    // Stacking columns with small negative values
+    chart.update({
+        plotOptions: {
+            series: {
+                stacking: 'normal'
+            }
+        },
+        yAxis: [{
+            min: -30, max: 20
+        }],
+        series: [
+            { data: [-1] },
+            { data: [-2] }
+        ]
+    });
+
+    assert.notStrictEqual(
+        chart.series[0].points[0].shapeArgs.y,
+        chart.series[1].points[0].shapeArgs.y,
+        'Stacked segments should not start at the same Y position.'
+    );
 });

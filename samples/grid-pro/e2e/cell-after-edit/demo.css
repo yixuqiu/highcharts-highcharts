@@ -1,0 +1,6 @@
+@import url("https://code.highcharts.com/grid-pro/css/grid-pro.css");
+
+#container {
+    margin: 8px;
+    height: 400px;
+}

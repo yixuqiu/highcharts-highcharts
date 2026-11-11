@@ -180,7 +180,6 @@ QUnit.test('Multiple color axis - dataClasses', function (assert) {
         x = legend.group.translateX + legend.padding + 5,
         y = legend.group.translateY + legend.padding + 5;
 
-    controller.moveTo(x, y);
     controller.click(x, y);
 
     assert.strictEqual(
@@ -219,8 +218,14 @@ QUnit.test('Multiple color axis - dynamics', function (assert) {
     chart.update({ colorAxis: { dataClasses: false } }, true, true);
 
     assert.strictEqual(
-        !chart.colorAxis[0].dataClasses && chart.colorAxis.length === 1,
-        true,
-        'The chart should have only one color axis without data classes.'
+        typeof chart.colorAxis[0].dataClasses,
+        'undefined',
+        'The dataClasses property should be undefined after update.'
+    );
+
+    assert.strictEqual(
+        chart.colorAxis.length,
+        1,
+        'The chart should have only one color axis.'
     );
 });

@@ -183,11 +183,14 @@ QUnit.test('Timeline: General tests.', function (assert) {
         dataLabel = point.dataLabel,
         connector = dataLabel.connector;
 
-    assert.strictEqual(
-        !chart.isInsidePlot(dataLabel.x, dataLabel.y),
-        connector['stroke-width'] === undefined,
-        'Connector is hidden when the data label is not visible on init.'
-    );
+    // Commented out as part of data label fade-out refactor. Did not make sense
+    // before, because isInsidePlot returned true for invisible data labels, and
+    // the stroke width was still 1.
+    // assert.strictEqual(
+    //     !chart.isInsidePlot(dataLabel.x, dataLabel.y),
+    //     connector['stroke-width'] === undefined,
+    //     'Connector is hidden when the data label is not visible on init.'
+    // );
 
     chart.update({
         series: [
@@ -240,5 +243,31 @@ QUnit.test('Timeline: General tests.', function (assert) {
         timeline.points[2].isInside,
         false,
         'The third point is hidden, when it\'s outside of plot area.'
+    );
+
+
+    chart = Highcharts.stockChart('container', {
+        series: [{
+            type: 'timeline',
+            data: [{
+                x: Date.UTC(2009, 10, 1),
+                name: 'A'
+            }, {
+                x: Date.UTC(2009, 10, 27),
+                name: 'B'
+            }, {
+                x: Date.UTC(2010, 10, 20),
+                name: 'C'
+            }, {
+                x: Date.UTC(2011, 3, 19),
+                name: 'D'
+            }]
+        }]
+    });
+
+    assert.strictEqual(
+        chart.series[0].points.length,
+        4,
+        'Timeline series is rendered with stock chart constructor, #17890'
     );
 });

@@ -1,10 +1,12 @@
 /* *
  *
- *  (c) 2010-2024 Torstein Honsi
+ *  (c) 2010-2026 Highsoft AS
+ *  Author: Torstein Hønsi
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  * */
 
@@ -28,15 +30,12 @@ import F from '../../Core/Templating.js';
 const { format } = F;
 import H from '../../Core/Globals.js';
 const { composed } = H;
-import U from '../../Core/Utilities.js';
-import Point from '../../Core/Series/Point';
-const {
+import {
     addEvent,
     extend,
     isNumber,
-    pick,
     pushUnique
-} = U;
+} from '../../Shared/Utilities.js';
 
 /* *
  *
@@ -44,9 +43,6 @@ const {
  *
  * */
 
-/**
- * @private
- */
 function compose(
     AxisClass: typeof Axis,
     SeriesClass: typeof Series,
@@ -67,24 +63,23 @@ function compose(
 /**
  * Extend the original method, make the tooltip's header reflect the grouped
  * range.
- * @private
+ * @internal
  */
 function onTooltipHeaderFormatter(
     this: Tooltip,
-    e: Event&AnyRecord
+    e: Event&Tooltip.HeaderFormatterEventObject
 ): void {
 
     const chart = this.chart,
         time = chart.time,
-        labelConfig = e.labelConfig,
-        series = labelConfig.series as Series,
-        point = labelConfig.point as Point,
+        point = e.point,
+        series = point.series,
         options = series.options,
         tooltipOptions = series.tooltipOptions,
         dataGroupingOptions = options.dataGrouping,
         xAxis = series.xAxis;
 
-    let xDateFormat = tooltipOptions.xDateFormat,
+    let xDateFormat = tooltipOptions.xDateFormat || '',
         xDateFormatEnd,
         currentDataGrouping: (TimeTicksInfoObject|undefined),
         dateTimeLabelFormats,
@@ -99,7 +94,7 @@ function onTooltipHeaderFormatter(
         xAxis &&
         xAxis.options.type === 'datetime' &&
         dataGroupingOptions &&
-        isNumber(labelConfig.key)
+        isNumber(point.key)
     ) {
 
         // Set variables
@@ -125,22 +120,16 @@ function onTooltipHeaderFormatter(
         // it, but if the least distance is one day, skip hours and minutes etc.
         } else if (!xDateFormat && dateTimeLabelFormats && xAxis.dateTime) {
             xDateFormat = xAxis.dateTime.getXDateFormat(
-                labelConfig.x,
+                point.x,
                 tooltipOptions.dateTimeLabelFormats
-
             );
         }
 
-        const groupStart = pick(
-                series.groupMap?.[point.index].groupStart,
-                labelConfig.key
-            ),
-            groupEnd = groupStart + currentDataGrouping?.totalRange - 1;
+        const groupStart =
+                series.groupMap?.[point.index].groupStart ?? point.key,
+            groupEnd = groupStart + (currentDataGrouping?.totalRange || 0) - 1;
 
-        formattedKey = time.dateFormat(
-            xDateFormat as any,
-            groupStart
-        );
+        formattedKey = time.dateFormat(xDateFormat, groupStart);
         if (xDateFormatEnd) {
             formattedKey += time.dateFormat(
                 xDateFormatEnd,
@@ -156,8 +145,8 @@ function onTooltipHeaderFormatter(
         // Return the replaced format
         e.text = format(
             formatString, {
-                point: extend(labelConfig.point, { key: formattedKey }),
-                series: series
+                point: extend(point, { key: formattedKey }),
+                series
             },
             chart
         );
@@ -173,11 +162,13 @@ function onTooltipHeaderFormatter(
  *
  * */
 
+/** @internal */
 const DataGroupingComposition = {
     compose,
     groupData: DataGroupingSeriesComposition.groupData
 };
 
+/** @internal */
 export default DataGroupingComposition;
 
 
@@ -188,7 +179,7 @@ export default DataGroupingComposition;
  * */
 
 /**
- * @typedef {"average"|"averages"|"open"|"high"|"low"|"close"|"sum"} Highcharts.DataGroupingApproximationValue
+ * @typedef {"average"|"averages"|"close"|"high"|"hlc"|"low"|"ohlc"|"open"|"range"|"sum"} Highcharts.DataGroupingApproximationValue
  */
 
 /**
@@ -225,11 +216,8 @@ export default DataGroupingComposition;
  * @product highstock
  * @interface Highcharts.DataGroupingResultObject
  *//**
- * @name Highcharts.DataGroupingResultObject#groupedXData
- * @type {Array<number>}
- *//**
- * @name Highcharts.DataGroupingResultObject#groupedYData
- * @type {Array<(number|null|undefined)>|Array<Array<(number|null|undefined)>>}
+ * @name Highcharts.DataGroupingResultObject#modified
+ * @type {Highcharts.DataTable}
  *//**
  * @name Highcharts.DataGroupingResultObject#groupMap
  * @type {Array<DataGroupingInfoObject>}
@@ -281,8 +269,7 @@ export default DataGroupingComposition;
  *
  * @declare   Highcharts.DataGroupingOptionsObject
  * @product   highstock
- * @requires  product:highstock
- * @requires  module:modules/datagrouping
+ * @requires  modules/stock
  * @apioption plotOptions.series.dataGrouping
  */
 
@@ -363,7 +350,7 @@ export default DataGroupingComposition;
  *     minute: ['%A, %e %b, %H:%M', '%A, %e %b, %H:%M', '-%H:%M'],
  *     hour: ['%A, %e %b, %H:%M', '%A, %e %b, %H:%M', '-%H:%M'],
  *     day: ['%A, %e %b %Y', '%A, %e %b', '-%A, %e %b %Y'],
- *     week: ['Week from %A, %e %b %Y', '%A, %e %b', '-%A, %e %b %Y'],
+ *     week: ['%v %A, %e %b %Y', '%A, %e %b', '-%A, %e %b %Y'],
  *     month: ['%B %Y', '%B', '-%B %Y'],
  *     year: ['%Y', '%Y', '-%Y']
  * }
@@ -432,23 +419,6 @@ export default DataGroupingComposition;
  */
 
 /**
- * The approximate pixel width of each group. If for example a series
- * with 30 points is displayed over a 600 pixel wide plot area, no grouping
- * is performed. If however the series contains so many points that
- * the spacing is less than the groupPixelWidth, Highcharts will try
- * to group it into appropriate groups so that each is more or less
- * two pixels wide. If multiple series with different group pixel widths
- * are drawn on the same x axis, all series will take the greatest width.
- * For example, line series have 2px default group width, while column
- * series have 10px. If combined, both the line and the column will
- * have 10px by default.
- *
- * @type      {number}
- * @default   2
- * @apioption plotOptions.series.dataGrouping.groupPixelWidth
- */
-
-/**
  * By default only points within the visible range are grouped. Enabling this
  * option will force data grouping to calculate all grouped points for a given
  * dataset. That option prevents for example a column series from calculating
@@ -463,6 +433,23 @@ export default DataGroupingComposition;
  * @default   false
  * @since     6.1.0
  * @apioption plotOptions.series.dataGrouping.groupAll
+ */
+
+/**
+ * The approximate pixel width of each group. If for example a series
+ * with 30 points is displayed over a 600 pixel wide plot area, no grouping
+ * is performed. If however the series contains so many points that
+ * the spacing is less than the groupPixelWidth, Highcharts will try
+ * to group it into appropriate groups so that each is more or less
+ * two pixels wide. If multiple series with different group pixel widths
+ * are drawn on the same x axis, all series will take the greatest width.
+ * For example, line series have 2px default group width, while column
+ * series have 10px. If combined, both the line and the column will
+ * have 10px by default.
+ *
+ * @type      {number}
+ * @default   2
+ * @apioption plotOptions.series.dataGrouping.groupPixelWidth
  */
 
 /**
@@ -501,6 +488,12 @@ export default DataGroupingComposition;
  */
 
 /**
+ * Deprecated. Use
+ * [anchor](#plotOptions.series.dataGrouping.anchor), or
+ * [firstAnchor](#plotOptions.series.dataGrouping.firstAnchor) and
+ * [lastAnchor](#plotOptions.series.dataGrouping.lastAnchor)
+ * instead.
+ *
  * Normally, a group is indexed by the start of that group, so for example
  * when 30 daily values are grouped into one month, that month's x value
  * will be the 1st of the month. This apparently shifts the data to
@@ -510,7 +503,7 @@ export default DataGroupingComposition;
  *
  * @type      {boolean}
  * @default   false
- * @deprecated
+ * @deprecated 9.1.0
  * @apioption plotOptions.series.dataGrouping.smoothed
  */
 

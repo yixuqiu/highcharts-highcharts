@@ -34,9 +34,11 @@ function getProducts(logPaths) {
         products = [
             'Core',
             'Dashboards',
+            'Grid',
             'Gantt',
             'Maps',
-            'Stock'
+            'Stock',
+            'Accessibility'
         ],
         affectedProducts = [];
 
@@ -53,7 +55,14 @@ function getProducts(logPaths) {
     }
 
     paths.forEach(path => {
-        // Any path part check
+        const pathParts = path.split('/');
+
+        // Docs: skip – don't trigger tests when only docs are modified
+        if (pathParts[0] === 'docs' && pathParts.length > 1) {
+            return;
+        }
+
+        // Any path part check (for non-docs paths)
         products.forEach(productName => {
             const productNameRegex = new RegExp(productName, 'iu');
             if (productNameRegex.test(path)) {
@@ -62,13 +71,11 @@ function getProducts(logPaths) {
         });
 
         // By directory detection
-        const pathParts = path.split('/');
-
         if (pathParts.length > 2 && pathParts[0] === 'ts') {
             if (['Shared', 'Data'].indexOf(pathParts[1]) !== -1) {
                 mark('Core');
                 mark('Dashboards');
-            } else if (pathParts[1] === 'DataGrid') {
+            } else if (pathParts[1] === 'Grid') {
                 mark('Dashboards');
             }
         }
@@ -94,7 +101,7 @@ function checkProduct(product) {
 
 /**
  * Checks if tests should run
- * @param {{ configFile: string, codeDirectory: string, jsDirectory: string, testsDirectory: string }}} config
+ * @param {{ configFile: string, codeDirectory: string, tsDirectory: string, testsDirectory: string, project?: string }} config
  * Configuration
  *
  * @return {Promise<boolean>}
@@ -102,9 +109,9 @@ function checkProduct(product) {
  */
 async function shouldRun({
     configFile,
-    codeDirectory,
-    jsDirectory,
-    testsDirectory
+    tsDirectory,
+    testsDirectory,
+    project
 }) {
 
     const fs = require('fs');
@@ -114,8 +121,9 @@ async function shouldRun({
 
     let configuration = {
         latestCodeHash: '',
-        latestJsHash: '',
-        latestTestsHash: ''
+        latestTsHash: '',
+        latestTestsHash: '',
+        project: ''
     };
 
     if (fs.existsSync(configFile)) {
@@ -124,24 +132,35 @@ async function shouldRun({
         );
     }
 
+    // If project parameter is provided and differs from cached project,
+    // force rebuild
+    if (project && configuration.project !== project) {
+        return true;
+    }
+
+    /*
     const latestCodeHash = fsLib.getDirectoryHash(
         codeDirectory, true, stringLib.removeComments
     );
-    const latestJsHash = fsLib.getDirectoryHash(
-        jsDirectory, true, stringLib.removeComments
+    */
+    const latestTsHash = fsLib.getDirectoryHash(
+        tsDirectory, true, stringLib.removeComments
     );
     const latestTestsHash = fsLib.getDirectoryHash(
         testsDirectory, true, stringLib.removeComments
     );
 
+    /*
+    // Commented out because `gulp test` always runs `gulp scripts` first
     if (latestCodeHash === configuration.latestCodeHash &&
-        latestJsHash !== configuration.latestJsHash
+        latestTsHash !== configuration.latestTsHash
     ) {
 
         throw new Error('Code out of sync');
     }
+    */
 
-    if (latestCodeHash === configuration.latestCodeHash &&
+    if (latestTsHash === configuration.latestTsHash &&
         latestTestsHash === configuration.latestTestsHash
     ) {
 
@@ -158,36 +177,38 @@ async function shouldRun({
 
 /**
  * Saves test run information
- * @param {{ configFile: string, codeDirectory: string, jsDirectory: string, testsDirectory: string }} config
+ * @param {{ configFile: string, codeDirectory: string, tsDirectory: string, testsDirectory: string, project?: string }} config
  * Configuration
  *
  * @return {void}
  */
 function saveRun({
     configFile,
-    codeDirectory,
-    jsDirectory,
-    testsDirectory
+    // codeDirectory,
+    tsDirectory,
+    testsDirectory,
+    project
 }) {
 
     const FS = require('fs');
     const FSLib = require('../../libs/fs');
     const StringLib = require('./string');
 
-    const latestCodeHash = FSLib.getDirectoryHash(
-        codeDirectory, true, StringLib.removeComments
-    );
-    const latestJsHash = FSLib.getDirectoryHash(
-        jsDirectory, true, StringLib.removeComments
+    // const latestCodeHash = FSLib.getDirectoryHash(
+    //     codeDirectory, true, StringLib.removeComments
+    // );
+    const latestTsHash = FSLib.getDirectoryHash(
+        tsDirectory, true, StringLib.removeComments
     );
     const latestTestsHash = FSLib.getDirectoryHash(
         testsDirectory, true, StringLib.removeComments
     );
 
     const configuration = {
-        latestCodeHash,
-        latestJsHash,
-        latestTestsHash
+        // latestCodeHash,
+        latestTsHash,
+        latestTestsHash,
+        project: project || ''
     };
 
     FS.writeFileSync(configFile, JSON.stringify(configuration));
@@ -195,12 +216,17 @@ function saveRun({
 
 function handleProductArgs() {
     const process = require('node:process');
-    const yargs = require('yargs/yargs');
-    const { argv } = yargs(process.argv);
+    const argv = require('yargs').argv;
     const log = require('../../libs/log');
 
     if (process.env.DEBUG) {
         log.message(argv);
+    }
+
+    // Override to run all tests
+    // $ TEST_ALL=1 git commit -am "My commit message"
+    if (process.env.TEST_ALL) {
+        return false;
     }
 
     if (argv.product) {
@@ -237,6 +263,7 @@ function getProductTests() {
         } else {
             nonProducts.push(product);
         }
+
     }
 
     if (nonProducts.length) {
@@ -254,62 +281,25 @@ Available products are: ${availableProducts.join(', ')}`;
 
 const HELP_TEXT_COMMON = `
 
---browsers
-Comma separated list of browsers to test. Available browsers are
-'ChromeHeadless, Chrome, Firefox, Safari, Edge, IE' depending on what is
-installed on the local system. Defaults to ChromeHeadless.
-
-In addition, virtual browsers from Browserstack are supported. They are
-prefixed by the operating system. Available BrowserStack browsers are
-'Mac.Chrome, Mac.Firefox, Mac.Safari, Win.Chrome, Win.Edge, Win.Firefox,
-Win.IE'.
-
-For debugging in Visual Studio Code, use 'ChromeHeadless.Debugging'.
-
-A shorthand option, '--browsers all', runs all BrowserStack machines.
-
---browsercount
-Number of browserinstances to spread/shard the tests across. Default value is 2.
-Will default use ChromeHeadless browser. For other browsers specify
-argument --splitbrowsers (same usage as above --browsers argument).
-
---debug
-Skips rebuilding and prints some debugging info.
-
 --force
-Forces all tests without cached results.
+Forces tests without cached results.
 
 --modified
 Runs tests for products affected by modified files staged for commit.
 
 --product
-Comma separated list of products to test.
-Available products are Core, Gantt, Maps, Stock and Dashboards.
+Selects a product to test.
+Available products are Core, Gantt, Maps, Stock, Dashboards and Grid.
 
 --speak
 Says if tests failed or succeeded.
 
---tests
-Comma separated list of tests to run. Defaults to '*.*' that runs all tests
-in the 'samples/' directory.
-Example: 'gulp test --tests unit-tests/chart/*' runs all tests in the chart
-directory.
+For browser selection, individual test paths and other Playwright options,
+use \`npx playwright test\` directly. For example:
+npx playwright test tests/highcharts/chart --project=highcharts
 
---testsAbsolutePath
-Comma separated list of tests to run. By default runs all tests
-in the 'samples/' directory.
-Example:
-'gulp test --testsAbsolutePath /User/{userName}/{path}/{to}/highcharts/samples/unit-tests/3d/axis/demo.js'
-runs all tests in the file.
-
---ts
-Compile TypeScript-based tests.
-
---dots
-Use the less verbose 'dots' reporter
-
---timeout
-Set a different disconnect timeout from default config
+For visual tests, use \`npm run test:pw:visual\`.
+Set VISUAL_TEST_REFERENCE=1 when generating references.
 
 `;
 

@@ -1,10 +1,12 @@
 /* *
  *
- *  (c) 2010-2024 Torstein Honsi
+ *  (c) 2010-2026 Highsoft AS
+ *  Author: Torstein Hønsi
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  * */
 
@@ -15,7 +17,11 @@ import type {
 } from './MapViewOptions';
 import type SVGPath from '../Core/Renderer/SVG/SVGPath';
 
-// Compute bounds from a path element
+/**
+ * Compute bounds from a path element.
+ *
+ * @internal
+ */
 const boundsFromPath = function (
     path: SVGPath
 ): MapBounds|undefined {
@@ -45,48 +51,16 @@ const boundsFromPath = function (
     }
 };
 
-
-/**
- * Test for point in polygon. Polygon defined as array of [x,y] points.
- * @private
- */
-const pointInPolygon = function (
-    { x, y }: { x: number, y: number },
-    polygon: Array<Array<number>>
-): boolean {
-    let i,
-        j,
-        rel1,
-        rel2,
-        c = false;
-
-    for (i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
-        rel1 = polygon[i][1] > y;
-        rel2 = polygon[j][1] > y;
-        if (
-            rel1 !== rel2 &&
-            (
-                x < (polygon[j][0] - polygon[i][0]) * (y - polygon[i][1]) /
-                    (polygon[j][1] - polygon[i][1]) +
-                    polygon[i][0]
-            )
-        ) {
-            c = !c;
-        }
-    }
-
-    return c;
-};
-
 /* *
  *
  *  Default Export
  *
  * */
 
+/** @internal */
 const MapUtilities = {
-    boundsFromPath,
-    pointInPolygon
+    boundsFromPath
 };
 
+/** @internal */
 export default MapUtilities;

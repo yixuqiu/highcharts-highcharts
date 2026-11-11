@@ -11,7 +11,21 @@
         },
 
         exporting: {
-            fallbackToExportServer: false
+            fallbackToExportServer: false,
+            libURL: 'https://code.highcharts.com/lib/',
+            buttons: {
+                contextButton: {
+                    menuItems: [
+                        'viewFullscreen',
+                        'printChart',
+                        'separator',
+                        'downloadPNG',
+                        'downloadJPEG',
+                        'downloadSVG',
+                        'downloadPDF'
+                    ]
+                }
+            }
         },
 
         title: {

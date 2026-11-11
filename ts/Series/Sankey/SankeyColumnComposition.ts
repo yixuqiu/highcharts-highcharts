@@ -2,11 +2,13 @@
  *
  *  Sankey diagram module
  *
- *  (c) 2010-2024 Torstein Honsi
+ *  (c) 2010-2026 Highsoft AS
+ *  Author: Torstein Hønsi
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  * */
 
@@ -21,11 +23,11 @@
 import type SankeySeries from './SankeySeries';
 import type SankeyPoint from './SankeyPoint';
 
-import U from '../../Core/Utilities.js';
-const {
+import {
     defined,
+    getAlignFactor,
     relativeLength
-} = U;
+} from '../../Shared/Utilities.js';
 
 /* *
  *
@@ -33,6 +35,7 @@ const {
  *
  * */
 
+/** @internal */
 namespace SankeyColumnComposition {
 
     /* *
@@ -53,7 +56,7 @@ namespace SankeyColumnComposition {
 
     /**
      * SankeyColumn Composition
-     * @private
+     * @internal
      * @function Highcharts.SankeyColumn#compose
      *
      * @param {Array<SankeyPoint>} points
@@ -120,7 +123,7 @@ namespace SankeyColumnComposition {
 
         /**
          * Calculate translation factor used in column and nodes distribution
-         * @private
+         * @internal
          * @function Highcharts.SankeyColumn#getTranslationFactor
          *
          * @param {SankeySeries} series
@@ -140,9 +143,12 @@ namespace SankeyColumnComposition {
                 factor = 0,
                 i: number,
                 remainingHeight = (
-                    (chart.plotSizeY || 0) -
+                    (series.flowHeight || chart.plotSizeY || 0) -
                     (series.options.borderWidth || 0) -
-                    (column.length - 1) * series.nodePadding
+                    (column.length - 1) * series.nodePadding -
+                    (series.useCircularLayout ?
+                        column.sankeyColumn.lapSum() :
+                        0)
                 );
 
             // Because the minLinkWidth option doesn't obey the direct
@@ -178,7 +184,7 @@ namespace SankeyColumnComposition {
 
         /**
          * Get the top position of the column in pixels
-         * @private
+         * @internal
          * @function Highcharts.SankeyColumn#top
          *
          * @param {number} factor
@@ -202,24 +208,37 @@ namespace SankeyColumnComposition {
                         node.getSum() * factor,
                         series.options.minLinkWidth || 0
                     );
-                    height += nodeHeight;
+                    height += nodeHeight + (node.wrapLap || 0);
                     return height;
                 }, 0);
 
-            // Node alignment option handling #19096
-            return {
-                top: 0,
-                center: 0.5,
-                bottom: 1
-            }[series.options.nodeAlignment || 'center'] * (
-                (series.chart.plotSizeY || 0) - height
-            );
+            // Node alignment option handling #19096. Circular geometry
+            // shrinks the extent aligned within. #8218
+            return (series.flowTop || 0) +
+                getAlignFactor(series.options.nodeAlignment || 'center') * (
+                    (series.flowHeight || (series.chart.plotSizeY || 0)) -
+                    height
+                );
         }
 
 
         /**
+         * Flow-axis room this column's nodes reserve for self-link laps.
+         * #8218
+         * @internal
+         */
+        public lapSum(): number {
+            return this.points.reduce((
+                sum: number,
+                node: SankeyPoint
+            ): number => (
+                sum + (node.wrapLap || 0)
+            ), 0);
+        }
+
+        /**
          * Get the left position of the column in pixels
-         * @private
+         * @internal
          * @function Highcharts.SankeyColumn#top
          *
          * @param {number} factor
@@ -260,14 +279,7 @@ namespace SankeyColumnComposition {
 
         /**
          * Calculate sum of all nodes inside specific column
-         * @private
-         * @function Highcharts.SankeyColumn#sum
-         *
-         * @param {ArrayComposition} this
-         * Sankey Column Array
-         *
-         * @return {number} sum
-         * Sum of all nodes inside column
+         * @internal
          */
         public sum(): number {
             return this.points.reduce((
@@ -280,7 +292,7 @@ namespace SankeyColumnComposition {
 
         /**
          * Get the offset in pixels of a node inside the column
-         * @private
+         * @internal
          * @function Highcharts.SankeyColumn#offset
          *
          * @param {SankeyPoint} node
@@ -318,7 +330,9 @@ namespace SankeyColumnComposition {
                             'offsetHorizontal' :
                             'offsetVertical'
                     ],
-                    optionOffset = node.options.offset || 0;
+                    optionOffset = node.options.offset || 0,
+                    // A self-link laps the flow-axis start of its node. #8218
+                    lap = column[i].wrapLap || 0;
 
                 if (sum) {
                     totalNodeOffset = height + nodePadding;
@@ -328,7 +342,7 @@ namespace SankeyColumnComposition {
                 }
                 if (column[i] === node) {
                     return {
-                        relativeTop: offset + (
+                        relativeTop: offset + lap + (
                             defined(directionOffset) ?
                                 // `directionOffset` is a percent of the node
                                 // height
@@ -340,7 +354,7 @@ namespace SankeyColumnComposition {
                         )
                     };
                 }
-                offset += totalNodeOffset;
+                offset += totalNodeOffset + lap;
             }
         }
 
@@ -354,4 +368,5 @@ namespace SankeyColumnComposition {
  *
  * */
 
+/** @internal */
 export default SankeyColumnComposition;

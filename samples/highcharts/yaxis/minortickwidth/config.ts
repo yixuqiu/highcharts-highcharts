@@ -1,0 +1,19 @@
+import type {
+    SampleGeneratorConfig
+} from '../../../../tools/sample-generator/generator-config.d.ts';
+
+export default {
+    controls: [{
+        path: 'yAxis.minorTickWidth',
+        value: 3,
+        min: 0,
+        max: 5
+    }],
+    chartOptionsExtra: {
+        yAxis: {
+            minorTicks: true,
+            minorTickLength: 10,
+            minorGridLineWidth: 0
+        }
+    }
+} satisfies SampleGeneratorConfig;

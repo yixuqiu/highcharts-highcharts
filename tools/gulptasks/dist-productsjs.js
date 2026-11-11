@@ -14,6 +14,20 @@ const Path = require('path');
 const TARGET_FILE = Path.join('build', 'dist', 'products.js');
 const JS_PREFIX = 'var products = ';
 
+const PRODUCT_NAMES = {
+    Highcharts: [
+        'Highcharts',
+        'Highcharts Stock',
+        'Highcharts Maps',
+        'Highcharts Gantt'
+    ],
+    Dashboards: ['Highcharts Dashboards'],
+    Grid: [
+        'Highcharts Grid Lite',
+        'Highcharts Grid Pro'
+    ]
+};
+
 /* *
  *
  *  Tasks
@@ -24,7 +38,7 @@ function getZipLocation(productName, version) {
     const zipName = productName.replace(' ', '-');
 
     if (productName === 'Highcharts Dashboards') {
-        const { cdnFolder } = require('./dashboards/_config.json');
+        const { cdnFolder } = require('./scripts-dts/dashboards/_config.json');
         return `https://code.highcharts.com/${cdnFolder.length ? cdnFolder : ''}zips/${zipName}-${version}.zip`;
     }
 
@@ -32,16 +46,32 @@ function getZipLocation(productName, version) {
 }
 
 function fetchCurrentProducts() {
-    return global.fetch('https://code.highcharts.com/products.js')
+    return global
+        .fetch('https://code.highcharts.com/products.js', {
+            // Avoid blocking from lack of referer
+            headers: {
+                Referer: 'https://www.highcharts.com/'
+            }
+        })
         .then(response => response.text())
-        .then(content => JSON.parse(content.substring(JS_PREFIX.length)));
+        .then(content => {
+            try {
+                return JSON.parse(content.substring(JS_PREFIX.length));
+            } catch (err) {
+                throw new Error(
+                    'Failed to parse https://code.highcharts.com/products.js content.\n' +
+                    'Are you connected to the Highsoft VPN?\n' +
+                    'Error message: ' + err.message
+                );
+            }
+        });
 }
 
 function withZipURL(products) {
     const newProducts = global.structuredClone(products);
 
     Object.entries(newProducts).forEach(([productName, productObj]) => {
-        productObj.zipURL = getZipLocation(productName, productObj.nr);
+        productObj.zipURL = getZipLocation(productName.split(' ').join('-'), productObj.nr);
     });
 
     return newProducts;
@@ -74,29 +104,44 @@ async function writeProducts(products) {
  */
 async function distProductsJS(options) {
     const LogLib = require('../libs/log');
-    const { dashboards, release } = options;
+    const argv = require('yargs').argv;
+    const distProduct = argv.product || (
+        options.dashboards ? 'Dashboards' : 'Highcharts'
+    );
+    const release = options.release || argv.release;
 
-    LogLib.message(`Creating ${TARGET_FILE} for ${dashboards ? 'dashboards' : 'highcharts'} ...`);
+    LogLib.message(`Creating ${TARGET_FILE} for ${distProduct} ...`);
     const products = await fetchCurrentProducts();
 
-    if (dashboards) {
-        products['Highcharts Dashboards'] = {
-            date: new Date().toISOString().split('T')[0],
-            nr: release
-        };
-    } else {
+    let date, nr;
+
+    if (distProduct === 'Highcharts') {
         const buildProperties = require('../../build-properties.json');
         const packageJson = require('../../package.json');
-        const date = buildProperties.date || '';
-        const nr = (buildProperties.version || packageJson.version || '').split('-')[0];
+        date = buildProperties.date || '';
+        nr = (buildProperties.version || packageJson.version || '').split('-')[0];
+    } else if (distProduct === 'Grid') {
+        const buildProperties = require('./grid/build-properties.json');
 
-        Object.entries(products).forEach(([productName, productObj]) => {
-            if (productName !== 'Highcharts Dashboards') {
-                productObj.date = date;
-                productObj.nr = nr;
-            }
-        });
+        date = new Date().toISOString().split('T')[0];
+        nr = buildProperties.version;
+    } else if (distProduct === 'Dashboards') {
+        const buildProperties = require('./dashboards/build-properties.json');
+
+        date = new Date().toISOString().split('T')[0];
+        nr = buildProperties.version;
+    } else {
+        if (!release) {
+            throw new Error('No `--release x.x.x` provided.');
+        }
+
+        date = new Date().toISOString().split('T')[0];
+        nr = release;
     }
+
+    PRODUCT_NAMES[distProduct].forEach(productName => {
+        products[productName] = { date, nr };
+    });
 
     await writeProducts(products);
 

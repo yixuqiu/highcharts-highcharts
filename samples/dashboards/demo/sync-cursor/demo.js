@@ -1,11 +1,14 @@
+Highcharts.setOptions({
+    chart: {
+        styledMode: true
+    }
+});
 Dashboards.board('container', {
     dataPool: {
         connectors: [{
             id: 'VegeTable',
             type: 'CSV',
-            options: {
-                csv: document.querySelector('#csv').innerHTML
-            }
+            csv: document.querySelector('#csv').innerHTML
         }]
     },
     gui: {

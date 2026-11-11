@@ -1,8 +1,9 @@
 /* *
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  * */
 
@@ -14,6 +15,7 @@
  *
  * */
 
+import type { IndicatorLinkedSeriesBase } from '../IndicatorBase';
 import type IndicatorValuesObject from '../IndicatorValuesObject';
 import type LineSeries from '../../../Series/Line/LineSeries';
 import type {
@@ -22,12 +24,9 @@ import type {
 } from './NATROptions';
 import type NATRPoint from './NATRPoint';
 
+import ATRIndicator from '../ATR/ATRIndicator.js';
 import SeriesRegistry from '../../../Core/Series/SeriesRegistry.js';
-const {
-    atr: ATRIndicator
-} = SeriesRegistry.seriesTypes;
-import U from '../../../Core/Utilities.js';
-const { merge } = U;
+import { merge } from '../../../Shared/Utilities.js';
 
 /* *
  *
@@ -38,7 +37,6 @@ const { merge } = U;
 /**
  * The NATR series type.
  *
- * @private
  * @class
  * @name Highcharts.seriesTypes.natr
  *
@@ -63,19 +61,17 @@ class NATRIndicator extends ATRIndicator {
      * @extends      plotOptions.atr
      * @since        7.0.0
      * @product      highstock
-     * @requires     stock/indicators/indicators
-     * @requires     stock/indicators/natr
+     * @requires     indicators/indicators
+     * @requires     indicators/atr
+     * @requires     indicators/natr
      * @optionparent plotOptions.natr
+     * @internal
      */
     public static defaultOptions: NATROptions = merge(ATRIndicator.defaultOptions, {
         tooltip: {
             valueSuffix: '%'
         }
     } as NATROptions);
-
-    /**
-     * @lends Highcharts.Series#
-     */
 
     /* *
      *
@@ -93,8 +89,9 @@ class NATRIndicator extends ATRIndicator {
      *
      * */
 
+    /** @internal */
     public getValues<TLinkedSeries extends LineSeries>(
-        series: TLinkedSeries,
+        series: TLinkedSeries&IndicatorLinkedSeriesBase,
         params: NATRParamsOptions
     ): (IndicatorValuesObject<TLinkedSeries>|undefined) {
         const atrData: (
@@ -169,11 +166,10 @@ export default NATRIndicator;
  * @extends   series,plotOptions.natr
  * @since     7.0.0
  * @product   highstock
- * @excluding dataParser, dataURL
- * @requires  stock/indicators/indicators
- * @requires  stock/indicators/atr
- * @requires  stock/indicators/natr
+ * @requires  indicators/indicators
+ * @requires  indicators/atr
+ * @requires  indicators/natr
  * @apioption series.natr
  */
 
-''; // To include the above in the js output'
+''; // To include the above in the js output

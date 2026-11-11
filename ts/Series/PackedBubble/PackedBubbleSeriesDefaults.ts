@@ -4,15 +4,12 @@
  *
  * */
 
-import type {
-    PackedBubbleDataLabelFormatterObject
-} from './PackedBubbleDataLabelOptions';
 import type PackedBubblePoint from './PackedBubblePoint';
 import type PackedBubbleSeriesOptions from './PackedBubbleSeriesOptions';
 import type Point from '../../Core/Series/Point';
 
-import U from '../../Core/Utilities.js';
-const { isNumber } = U;
+import { isNumber } from '../../Shared/Utilities.js';
+
 
 /* *
  *
@@ -33,10 +30,10 @@ const { isNumber } = U;
  *         Split packed bubble chart
  *
  * @extends      plotOptions.bubble
- * @excluding    connectEnds, connectNulls, cropThreshold, dragDrop, jitter,
- *               keys, pointPlacement, sizeByAbsoluteValue, step, xAxis,
- *               yAxis, zMax, zMin, dataSorting, boostThreshold,
- *               boostBlending
+ * @excluding    boostThreshold, boostBlending,connectEnds, connectNulls,
+ *               cropThreshold, dataSorting, dragDrop, jitter,
+ *               legendSymbolColor, keys, pointPlacement, sizeByAbsoluteValue,
+ *               step, xAxis, yAxis
  * @product      highcharts
  * @since        7.0.0
  * @requires     highcharts-more
@@ -78,9 +75,11 @@ const PackedBubbleSeriesDefaults: PackedBubbleSeriesOptions = {
     sizeBy: 'area',
     zoneAxis: 'y',
     crisp: false,
+
     tooltip: {
         pointFormat: 'Value: {point.value}'
     },
+
     /**
      * Flag to determine if nodes are draggable or not. Available for
      * graph with useSimulation set to true only.
@@ -149,14 +148,10 @@ const PackedBubbleSeriesDefaults: PackedBubbleSeriesOptions = {
          * Note that if a `format` is defined, the format takes precedence
          * and the formatter is ignored.
          *
-         * @type  {Highcharts.SeriesPackedBubbleDataLabelsFormatterCallbackFunction}
          * @since 7.0.0
          */
         formatter: function (
-            this: (
-                Point.PointLabelObject|
-                PackedBubbleDataLabelFormatterObject
-            )
+            this: (Point|PackedBubblePoint)
         ): string {
             const { numberFormatter } = this.series.chart;
             const { value } = this.point as PackedBubblePoint;
@@ -172,20 +167,16 @@ const PackedBubbleSeriesDefaults: PackedBubbleSeriesOptions = {
 
         // eslint-disable-next-line valid-jsdoc
         /**
-         * @type  {Highcharts.SeriesPackedBubbleDataLabelsFormatterCallbackFunction}
          * @since 7.1.0
          */
         parentNodeFormatter: function (
-            this: (
-                Point.PointLabelObject|
-                PackedBubbleDataLabelFormatterObject
-            )
+            this: (Point|PackedBubblePoint)
         ): string {
-            return (this as any).name;
+            return this.name || '';
         },
 
         /**
-         * @sample {highcharts} highcharts/series-packedbubble/packed-dashboard
+         * @sample {highcharts} highcharts/demo/packed-bubble-project-status/
          *         Dashboard with dataLabels on parentNodes
          *
          * @declare Highcharts.SeriesPackedBubbleDataLabelsTextPathOptionsObject
@@ -198,7 +189,7 @@ const PackedBubbleSeriesDefaults: PackedBubbleSeriesOptions = {
              *
              * @type      {Highcharts.SVGAttributes}
              * @since     7.1.0
-             * @apioption plotOptions.packedbubble.dataLabels.attributes
+             * @apioption plotOptions.packedbubble.dataLabels.parentNodeTextPath.attributes
              */
 
             /**
@@ -280,7 +271,7 @@ const PackedBubbleSeriesDefaults: PackedBubbleSeriesOptions = {
          * In case of split series, this option allows user to drag and
          * drop points between series, for changing point related series.
          *
-         * @sample highcharts/series-packedbubble/packed-dashboard/
+         * @sample highcharts/demo/packed-bubble-project-status/
          *         Example of drag'n drop bubbles for bubble kanban
          */
         dragBetweenSeries: false,
@@ -297,6 +288,15 @@ const PackedBubbleSeriesDefaults: PackedBubbleSeriesOptions = {
             maxSpeed: 50,
             initialPositionRadius: 100,
             seriesInteraction: true,
+            /**
+             * The distance between two parent nodes, when the algorithm
+             * starts to treat them as overlapping. Defaults to the
+             * [layoutAlgorithm.bubblePadding](#plotOptions.packedbubble.layoutAlgorithm.bubblePadding)
+             * value.
+             *
+             * @type      {number}
+             * @apioption plotOptions.packedbubble.layoutAlgorithm.parentNodeOptions.bubblePadding
+             */
             /**
              * Styling options for parentNodes markers. Similar to
              * line.marker options.
@@ -356,7 +356,8 @@ const PackedBubbleSeriesDefaults: PackedBubbleSeriesOptions = {
         maxSpeed: 5,
         gravitationalConstant: 0.01,
         friction: -0.981
-    }
+    },
+    stickyTracking: false
 };
 
 /* *
@@ -379,8 +380,8 @@ export default PackedBubbleSeriesDefaults;
  *
  * @type      {Object}
  * @extends   series,plotOptions.packedbubble
- * @excluding cropThreshold, dataParser, dataSorting, dataURL, dragDrop, stack,
- *            boostThreshold, boostBlending
+ * @excluding cropThreshold, dataSorting, dragDrop, stack, boostThreshold,
+ *            boostBlending
  * @product   highcharts
  * @requires  highcharts-more
  * @apioption series.packedbubble
@@ -413,6 +414,7 @@ export default PackedBubbleSeriesDefaults;
  *     }]
  *  ```
  *
+ * @basic
  * @type      {Array<Object|Array>}
  * @extends   series.line.data
  * @excluding marker, x, y

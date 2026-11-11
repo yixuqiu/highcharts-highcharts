@@ -14,6 +14,12 @@ QUnit.test('series.centerInCategory', function (assert) {
             }
         ],
 
+        plotOptions: {
+            series: {
+                borderColor: 'black'
+            }
+        },
+
         series: [
             {
                 name: 'Tokyo',
@@ -92,14 +98,6 @@ QUnit.test('series.centerInCategory', function (assert) {
     );
 
     chart.redraw();
-    /* No longer relevant after refactoring to xAxis-based stacks for
-        centerInCategory
-    assert.strictEqual(
-        Object.keys(chart.yAxis[0].stacking.stacks).length,
-        1,
-        '#14910: Group stack should not be removed on redraw'
-    );
-    */
 
     chart.update({
         chart: {
@@ -132,6 +130,33 @@ QUnit.test('series.centerInCategory', function (assert) {
         chart.series[0].points[0].shapeArgs.y,
         chart.series[1].points[0].shapeArgs.y,
         '#14980: Toggling stacking with centerInCategory enabled should work'
+    );
+
+    assert.strictEqual(
+        chart.series[0].points[0].shapeArgs.x,
+        chart.series[1].points[0].shapeArgs.x,
+        'Points in the same stack should have the same x (#20550)'
+    );
+
+    assert.notEqual(
+        chart.series[1].points[0].shapeArgs.x,
+        chart.series[2].points[0].shapeArgs.x,
+        'Points in different stacks should have different x (#20550)'
+    );
+
+    assert.close(
+        chart.series[2].points[0].shapeArgs.x,
+        chart.series[3].points[0].shapeArgs.x,
+        1.1,
+        'Points in the same stack should have the same x (#20550)'
+    );
+
+    assert.close(
+        chart.series[0].points[2].shapeArgs.x +
+            chart.series[0].points[2].shapeArgs.width / 2,
+        chart.series[0].xAxis.toPixels(2, true),
+        1.1,
+        'Categories with null points should be centered'
     );
 
     chart.update({
@@ -211,9 +236,14 @@ QUnit.test('series.centerInCategory', function (assert) {
         'columnpyramid.'
     );
 
-    chart.update({
+    chart = Highcharts.chart('container', {
         chart: {
             type: 'column'
+        },
+        plotOptions: {
+            series: {
+                centerInCategory: true
+            }
         },
         series: [{
             data: [
@@ -227,7 +257,7 @@ QUnit.test('series.centerInCategory', function (assert) {
                 [1, 2]
             ]
         }]
-    }, true, true);
+    });
 
     point = chart.series[0].points[0];
     tickX = chart.xAxis[0].ticks[0].mark.element.getBBox().x;
@@ -268,7 +298,6 @@ QUnit.test('series.centerInCategory', function (assert) {
     );
 
 
-    chart.xAxis[1].remove();
     chart.addAxis({
         opposite: true
     }, false);

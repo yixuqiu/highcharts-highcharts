@@ -1,6 +1,5 @@
 /* *
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  * */
 
@@ -30,12 +29,11 @@ import Controllable from './Controllable.js';
 import F from '../../../Core/Templating.js';
 const { format } = F;
 import MockPoint from '../MockPoint.js';
-import U from '../../../Core/Utilities.js';
-const {
+import {
     extend,
-    isNumber,
-    pick
-} = U;
+    getAlignFactor,
+    isNumber
+} from '../../../Shared/Utilities.js';
 
 /* *
  *
@@ -43,13 +41,16 @@ const {
  *
  * */
 
+/** @internal */
 declare module '../../../Core/Renderer/SVG/SymbolType' {
+    /** @internal */
     interface SymbolTypeRegistry {
         /** @requires Extensions/ControllableLabel */
         connector: SymbolFunction;
     }
 }
 
+/** @internal */
 interface ControllableAlignObject extends AlignObject {
     height?: number;
     width?: number;
@@ -62,8 +63,8 @@ interface ControllableAlignObject extends AlignObject {
  * */
 
 /**
- * General symbol definition for labels with connector
- * @private
+ * General symbol definition for labels with connector.
+ * @internal
  */
 function symbolConnector(
     x: number,
@@ -122,9 +123,9 @@ function symbolConnector(
 /**
  * A controllable label class.
  *
+ * @internal
  * @requires modules/annotations
  *
- * @private
  * @class
  * @name Highcharts.AnnotationControllableLabel
  *
@@ -187,35 +188,17 @@ class ControllableLabel extends Controllable {
         alignOptions: ControllableAlignObject,
         box: BBoxObject
     ): PositionObject {
-        const align = alignOptions.align,
-            vAlign = alignOptions.verticalAlign;
-
-        let x = (box.x || 0) + (alignOptions.x || 0),
-            y = (box.y || 0) + (alignOptions.y || 0),
-            alignFactor,
-            vAlignFactor;
-
-        if (align === 'right') {
-            alignFactor = 1;
-        } else if (align === 'center') {
-            alignFactor = 2;
-        }
-        if (alignFactor) {
-            x += (box.width - (alignOptions.width || 0)) / alignFactor;
-        }
-
-        if (vAlign === 'bottom') {
-            vAlignFactor = 1;
-        } else if (vAlign === 'middle') {
-            vAlignFactor = 2;
-        }
-        if (vAlignFactor) {
-            y += (box.height - (alignOptions.height || 0)) / vAlignFactor;
-        }
-
         return {
-            x: Math.round(x),
-            y: Math.round(y)
+            x: Math.round(
+                (box.x || 0) + (alignOptions.x || 0) +
+                (box.width - (alignOptions.width || 0)) *
+                getAlignFactor(alignOptions.align)
+            ),
+            y: Math.round(
+                (box.y || 0) + (alignOptions.y || 0) +
+                (box.height - (alignOptions.height || 0)) *
+                getAlignFactor(alignOptions.verticalAlign)
+            )
         };
     }
 
@@ -363,6 +346,8 @@ class ControllableLabel extends Controllable {
         }
 
         // Local options:
+        this.options.x ||= 0;
+        this.options.y ||= 0;
         this.options.x += dx;
         this.options.y += dy;
 
@@ -377,7 +362,10 @@ class ControllableLabel extends Controllable {
     public render(parent: SVGElement): void {
         const options = this.options,
             attrs = this.attrsFromOptions(options),
-            style = options.style;
+            style = options.style,
+            optionsChart = this.annotation.chart.options.chart,
+            chartBackground = optionsChart.plotBackgroundColor ||
+                optionsChart.backgroundColor;
 
         this.graphic = this.annotation.chart.renderer
             .label(
@@ -385,25 +373,36 @@ class ControllableLabel extends Controllable {
                 0,
                 -9999, // #10055
                 options.shape,
-                null as any,
-                null as any,
+                void 0,
+                void 0,
                 options.useHTML,
-                null as any,
+                void 0,
                 'annotation-label'
             )
             .attr(attrs)
             .add(parent);
 
         if (!this.annotation.chart.styledMode) {
-            if (style.color === 'contrast') {
+            if (style?.color === 'contrast') {
+                const background = (
+                    (
+                        !options.shape ||
+                        ControllableLabel.shapesWithoutBackground.indexOf(
+                            options.shape
+                        ) > -1
+                    ) || options.backgroundColor === 'none'
+                ) ?
+                    chartBackground :
+                    options.backgroundColor;
+
                 style.color = this.annotation.chart.renderer.getContrast(
-                    ControllableLabel.shapesWithoutBackground.indexOf(
-                        options.shape
-                    ) > -1 ? '#FFFFFF' : options.backgroundColor as any
+                    typeof background === 'string' ? background :
+                        typeof chartBackground === 'string' ? chartBackground :
+                            '#ffffff'
                 );
             }
             this.graphic
-                .css(options.style)
+                .css(options.style || {})
                 .shadow(options.shadow);
         }
 
@@ -425,12 +424,8 @@ class ControllableLabel extends Controllable {
 
         label.attr({
             text: text ?
-                format(
-                    String(text),
-                    point.getLabelConfig(),
-                    this.annotation.chart
-                ) :
-                (options.formatter as any).call(point, this)
+                format(String(text), point, this.annotation.chart) :
+                options.formatter!.call(point, point)
         });
 
         const anchor = this.anchor(point);
@@ -507,7 +502,7 @@ class ControllableLabel extends Controllable {
                 itemPosition = tooltip.getPosition.call(
                     {
                         chart,
-                        distance: pick(itemOptions.distance, 16),
+                        distance: (itemOptions.distance ?? 16),
                         getPlayingField: tooltip.getPlayingField,
                         pointer: tooltip.pointer
                     },
@@ -525,7 +520,10 @@ class ControllableLabel extends Controllable {
                     } as any
                 );
             } else if ((itemOptions as any).positioner) {
-                itemPosition = (itemOptions as any).positioner.call(this);
+                itemPosition = (itemOptions as any).positioner.call(
+                    this,
+                    this
+                );
             } else {
                 alignTo = {
                     x: anchorAbsolutePosition.x,
@@ -584,6 +582,7 @@ class ControllableLabel extends Controllable {
  *
  * */
 
+/** @internal */
 interface ControllableLabel {
     collection: 'labels';
     itemType: 'label';
@@ -596,6 +595,7 @@ interface ControllableLabel {
  *
  * */
 
+/** @internal */
 declare module './ControllableType' {
     interface ControllableLabelTypeRegistry {
         label: typeof ControllableLabel;
@@ -608,4 +608,5 @@ declare module './ControllableType' {
  *
  * */
 
+/** @internal */
 export default ControllableLabel;

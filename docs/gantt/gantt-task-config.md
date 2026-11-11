@@ -1,3 +1,10 @@
+---
+description: >-
+  Set Gantt task start and end dates, mark critical milestones with milestone,
+  and display task completion by configuring the completed amount and fill or
+  a completion fraction.
+---
+
 Gantt task configuration
 ===
 
@@ -21,4 +28,4 @@ Use a progress bar to get a quick overview of the percent complete of a task. Tu
 
 _See example below, for demonstrating progress bars_
 
-<iframe style="width: 100%; height: 549px;" src=https://www.highcharts.com/samples/embed/gantt/demo/progress-indicator allow="fullscreen"></iframe>
+<iframe style="width: 100%; height: 549px;" src="https://www.highcharts.com/samples/embed/gantt/demo/progress-indicator" allow="fullscreen"></iframe>

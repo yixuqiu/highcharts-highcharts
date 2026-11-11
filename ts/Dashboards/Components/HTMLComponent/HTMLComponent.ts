@@ -1,10 +1,11 @@
 /* *
  *
- *  (c) 2009-2024 Highsoft AS
+ *  (c) 2009-2026 Highsoft AS
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  *  Authors:
  *  - Sebastian Bochan
@@ -24,41 +25,71 @@
 
 import type Cell from '../../Layout/Cell.js';
 import type Options from './HTMLComponentOptions';
+import type { EventTypes as ComponentEventTypes } from '../Component';
 
 import AST from '../../../Core/Renderer/HTML/AST.js';
 import Component from '../Component.js';
 import HTMLComponentDefaults from './HTMLComponentDefaults.js';
 import HTMLSyncs from './HTMLSyncs/HTMLSyncs.js';
-import U from '../../../Core/Utilities.js';
-const {
-    merge,
-    diffObjects
-} = U;
+import DU from '../../Utilities.js';
+import { diffObjects, merge } from '../../../Shared/Utilities.js';
+const { deepClone } = DU;
 
-// TODO: This may affect the AST parsing in Highcharts
-// should look into adding these as options if possible
-// Needs to go in a composition in the Highcharts plugin
-AST.allowedTags = [
-    ...AST.allowedTags,
-    'option',
-    'select',
-    'label',
-    'input',
-    'textarea'
-];
-AST.allowedAttributes = [
-    ...AST.allowedAttributes,
-    'for',
-    'value',
-    'checked',
-    'src',
-    'name',
-    'selected'
-];
-AST.allowedReferences = [
-    ...AST.allowedReferences,
-    'data:image/'
-];
+/* *
+ *
+ *  Functions
+ *
+ * */
+
+/**
+ * Runs the callback with the form tags, attributes and image references this
+ * component needs added to the shared allow lists, then restores them.
+ *
+ * Widening the lists when the module is imported would hand the extra tags to
+ * every other component, including ones that render values straight from a
+ * connector. Only raster image subtypes are added, as `data:image/svg+xml`
+ * can carry a script.
+ *
+ * @internal
+ */
+function withComponentTags<T>(callback: () => T): T {
+    const tags = AST.allowedTags,
+        attributes = AST.allowedAttributes,
+        references = AST.allowedReferences;
+
+    AST.allowedTags = [
+        ...tags,
+        'option',
+        'select',
+        'label',
+        'input',
+        'textarea'
+    ];
+    AST.allowedAttributes = [
+        ...attributes,
+        'for',
+        'value',
+        'checked',
+        'src',
+        'name',
+        'selected'
+    ];
+    AST.allowedReferences = [
+        ...references,
+        'data:image/gif',
+        'data:image/jpeg',
+        'data:image/png',
+        'data:image/webp'
+    ];
+
+    try {
+        return callback();
+    } finally {
+        AST.allowedTags = tags;
+        AST.allowedAttributes = attributes;
+        AST.allowedReferences = references;
+    }
+}
 
 /* *
  *
@@ -94,61 +125,6 @@ class HTMLComponent extends Component {
 
     /* *
      *
-     *  Static functions
-     *
-     * */
-
-    /**
-     * Creates component from JSON.
-     *
-     * @param json
-     * Set of component options, used for creating the HTML component.
-     *
-     * @param cell
-     * Instance of cell, where component is attached.
-     *
-     * @returns
-     * HTML component based on config from JSON.
-     *
-     * @internal
-     */
-    public static fromJSON(
-        json: HTMLComponent.ClassJSON,
-        cell: Cell
-    ): HTMLComponent {
-        const options = json.options;
-        const elements = (
-            json.elements ?
-                json.elements.map((el): AST.Node => JSON.parse(el)) :
-                []
-        );
-        /// const connector = (
-        //     json.connector ? DataJSON.fromJSON(json.connector) : void 0
-        // );
-
-        const component = new HTMLComponent(
-            cell,
-            merge(
-                options as any,
-                {
-                    elements
-                    /// connector: (
-                    //   connector instanceof DataConnector ? connector : void 0
-                    // )
-                }
-            )
-        );
-
-        component.emit({
-            type: 'fromJSON',
-            json
-        });
-
-        return component;
-    }
-
-    /* *
-     *
      *  Properties
      *
      * */
@@ -180,6 +156,10 @@ class HTMLComponent extends Component {
      * The options for the component.
      */
     constructor(cell: Cell, options: Partial<Options>) {
+        if (options.className) {
+            options.className = `${HTMLComponent.defaultOptions.className} ${options.className}`;
+        }
+
         options = merge(
             HTMLComponent.defaultOptions,
             options
@@ -227,6 +207,7 @@ class HTMLComponent extends Component {
                 });
         } else if (options.html) {
             this.elements = this.getElementsFromString(options.html);
+            this.options.elements = this.elements;
         }
 
         this.constructTree();
@@ -235,8 +216,7 @@ class HTMLComponent extends Component {
 
         if (isError) {
             throw new Error(
-                'Missing tagName param in component: ' +
-                options.cell
+                `Missing tagName param in component: ${options.renderTo}`
             );
         }
 
@@ -262,28 +242,37 @@ class HTMLComponent extends Component {
 
     /**
      * Handles updating via options.
+     *
      * @param options
      * The options to apply.
      */
-    public async update(options: Partial<Options>): Promise<void> {
-        await super.update(options);
+    public async update(options: Partial<Options>, shouldRerender: boolean = true): Promise<void> {
+        if (options.html) {
+            this.elements = this.getElementsFromString(options.html);
+            this.options.elements = this.elements;
+
+            this.constructTree();
+        } else if (options.elements) {
+            this.elements = options.elements;
+        }
+
+        await super.update(options, shouldRerender);
+
         this.emit({ type: 'afterUpdate' });
     }
 
     public getOptionsOnDrop(): Partial<Options> {
         return {
-            cell: '',
             type: 'HTML',
             elements: [{
-                tagName: 'img',
-                attributes: {
-                    src: 'https://www.highcharts.com/samples/graphics/stock-dark.svg'
-                }
+                tagName: 'span',
+                textContent: '[Your custom HTML here- edit the component]'
             }]
         };
     }
 
     /**
+     * Constructs the HTML tree.
      * @internal
      */
     private constructTree(): void {
@@ -292,8 +281,12 @@ class HTMLComponent extends Component {
             this.contentElement.firstChild.remove();
         }
 
-        const parser = new AST(this.elements);
-        parser.addToDOM(this.contentElement);
+        // The allow lists are only consulted here, in `addToDOM`, not while
+        // the markup is parsed into nodes.
+        withComponentTags((): void => {
+            const parser = new AST(this.options.elements || []);
+            parser.addToDOM(this.contentElement);
+        });
     }
 
     /**
@@ -306,37 +299,9 @@ class HTMLComponent extends Component {
     }
 
     /**
-     * Converts the class instance to a class JSON.
-     *
-     * @returns
-     * Class JSON of this Component instance.
-     *
-     * @internal
-     */
-    public toJSON(): HTMLComponent.ClassJSON {
-        const elements = (this.options.elements || [])
-            .map((el): string => JSON.stringify(el));
-
-        const json = merge(
-            super.toJSON() as HTMLComponent.ClassJSON,
-            {
-                elements,
-                options: this.options
-            }
-        );
-
-        this.emit({
-            type: 'toJSON',
-            json
-        });
-
-        return json;
-    }
-
-    /**
      * Get the HTML component's options.
      * @returns
-     * The JSON of HTML component's options.
+     * HTML component's options.
      *
      * @internal
      *
@@ -349,9 +314,97 @@ class HTMLComponent extends Component {
     }
 
     /**
+     * Retrieves editable options for the HTML component.
+     */
+    public getEditableOptions(): Options {
+        return deepClone(this.options, ['editableOptions']);
+    }
+
+    /**
+     * Get the value of the editable option by property path. Parse the elements
+     * if the HTML options is not set.
+     *
+     * @param propertyPath
+     * The property path of the option.
+     */
+    public getEditableOptionValue(
+        propertyPath?: string[]
+    ): number | boolean | undefined | string {
+        if (!propertyPath) {
+            return;
+        }
+
+        if (propertyPath[0] === 'html') {
+            const result = this.getEditableOptions();
+
+            if (!result.html && result.elements) {
+                return this.getStringFromElements(result.elements);
+            }
+
+            return result[propertyPath[0]];
+        }
+
+        return super.getEditableOptionValue(propertyPath);
+    }
+
+    /**
+     * Returns the HTML string from the given elements.
+     *
+     * @param elements
+     * The array of elements to serialize.
+     */
+    private getStringFromElements(elements: AST.Node[]): string {
+        let html = '';
+
+        for (const element of elements) {
+            html += this.serializeNode(element);
+        }
+
+        return html;
+    }
+
+    /**
+     * Serializes the HTML node to string.
+     *
+     * @param node
+     * The HTML node to serialize.
+     */
+    private serializeNode(node: AST.Node): string {
+        if (!node.tagName || node.tagName === '#text') {
+            // Text node
+            return node.textContent || '';
+        }
+
+        const attributes = node.attributes;
+        let html = `<${node.tagName}`;
+
+        if (attributes) {
+            for (const key in attributes) {
+                if (Object.prototype.hasOwnProperty.call(attributes, key)) {
+                    const value = attributes[key as keyof typeof attributes];
+                    if (value !== void 0) {
+                        html += ` ${key}="${value}"`;
+                    }
+                }
+            }
+        }
+
+        html += '>';
+
+        html += node.textContent || '';
+
+        (node.children || []).forEach((child): void => {
+            html += this.serializeNode(child);
+        });
+
+        html += `</${node.tagName}>`;
+        return html;
+    }
+
+    /**
      * @internal
      */
-    public onTableChanged(e: Component.EventTypes): void {
+    public onTableChanged(e: ComponentEventTypes): void {
         if (e.detail?.sender !== this.id) {
             this.render();
         }
@@ -361,42 +414,15 @@ class HTMLComponent extends Component {
 
 /* *
  *
- *  Class Namespace
+ *  Type Declarations
  *
  * */
 
-namespace HTMLComponent {
+/** @internal */
+export type ComponentType = HTMLComponent;
 
-    /* *
-    *
-    *  Declarations
-    *
-    * */
-
-    /** @internal */
-    export type ComponentType = HTMLComponent;
-
-
-    /** @internal */
-    export interface HTMLComponentOptionsJSON extends Component.ComponentOptionsJSON {
-        type: 'HTML'
-    }
-
-    /** @internal */
-    export type HTMLComponentEvents =
-        Component.EventTypes | JSONEvent;
-
-    /** @internal */
-    export type JSONEvent = Component.Event<'toJSON' | 'fromJSON', {
-        json: HTMLComponent.ClassJSON;
-    }>;
-    /** @internal */
-    export interface ClassJSON extends Component.JSON {
-        elements?: string[];
-        events?: string[];
-        options: HTMLComponentOptionsJSON;
-    }
-}
+/** @internal */
+export type HTMLComponentEvents = ComponentEventTypes;
 
 declare module '../ComponentType' {
     interface ComponentTypeRegistry {

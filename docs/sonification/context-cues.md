@@ -1,3 +1,10 @@
+---
+description: >-
+  Add instrument or speech tracks that play in the background independently
+  of a data series, either globally or per series. Configure fixed time
+  intervals or trigger tracks at intervals in a selected data property.
+---
+
 Context Cues
 ===
 
@@ -18,7 +25,7 @@ Then there are the [valueInterval](https://api.highcharts.com/highcharts/series.
 
 The below demo shows how context tracks can be used to signify plot lines and plot bands.
 
-<iframe style="width: 100%; height: 495px; border: none;" src=https://www.highcharts.com/samples/embed/highcharts/demo/plotline-context allow="fullscreen"></iframe>
+<iframe style="width: 100%; height: 495px; border: none;" src="https://www.highcharts.com/samples/embed/highcharts/demo/plotline-context" allow="fullscreen"></iframe>
 
 Next Steps
 ----------

@@ -977,9 +977,9 @@ QUnit.test(
             }
         });
         assert.strictEqual(
-            point.dataLabel.attr('visibility'),
-            'hidden',
-            'Eastern Mediterranean is hidden'
+            typeof point.dataLabel,
+            'undefined',
+            'Eastern Mediterranean should be destroyed.'
         );
     }
 );
@@ -1141,7 +1141,7 @@ QUnit.test(
 
         assert.strictEqual(
             points[0].dataLabel.text.element.nodeName.toLowerCase(),
-            'span',
+            'div',
             'Data labels should change to HTML'
         );
 

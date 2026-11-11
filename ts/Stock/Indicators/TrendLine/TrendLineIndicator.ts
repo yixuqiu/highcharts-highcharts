@@ -1,8 +1,9 @@
 /* *
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  * */
 
@@ -14,6 +15,7 @@
  *
  * */
 
+import type { IndicatorLinkedSeriesBase } from '../IndicatorBase';
 import type IndicatorValuesObject from '../IndicatorValuesObject';
 import type LineSeries from '../../../Series/Line/LineSeries';
 import type {
@@ -22,14 +24,9 @@ import type {
 } from './TrendLineOptions';
 import type TrendLinePoint from './TrendLinePoint';
 
+import SMAIndicator from '../SMA/SMAIndicator.js';
 import SeriesRegistry from '../../../Core/Series/SeriesRegistry.js';
-const { sma: SMAIndicator } = SeriesRegistry.seriesTypes;
-import U from '../../../Core/Utilities.js';
-const {
-    extend,
-    merge,
-    isArray
-} = U;
+import { extend, isArray, merge } from '../../../Shared/Utilities.js';
 
 /* *
  *
@@ -40,7 +37,6 @@ const {
 /**
  * The Trend line series type.
  *
- * @private
  * @class
  * @name Highcharts.seriesTypes.trendline
  *
@@ -59,15 +55,16 @@ class TrendLineIndicator extends SMAIndicator {
      * using a method called the Sum Of Least Squares. This series requires the
      * `linkedTo` option to be set.
      *
-     * @sample stock/indicators/trendline
+     * @sample {highstock} stock/indicators/trendline
      *         Trendline indicator
      *
      * @extends      plotOptions.sma
      * @since        7.1.3
      * @product      highstock
-     * @requires     stock/indicators/indicators
-     * @requires     stock/indicators/trendline
+     * @requires     indicators/indicators
+     * @requires     indicators/trendline
      * @optionparent plotOptions.trendline
+     * @internal
      */
     public static defaultOptions: TrendLineOptions = merge(SMAIndicator.defaultOptions, {
         /**
@@ -95,6 +92,7 @@ class TrendLineIndicator extends SMAIndicator {
     public data!: Array<TrendLinePoint>;
     public options!: TrendLineOptions;
     public points!: Array<TrendLinePoint>;
+    /** @internal */
     public updateAllPoints?: boolean = true;
 
     /* *
@@ -103,8 +101,9 @@ class TrendLineIndicator extends SMAIndicator {
      *
      * */
 
+    /** @internal */
     public getValues<TLinkedSeries extends LineSeries>(
-        series: TLinkedSeries,
+        series: TLinkedSeries&IndicatorLinkedSeriesBase,
         params: TrendLineParamsOptions
     ): IndicatorValuesObject<TLinkedSeries> {
         const orgXVal: Array<number> = (series.xData as any),
@@ -218,9 +217,8 @@ export default TrendLineIndicator;
  * @extends   series,plotOptions.trendline
  * @since     7.1.3
  * @product   highstock
- * @excluding dataParser, dataURL
- * @requires  stock/indicators/indicators
- * @requires  stock/indicators/trendline
+ * @requires  indicators/indicators
+ * @requires  indicators/trendline
  * @apioption series.trendline
  */
 

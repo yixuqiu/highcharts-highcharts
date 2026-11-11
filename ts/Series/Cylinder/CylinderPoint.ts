@@ -2,13 +2,14 @@
  *
  *  Highcharts cylinder - a 3D series
  *
- *  (c) 2010-2024 Highsoft AS
+ *  (c) 2010-2026 Highsoft AS
  *
  *  Author: Kacper Madej
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  * */
 
@@ -23,12 +24,16 @@
 import type CylinderPointOptions from './CylinderPointOptions';
 import type CylinderSeries from './CylinderSeries';
 
-import SeriesRegistry from '../../Core/Series/SeriesRegistry.js';
-const {
-    column: { prototype: { pointClass: ColumnPoint } }
-} = SeriesRegistry.seriesTypes;
-import U from '../../Core/Utilities.js';
-const { extend } = U;
+import ColumnSeries from '../Column/ColumnSeries.js';
+import { extend } from '../../Shared/Utilities.js';
+
+/* *
+ *
+ *  Constants
+ *
+ * */
+
+const ColumnPoint = ColumnSeries.prototype.pointClass;
 
 /* *
  *
@@ -46,6 +51,7 @@ class CylinderPoint extends ColumnPoint {
 
     public options!: CylinderPointOptions;
 
+    /** @internal */
     public series!: CylinderSeries;
 
 }
@@ -56,6 +62,7 @@ class CylinderPoint extends ColumnPoint {
  *
  * */
 
+/** @internal */
 interface CylinderPoint {
     shapeType: string;
 }

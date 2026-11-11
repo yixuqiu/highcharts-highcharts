@@ -2,11 +2,13 @@
  *
  *  Networkgraph series
  *
- *  (c) 2010-2024 Paweł Fus
+ *  (c) 2010-2026 Highsoft AS
+ *  Author: Paweł Fus
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  * */
 
@@ -22,15 +24,10 @@ import type Chart from '../Core/Chart/Chart';
 import type Point from '../Core/Series/Point';
 import type RFLayout from './Networkgraph/ReingoldFruchtermanLayout';
 
-import A from '../Core/Animation/AnimationUtilities.js';
-const { setAnimation } = A;
+import { setAnimation } from '../Core/Animation/AnimationUtilities.js';
 import H from '../Core/Globals.js';
 const { composed } = H;
-import U from '../Core/Utilities.js';
-const {
-    addEvent,
-    pushUnique
-} = U;
+import { addEvent, fireEvent, pushUnique } from '../Shared/Utilities.js';
 
 /* *
  *
@@ -38,17 +35,20 @@ const {
  *
  * */
 
-declare module '../Core/Chart/ChartLike' {
-    interface ChartLike {
+/** @internal */
+declare module '../Core/Chart/ChartBase' {
+    interface ChartBase {
         graphLayoutsLookup?: Array<GraphLayoutType>;
     }
 }
 
-declare module '../Core/Series/PointLike' {
-    interface PointLike {
+/** @internal */
+declare module '../Core/Series/PointBase' {
+    interface PointBase {
         dispX?: number;
         dispY?: number;
         fromNode?: Point;
+        inDragMode?: boolean;
         linksFrom?: Array<Point>;
         linksTo?: Array<Point>;
         mass?: number;
@@ -58,8 +58,9 @@ declare module '../Core/Series/PointLike' {
     }
 }
 
-declare module '../Core/Series/SeriesLike' {
-    interface SeriesLike {
+/** @internal */
+declare module '../Core/Series/SeriesBase' {
+    interface SeriesBase {
         forces?: Array<string>;
     }
 }
@@ -73,6 +74,7 @@ export interface GraphIntegrationObject {
     repulsiveForceFunction: Function;
 }
 
+/** @internal */
 export type GraphLayoutType = RFLayout;
 
 /* *
@@ -92,7 +94,7 @@ const layouts: Record<string, typeof RFLayout> = {};
  * */
 
 /**
- * @private
+ * @internal
  */
 function compose(
     ChartClass: typeof Chart
@@ -109,7 +111,7 @@ function compose(
 
 /**
  * Re-enable simulation after print.
- * @private
+ * @internal
  */
 function onChartAfterPrint(
     this: Chart
@@ -125,7 +127,7 @@ function onChartAfterPrint(
 
 /**
  * Disable simulation before print if enabled.
- * @private
+ * @internal
  */
 function onChartBeforePrint(
     this: Chart
@@ -140,7 +142,7 @@ function onChartBeforePrint(
 
 /**
  * Clear previous layouts.
- * @private
+ * @internal
  */
 function onChartPredraw(
     this: Chart
@@ -153,7 +155,7 @@ function onChartPredraw(
 }
 
 /**
- * @private
+ * @internal
  */
 function onChartRender(
     this: Chart
@@ -183,7 +185,17 @@ function onChartRender(
         }
     };
 
-    if (this.graphLayoutsLookup) {
+    // Don't restart layout when chart is panned
+    if (
+        this.graphLayoutsLookup && (
+            !this.pointer?.hasDragged ||
+            this.graphLayoutsLookup.some((layout): boolean =>
+                layout.nodes.some(
+                    (node): boolean => !!node.inDragMode
+                )
+            )
+        )
+    ) {
         setAnimation(false, this);
         // Start simulation
         this.graphLayoutsLookup.forEach((layout): void => layout.start());
@@ -199,6 +211,7 @@ function onChartRender(
             this.series.forEach((series): void => {
                 if (series && series.layout) {
                     series.render();
+                    fireEvent(series, 'afterSimulation');
                 }
             });
         }
@@ -211,6 +224,7 @@ function onChartRender(
  *
  * */
 
+/** @internal */
 const GraphLayoutComposition = {
     compose,
     integrations,

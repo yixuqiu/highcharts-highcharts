@@ -1,8 +1,9 @@
 {
   "name": "highcharts",
-  "version": "11.4.1",
+  "version": "13.1.1",
+  "private": true,
   "description": "JavaScript charting framework",
-  "module": "es-modules/masters/highcharts.src.js",
+  "module": "esm/highcharts.js",
   "author": "Highsoft AS <support@highcharts.com> (http://www.highcharts.com/about)",
   "repository": {
     "type": "git",
@@ -19,135 +20,190 @@
     "webpack"
   ],
   "scripts": {
+    "api": "gulp api",
+    "clean": "gulp --series clean update-vendor",
     "dapi": "gulp dashboards/api",
-    "dbuild": "gulp dashboards/dist",
-    "dgulp": "gulp dashboards/scripts-watch",
-    "dtest": "gulp dashboards/test",
-    "dlint": "gulp dashboards/lint",
-    "test": "npx gulp test-ts --force && npx gulp test --force --speak",
-    "test:precommit": "npx gulp test-ts --modified && npx gulp test --modified && npx ts-node ./test/ts-node-unit-tests",
-    "testall": "npx gulp test --browsers all --force --speak",
-    "test-all": "npx gulp test --browsers all --force --speak",
+    "dapi2": "gulp dashboards/api2",
+    "dbuild": "gulp dist --product Dashboards",
+    "dcode": "gulp scripts --product Dashboards",
+    "dgulp": "gulp scripts-watch --product Dashboards",
+    "dlintcss": "npx stylelint --config ./css/.stylelintrc.json 'css/dashboards/*.css'",
+    "dtest": "gulp test --product Dashboards --force",
+    "dlint": "gulp lint --product Dashboards",
+    "gapi": "gulp grid/api-docs && gulp api-server --product Grid",
+    "gcode": "gulp scripts --product Grid",
+    "gemini": "npm x -y --package=@google/gemini-cli gemini -- --approval-mode auto_edit --model gemini-2.5-flash",
+    "glint": "cd ts/Grid && npx eslint .",
+    "gtest": "gulp test --product Grid --force",
+    "test": "npx playwright test --project=setup-highcharts --project=setup-dashboards --project=setup-grid-lite --project=setup-grid-pro --project=highcharts --project=dashboards --project=grid-lite --project=grid-pro --project=grid-shared --project=qunit",
+    "test-node": "tsx ./test/ts-node-unit-tests/index.ts",
+    "test-node:tooling": "node --import tsx --test \"test/ts-node-unit-tests/tooling-tests/*.test.ts\"",
+    "test-node:watch": "tsx ./test/ts-node-unit-tests/index.ts --watch",
+    "test:webpack": "node tools/webpacks/check-duplicates.mjs && node tools/webpacks/check-namespace-exposure.mjs",
+    "test:precommit": "npx gulp generate-samples --check && npx gulp test --modified && npm run test-node",
+    "test:pw": "playwright test --project=setup-highcharts --project=highcharts",
+    "test:pw:all": "playwright test",
+    "test:pw:qunit": "playwright test --project=setup-highcharts --project=qunit --project=qunit-firefox",
+    "test:pw:visual": "playwright test --project=setup-visual --project=visual",
+    "test:pw:dashboards": "playwright test --project=setup-dashboards --project=dashboards",
+    "test:pw:dashboards:all": "playwright test --project=setup-dashboards --project=dashboards --project=dashboards-firefox --project=dashboards-webkit",
+    "test:pw:internal": "playwright test --project=setup-highcharts --project=setup-dashboards --project=internal",
     "test-dts": "npx gulp scripts && npx gulp jsdoc-dts && npx gulp lint-dts",
-    "test-tskarma": "gulp test-karma",
     "build": "npx gulp dist",
     "jsdoc": "npx gulp jsdoc-watch --skip-websearch",
     "jsdoc-highcharts": "npx gulp jsdoc-watch --products highcharts --skip-websearch",
     "jsdoc-highstock": "npx gulp jsdoc-watch --products highstock --skip-websearch",
     "lint": "cd ts && npx eslint",
+    "lint-docs": "npx cspell -c ./tools/cspell/cspell.json \"docs/**/*.md\"",
     "ts-compile:test": "npx tsc -p test && npx tsc -p samples",
     "gulp": "npx gulp",
     "utils": "highcharts-utils",
-    "prepare": "husky install",
-    "postinstall": "npx gulp update-vendor",
+    "prepare": "husky install && npm run clean",
+    "postinstall": "npx gulp update-vendor && npx gulp patch-ink-docstrap && npx playwright install",
     "reset": "npx gulp reset-clone && npm i",
-    "benchmark": "cd test/ts-node-unit-tests && node -r ts-node/register bench.ts",
-    "benchmark-compare": "cd test/ts-node-unit-tests && node -r ts-node/register benchmark-compare.ts"
+    "benchmark": "tsx test/ts-node-unit-tests/bench.ts",
+    "benchmark-compare": "tsx test/ts-node-unit-tests/benchmark-compare.ts",
+    "sync:skills": "node tools/sync-agent-skills.js",
+    "preview-docs": "npm run start --workspace=docs-preview"
   },
   "devDependencies": {
-    "@aws-sdk/client-s3": "^3.282.0",
-    "@aws-sdk/credential-providers": "^3.421.0",
-    "@babel/core": "^7.20.12",
-    "@babel/preset-env": "^7.20.2",
-    "@cypress-audit/lighthouse": "^1.4.2",
-    "@highcharts/highcharts-assembler": "github:highcharts/highcharts-assembler#v1.5.4",
-    "@highcharts/highcharts-declarations-generator": "github:highcharts/highcharts-declarations-generator#v1.2.0",
-    "@highcharts/highcharts-documentation-generators": "github:highcharts/highcharts-documentation-generators#v0.6.7",
-    "@highcharts/map-collection": "^2.0.1",
-    "@octokit/rest": "^19.0.7",
-    "@swc/core": "^1.4.2",
-    "@types/jquery": "^3.5.16",
-    "@types/qunit": "^2.19.4",
-    "@types/trusted-types": "^2.0.2",
-    "@types/yargs": "^17.0.24",
-    "@typescript-eslint/eslint-plugin": "^5.50.0",
-    "@typescript-eslint/parser": "^5.50.0",
-    "babel-eslint": "^10.1.0",
+    "@actions/github": "9.1.1",
+    "@aws-sdk/client-s3": "^3.592.0",
+    "@aws-sdk/credential-providers": "^3.592.0",
+    "@babel/core": "^7.26.0",
+    "@babel/preset-env": "^7.26.0",
+    "@babel/preset-typescript": "^7.26.0",
+    "@cypress-audit/lighthouse": "1.4.2",
+    "@eslint/plugin-kit": "0.6.0",
+    "@highcharts/connectors-morningstar": "3.2.0",
+    "@highcharts/eslint-plugin-highcharts": "github:highcharts/eslint-plugin-highcharts#v1.1.2",
+    "@highcharts/highcharts-assembler": "github:highcharts/highcharts-assembler#v1.5.6",
+    "@highcharts/highcharts-declarations-generator": "github:highcharts/highcharts-declarations-generator#v1.4.4",
+    "@highcharts/highcharts-documentation-generators": "github:highcharts/highcharts-documentation-generators#v0.6.20",
+    "@highcharts/highsoft-websearch": "github:highcharts/highsoft-websearch#v0.0.5",
+    "@highcharts/map-collection": "^2.2.0",
+    "@octokit/rest": "^20.1.1",
+    "@playwright/test": "^1.60.0",
+    "@stylistic/eslint-plugin": "^3.0.0",
+    "@swc/core": "^1.9.2",
+    "@types/gulp": "^4.0.17",
+    "@types/jquery": "^3.5.30",
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "^24.0.12",
+    "@types/qunit": "^2.19.10",
+    "@types/trusted-types": "^2.0.7",
+    "@types/yargs": "^17.0.32",
+    "@typescript-eslint/eslint-plugin": "8.70.0",
+    "@typescript-eslint/parser": "8.70.0",
+    "@typescript/native-preview": "7.0.0-dev.20260707.2",
     "browserify": "^17.0.0",
-    "bundle-declarations-webpack-plugin": "^4.0.1",
-    "cloudflare": "^3.0.0",
+    "bundle-declarations-webpack-plugin": "^5.1.1",
+    "cloudflare": "^3.2.0",
     "colors": "^1.4.0",
-    "cypress": "^13.2.0",
-    "cypress-visual-regression": "^3.0.0",
+    "cspell": "^8.16.0",
+    "css-loader": "7.1.3",
+    "cypress": "15.21.1",
+    "cypress-visual-regression": "3.0.0",
     "eslint": "^8.57.0",
     "eslint-config-eslint": "7.0.0",
-    "eslint-plugin-highcharts": "github:highcharts/eslint-plugin-highcharts#v1.0.9",
+    "eslint-plugin-brackets": "^0.1.3",
     "eslint-plugin-jsdoc": "^48.2.0",
     "eslint-plugin-node": "^11.1.0",
     "eslint-plugin-security": "^2.1.1",
-    "fs-extra": "^11.1.0",
-    "gifencoder": "^2.0.1",
-    "glob": "^8.1.0",
-    "gulp": "^4.0.2",
+    "fs-extra": "^11.2.0",
+    "gifenc": "^1.0.3",
+    "glob": "^10.4.1",
+    "gulp": "^5.0.1",
     "gulp-jsdoc3": "^3.0.0",
-    "gulp-zip": "^5.1.0",
+    "gulp-zip": "5.1.0",
     "gzip-size": "6.0.0",
-    "highsoft-websearch": "github:highcharts/highsoft-websearch#v0.0.3",
+    "highcharts-assembler": "github:highcharts/highcharts-assembler#v1.5.6",
     "husky": "^8.0.3",
     "jquery": "^3.7.1",
-    "js-yaml": "3.14.1",
+    "js-yaml": "3.15.2",
     "jsdom": "^21.1.0",
-    "jspdf": "2.5.1",
-    "karma": "^6.4.1",
-    "karma-browserstack-launcher": "^1.6.0",
-    "karma-chrome-launcher": "^3.1.1",
-    "karma-edge-launcher": "^0.4.2",
-    "karma-firefox-launcher": "^2.1.2",
-    "karma-generic-preprocessor": "^1.1.1",
-    "karma-ie-launcher": "^1.0.0",
-    "karma-qunit": "^4.1.2",
-    "karma-safari-launcher": "^1.0.0",
-    "karma-sharding": "^4.4.0",
-    "lint-staged": "^13.1.0",
+    "jspdf": "4.2.1",
+    "lint-staged": "^15.2.5",
     "lolex": "^6.0.0",
     "marked": "^4.2.12",
-    "moment": "2.30",
+    "mini-css-extract-plugin": "2.10.0",
+    "moment": "2.31",
     "moment-timezone": "^0.5.45",
     "node-fetch": "^2.6.12",
     "plugin-error": "^2.0.1",
     "pngjs": "^6.0.0",
     "pretty": "^2.0.0",
     "proj4": "2.3.6",
-    "qunit": "^2.19.4",
-    "request": "^2.88.2",
-    "requirejs": "^2.3.6",
-    "semver": "^7.3.8",
+    "qunit": "^2.21.0",
+    "requirejs": "^2.3.7",
+    "semver": "^7.6.2",
     "stylelint": "^14.16.1",
     "stylelint-config-standard": "^29.0.0",
-    "svg2pdf.js": "2.2.3",
+    "svg2pdf.js": "2.7.0",
     "topojson-client": "^3.1.0",
-    "ts-node": "^10.9.2",
-    "typedoc": "^0.25.7",
-    "typedoc-plugin-rename-defaults": "^0.7.0",
-    "typescript": "~5.2.2",
+    "tsx": "^4.20.6",
+    "typedoc": "^0.28.13",
+    "typedoc-plugin-rename-defaults": "^0.7.3",
+    "typescript": "~6.0.2",
     "undertaker-forward-reference": "^2.0.0",
-    "webpack": "^5.89.0",
+    "webpack": "^5.102.0",
     "webpack-cli": "^5.1.4",
-    "yargs": "^17.6.2"
+    "webpack-remove-empty-scripts": "1.1.1",
+    "yargs": "^17.7.2"
+  },
+  "workspaces": [
+    "tools/docs-preview",
+    "tests/"
+  ],
+  "overrides": {
+    "@docusaurus/core": {
+      "tinypool": "2.1.2"
+    },
+    "gulp-jsdoc3": {
+      "jsdoc": "^4.0.3"
+    },
+    "dateformat": {
+      "meow": "9.0.0"
+    }
   },
   "engines": {
-    "node": ">=14.14.0"
+    "node": ">=22.0.0"
   },
   "lint-staged": {
     "*.js": [
       "eslint"
     ],
-    "./ts/!(Dashboards|DataGrid)**/*.ts": [
+    "**/demo.ts": [
+      "eslint"
+    ],
+    "./ts/!(Dashboards|Grid)**/*.ts": [
       "npm run lint"
     ],
     "./ts/Dashboards/**/*.ts": [
-      "cd ts/Dashboards && npx eslint"
+      "cd ts/Dashboards && npx eslint ."
     ],
-    "./ts/DataGrid/**/*.ts": [
-      "cd ts/DataGrid && npx eslint"
+    "./ts/Grid/**/*.ts": [
+      "npm run glint"
     ],
     "*.css": [
-      "stylelint"
+      "stylelint --allow-empty-input"
+    ],
+    "./docs/**/*.md": [
+      "npx cspell -c ./tools/cspell/cspell.json"
+    ],
+    "./tests/**": [
+      "npx --workspace tests eslint"
+    ],
+    "{.github/workflows/visual-compare-playwright.yml,package.json,package-lock.json,test/visual-test-samples.js,test/ts-node-unit-tests/bench*.ts,test/ts-node-unit-tests/tooling-tests/**,tests/utils.ts,tests/visual/**}": [
+      "node -e \"require('node:child_process').execSync('npm run test-node:tooling', {stdio: 'inherit'})\""
     ]
   },
   "license": "SEE LICENSE IN <license.txt>",
-  "dependencies": {
-    "chatgpt": "^5.2.5",
-    "eslint-plugin-brackets": "^0.1.3"
+  "allowScripts": {
+    "esbuild@0.28.2": true,
+    "@swc/core@1.16.1": true,
+    "cypress@15.21.1": true,
+    "core-js": false,
+    "fsevents": false
   }
 }

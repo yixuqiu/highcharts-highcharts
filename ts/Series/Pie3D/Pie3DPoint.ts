@@ -1,12 +1,14 @@
 /* *
  *
- *  (c) 2010-2024 Torstein Honsi
+ *  (c) 2010-2026 Highsoft AS
+ *  Author: Torstein Hønsi
  *
  *  3D pie series
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  * */
 
@@ -21,10 +23,15 @@
 import type Pie3DSeries from './Pie3DSeries';
 import type SVGPath from '../../Core/Renderer/SVG/SVGPath';
 
-import SeriesRegistry from '../../Core/Series/SeriesRegistry.js';
-const {
-    pie: { prototype: { pointClass: PiePoint } }
-} = SeriesRegistry.seriesTypes;
+import PieSeries from '../Pie/PieSeries.js';
+
+/* *
+ *
+ *  Constants
+ *
+ * */
+
+const PiePoint = PieSeries.prototype.pointClass;
 
 /* *
  *
@@ -40,6 +47,7 @@ class Pie3DPoint extends PiePoint {
      *
      * */
 
+    /** @internal */
     public series!: Pie3DSeries;
 
     /* *
@@ -49,7 +57,7 @@ class Pie3DPoint extends PiePoint {
      * */
 
     /**
-     * @private
+     * @internal
      */
     public haloPath(): SVGPath {
         return this.series?.chart.is3d() ?

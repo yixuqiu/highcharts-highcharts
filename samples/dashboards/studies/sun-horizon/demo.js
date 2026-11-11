@@ -382,52 +382,49 @@ Highcharts.setOptions({
     }
 });
 
+// Retrieve a connector data table.
+async function getConnectorTable(dataPool, connectorId) {
+    return dataPool
+        .getConnector(connectorId)
+        .then(connector => connector.getTable());
+}
+
 const createBoard = async () => {
     board = await Dashboards.board('container', {
         dataPool: {
             connectors: [{
                 id: 'horizon',
                 type: 'JSON',
-                options: {
-                    firstRowAsNames: false,
-                    data: horizon.elevationProfile
-                }
+                firstRowAsNames: false,
+                data: horizon.elevationProfile
             }, {
                 id: 'sun-trajectory-data',
                 type: 'JSON',
-                options: {
-                    firstRowAsNames: false,
-                    data: getTrajectory('sun', horizon.elevationProfile)
-                }
+                firstRowAsNames: false,
+                data: getTrajectory('sun', horizon.elevationProfile)
             }, {
                 id: 'moon-trajectory-data',
                 type: 'JSON',
-                options: {
-                    firstRowAsNames: false,
-                    data: getTrajectory('moon', horizon.elevationProfile)
-                }
+                firstRowAsNames: false,
+                data: getTrajectory('moon', horizon.elevationProfile)
             }, {
                 id: 'contours-data',
                 type: 'JSON',
-                options: {
-                    firstRowAsNames: false,
-                    data: horizon.contours?.reduce((data, contourLine) => {
-                        if (data.length) {
-                            data.push([null, null]); // Gap
-                        }
-                        [].push.apply(data, contourLine.map(p => [
-                            p.azimuth, p.angle
-                        ]));
-                        return data;
-                    }, [])
-                }
+                firstRowAsNames: false,
+                data: horizon.contours?.reduce((data, contourLine) => {
+                    if (data.length) {
+                        data.push([null, null]); // Gap
+                    }
+                    [].push.apply(data, contourLine.map(p => [
+                        p.azimuth, p.angle
+                    ]));
+                    return data;
+                }, [])
             }, {
                 id: 'times',
                 type: 'JSON',
-                options: {
-                    firstRowAsNames: false,
-                    data: getTimes(date)
-                }
+                firstRowAsNames: false,
+                data: getTimes(date)
             }]
         },
         gui: {
@@ -453,7 +450,7 @@ const createBoard = async () => {
                     data: ['azimuth', 'angle']
                 }]
             },
-            cell: 'horizon-chart',
+            renderTo: 'horizon-chart',
             id: 'horizon-chart',
             type: 'Highcharts',
             events: {
@@ -462,7 +459,8 @@ const createBoard = async () => {
                     // @todo Is it possible to apply multiple connectors to one
                     // chart through config?
                     const dataPool = this.board.dataPool,
-                        sunTrajectoryTable = await dataPool.getConnectorTable(
+                        sunTrajectoryTable = await getConnectorTable(
+                            dataPool,
                             'sun-trajectory-data'
                         ),
                         sunData = sunTrajectoryTable.getRowObjects(),
@@ -471,7 +469,8 @@ const createBoard = async () => {
                                 x: p.x,
                                 title: p.flag
                             })),
-                        moonTrajectoryTable = await dataPool.getConnectorTable(
+                        moonTrajectoryTable = await getConnectorTable(
+                            dataPool,
                             'moon-trajectory-data'
                         ),
                         moonData = moonTrajectoryTable.getRowObjects(),
@@ -480,7 +479,8 @@ const createBoard = async () => {
                                 x: p.x,
                                 title: p.flag
                             })),
-                        contoursTable = await dataPool.getConnectorTable(
+                        contoursTable = await getConnectorTable(
+                            dataPool,
                             'contours-data'
                         );
 
@@ -620,8 +620,7 @@ const createBoard = async () => {
                             inactive: {
                                 enabled: false
                             }
-                        },
-                        turboThreshold: Infinity
+                        }
                     },
                     flags: {
                         borderRadius: 3,
@@ -629,6 +628,10 @@ const createBoard = async () => {
                         opacity: 0.75,
                         lineWidth: 2,
                         y: -50
+                    },
+                    scatter: {
+                        // Workaround for #22548
+                        findNearestPointBy: 'x'
                     }
                 },
                 series: [{
@@ -793,13 +796,13 @@ const createBoard = async () => {
                 }]
             }
         }, {
-            cell: 'controls',
+            renderTo: 'controls',
             type: 'HTML',
             style: {
                 padding: '10px'
             },
             title: 'Time control',
-            elements: [`
+            html: `
             <div class="component-padding">
                 <p>
                     <label id="date-input-label" for="date-input"></label>
@@ -815,7 +818,7 @@ const createBoard = async () => {
                     </button>
                 </p>
             </div>
-            `],
+            `,
             events: {
                 // @todo - at the time of the `mount` event, the elements are
                 // not yet attached, so I need to use `resize`. What is the
@@ -884,7 +887,8 @@ const createBoard = async () => {
                         // programmatically connected in the mount event.
                         /*
                         const sunTrajectory = await this.board.dataPool
-                            .getConnectorTable('sun-trajectory-data');
+                            .getConnector('sun-trajectory-data')
+                            .then(connector => connector.getTable());
                         sunTrajectory.setRows(sunTrajectoryData, 0);
                         */
                         chart.get('sun-trajectory').setData(
@@ -917,7 +921,7 @@ const createBoard = async () => {
                         const dataTable = this.board.dataPool
                             .connectors
                             .times
-                            .table;
+                            .getTable();
                         const rows = getTimes(date);
                         dataTable.setRows(rows, 0);
                     };
@@ -983,39 +987,50 @@ const createBoard = async () => {
             }
 
         }, {
-            cell: 'times',
+            renderTo: 'times',
             connector: {
                 id: 'times'
             },
-            type: 'DataGrid',
-            dataGridOptions: {
-                editable: false,
-                columns: [{
-                    headerFormat: 'Celestial event',
-                    cellFormatter: function () {
-                        const str = this.value
-                            .replace(/([A-Z])/g, ' $1')
-                            .toLowerCase();
-                        return str.charAt(0).toUpperCase() + str.slice(1);
-                    }
+            type: 'Grid',
+            gridOptions: {
+                credits: {
+                    enabled: false
                 },
-                {
-                    headerFormat: 'Time',
+                columns: [{
+                    id: '0',
+                    header: {
+                        format: 'Celestial event'
+                    },
+                    cells: {
+                        formatter: function () {
+                            const str = this.value
+                                .replace(/([A-Z])/g, ' $1')
+                                .toLowerCase();
+                            return str.charAt(0).toUpperCase() + str.slice(1);
+                        }
+                    }
+                }, {
+                    id: '1',
+                    header: {
+                        format: 'Time'
+                    },
                     // @todo Fix after #20444
                     // cellFormat: '{value:%H:%M}'
-                    cellFormatter: function () {
-                        try {
-                            return new Intl.DateTimeFormat('nn-NO', {
-                                timeStyle: 'short'
-                            }).format(this.value);
-                        } catch {
-                            return '-';
+                    cells: {
+                        formatter: function () {
+                            try {
+                                return new Intl.DateTimeFormat('nn-NO', {
+                                    timeStyle: 'short'
+                                }).format(this.value);
+                            } catch {
+                                return '-';
+                            }
                         }
                     }
                 }]
             }
         }, {
-            cell: 'horizon-map',
+            renderTo: 'horizon-map',
             id: 'horizon-map',
             type: 'Highcharts',
             chartConstructor: 'mapChart',

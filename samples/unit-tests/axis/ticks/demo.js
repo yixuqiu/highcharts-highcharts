@@ -336,6 +336,20 @@ QUnit.test('Ticks for a single point.', function (assert) {
     );
 
     chart.yAxis[0].update({
+        tickPositioner: (min, max, axis) => (
+            (min && max && axis) ?
+                [16, 32, 48] :
+                []
+        )
+    });
+
+    assert.strictEqual(
+        chart.yAxis[0].min,
+        16,
+        'Arrow-function tickPositioner should work.'
+    );
+
+    chart.yAxis[0].update({
         tickPositioner: function () {}
     });
 
@@ -714,6 +728,43 @@ QUnit.test('Monthly ticks (#3500)', function (assert) {
         expectedTicksText,
         'Monthly X axis ticks is not correct'
     );
+
+    chart.update({
+        chart: {
+            width: 1200,
+            marginRight: 0
+        }
+    });
+
+    const ticksWithoutFlags = chart.xAxis[0].tickPositions.slice();
+
+    chart.addSeries({
+        type: 'flags',
+        data: []
+    });
+
+    assert.deepEqual(
+        chart.xAxis[0].tickPositions,
+        ticksWithoutFlags,
+        'Empty flags series should not change monthly tick positions (#23555).'
+    );
+
+    chart.series[1].update({
+        visible: false,
+        data: [{
+            x: Date.UTC(2014, 2, 15),
+            title: 'A',
+            text: 'A'
+        }]
+    });
+
+    assert.deepEqual(
+        chart.xAxis[0].tickPositions,
+        ticksWithoutFlags,
+        'Hidden flags with data should not change monthly tick positions ' +
+        '(#23555).'
+    );
+
     // Reset
     Highcharts.setOptions(resetTo);
 });
@@ -1082,10 +1133,28 @@ QUnit.test(
                 `Ticks with ${JSON.stringify(toDotNot(options))} should stay
                 the same after updating series (#19604).`
             );
+
+            // Chrome is not that reliable
+            let precision = 2;
+
+            // A strange case of shifting, only when the font-family contains
+            // the `-apple-system` font, and only with FirefoxHeadless (and
+            // ChromeHeadless on Windows). Not reproducible with regular Firefox
+            // or Chrome.
+            if (
+                options.chart?.styledMode &&
+                (
+                    navigator.userAgent.indexOf('Firefox') !== -1 ||
+                    window.navigator.platform.indexOf('Win') >= 0
+                )
+            ) {
+                precision = 9;
+            }
+
             assert.close(
                 chart.plotHeight,
                 expectedPlotHeight,
-                0.5, // Firefox is not that reliable
+                precision,
                 `Plot height with ${JSON.stringify(toDotNot(options))} should
                 stay the same after updating series (#19604).`
             );
@@ -1221,3 +1290,62 @@ QUnit.test(
         );
     }
 );
+
+QUnit.test('Tick and label overflow (#16307)', assert => {
+    const chart = Highcharts.chart('container', {
+        chart: {
+            width: 600,
+            marginRight: 50
+        },
+        xAxis: {
+            categories: [
+                'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep',
+                'Oct', 'Nov', 'Dec'
+            ],
+            tickLength: 10,
+            tickWidth: 1
+        },
+        series: [{
+            data: [
+                29.9, 71.5, 106.4, 129.2, 144.0,
+                176.0, 135.6, 148.5, 216.4, 194.1, 95.6, 54.4
+            ]
+        }],
+        plotOptions: {
+            series: {
+                pointPlacement: 'on'
+            }
+        }
+    });
+
+    assert.strictEqual(
+        chart.xAxis[0].ticks['11'].mark.opacity,
+        0,
+        'The last tick mark should not be visible (#20166)'
+    );
+
+    assert.strictEqual(
+        chart.xAxis[0].ticks['11'].label.opacity,
+        1,
+        '... but the last tick label should be visible (#20375)'
+    );
+
+    chart.redraw();
+    assert.strictEqual(
+        chart.xAxis[0].ticks['11'].mark.opacity,
+        0,
+        'After redraw, the last tick mark should still not be visible'
+    );
+
+    chart.update({
+        xAxis: {
+            tickWidth: 3
+        }
+    });
+    assert.strictEqual(
+        chart.xAxis[0].ticks['11'].mark.attr('stroke-width'),
+        3,
+        'After update, the last tick mark should have a stroke width of 3'
+    );
+
+});

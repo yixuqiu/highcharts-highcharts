@@ -1,10 +1,11 @@
 /* *
  *
- *  (c) 2009-2024 Highsoft AS
+ *  (c) 2009-2026 Highsoft AS
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  *  Authors:
  *  - Sebastian Bochan
@@ -22,15 +23,9 @@
  *
  * */
 
-import U from '../Core/Utilities.js';
-const {
-    error: coreError,
-    isClass,
-    isDOMElement,
-    isObject,
-    objectEach,
-    uniqueKey: coreUniqueKey
-} = U;
+import type { AnyRecord } from '../Shared/Types';
+
+import { error as coreError } from '../Core/Utilities.js';
 
 /* *
  *
@@ -38,117 +33,42 @@ const {
  *
  * */
 
-/**
- * Utility function to deep merge two or more objects and return a third object.
- * If the first argument is true, the contents of the second object is copied
- * into the first object. The merge function can also be used with a single
- * object argument to create a deep copy of an object.
- *
- * @function Highcharts.merge<T>
- *
- * @param {boolean} extend
- *        Whether to extend the left-side object (a) or return a whole new
- *        object.
- *
- * @param {T|undefined} a
- *        The first object to extend. When only this is given, the function
- *        returns a deep copy.
- *
- * @param {...Array<object|undefined>} [n]
- *        An object to merge into the previous one.
- *
- * @return {T}
- *         The merged object. If the first argument is true, the return is the
- *         same as the second argument.
- *//**
- * Utility function to deep merge two or more objects and return a third object.
- * The merge function can also be used with a single object argument to create a
- * deep copy of an object.
- *
- * @function Highcharts.merge<T>
- *
- * @param {T|undefined} a
- *        The first object to extend. When only this is given, the function
- *        returns a deep copy.
- *
- * @param {...Array<object|undefined>} [n]
- *        An object to merge into the previous one.
- *
- * @return {T}
- *         The merged object. If the first argument is true, the return is the
- *         same as the second argument.
- */
-function merge<T>(): T {
-    /* eslint-enable valid-jsdoc */
-    let i,
-        args = arguments,
-        copyDepth = 0,
-        ret = {} as T;
-
-    // Descriptive error stack:
-    const copyDepthError = new Error('Recursive copy depth > 100'),
-        doCopy = (copy: any, original: any): any => {
-            // An object is replacing a primitive
-            if (typeof copy !== 'object') {
-                copy = {};
-            }
-
-            if (++copyDepth > 100) {
-                throw copyDepthError;
-            }
-
-            objectEach(original, (value, key): void => {
-
-                // Prototype pollution (#14883)
-                if (key === '__proto__' || key === 'constructor') {
-                    return;
-                }
-
-                // Copy the contents of objects, but not arrays or DOM nodes
-                if (
-                    isObject(value, true) &&
-                    !isClass(value) &&
-                    !isDOMElement(value)
-                ) {
-                    copy[key] = doCopy(copy[key] || {}, value);
-
-                // Primitives and arrays are copied over directly
-                } else {
-                    copy[key] = original[key];
-                }
-            });
-
-            --copyDepth;
-
-            return copy;
-        };
-
-    // If first argument is true, copy into the existing object. Used in
-    // setOptions.
-    if (args[0] === true) {
-        ret = args[1];
-        args = Array.prototype.slice.call(args, 2) as any;
-    }
-
-    // For each argument, extend the return
-    const len = args.length;
-    for (i = 0; i < len; i++) {
-        ret = doCopy(ret, args[i]);
-    }
-
-    return ret;
-}
 
 /**
- * Creates a session-dependent unique key string for reference purposes.
+ * Returns a deep copy of an argument. It differs from `merge` in that it copies
+ * also arrays.
  *
- * @function Dashboards.uniqueKey
+ * @param value
+ * The value to clone.
  *
- * @return {string}
- * Unique key string
+ * @param excludedKeys
+ * An array of keys to exclude from the clone.
  */
-function uniqueKey(): string {
-    return `dashboard-${coreUniqueKey().replace('highcharts-', '')}`;
+function deepClone(value: any, excludedKeys?: string[]): any {
+    if (Array.isArray(value)) {
+        return value.map((v): any => deepClone(v, excludedKeys));
+    }
+
+    if (value && typeof value === 'object') {
+        const clone: Record<string, any> = {};
+        const keys = Object.keys(value);
+
+        for (const key of keys) {
+            if (key === '__proto__' || key === 'constructor') {
+                continue;
+            }
+
+            if (excludedKeys && excludedKeys.includes(key)) {
+                clone[key] = value[key];
+            } else {
+                clone[key] = deepClone(value[key], excludedKeys);
+            }
+        }
+
+        return clone;
+    }
+
+    return value;
 }
 
 /**
@@ -183,6 +103,19 @@ function error(code: number|string, stop?: boolean): void {
     coreError(code, stop);
 }
 
+
+export interface EventCallback<T> {
+    (this: T, eventArguments: (AnyRecord|Event)): (boolean|void);
+}
+export interface EventWrapperObject<T> {
+    fn: EventCallback<T>;
+    order: number;
+}
+export interface EventOptions {
+    order?: number;
+    passive?: boolean;
+}
+
 /* *
  *
  *  Default Export
@@ -190,9 +123,8 @@ function error(code: number|string, stop?: boolean): void {
  * */
 
 const Utilities = {
-    error,
-    merge,
-    uniqueKey
+    deepClone,
+    error
 };
 
 export default Utilities;

@@ -1,8 +1,9 @@
 /* *
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  * */
 
@@ -14,6 +15,7 @@
  *
  * */
 
+import type { IndicatorLinkedSeriesBase } from '../IndicatorBase';
 import type IndicatorValuesObject from '../IndicatorValuesObject';
 import type LineSeries from '../../../Series/Line/LineSeries';
 import type {
@@ -22,14 +24,9 @@ import type {
 } from './TEMAOptions';
 import type TEMAPoint from './TEMAPoint';
 
+import EMAIndicator from '../EMA/EMAIndicator.js';
 import SeriesRegistry from '../../../Core/Series/SeriesRegistry.js';
-const { ema: EMAIndicator } = SeriesRegistry.seriesTypes;
-import U from '../../../Core/Utilities.js';
-const {
-    correctFloat,
-    isArray,
-    merge
-} = U;
+import { correctFloat, isArray, merge } from '../../../Shared/Utilities.js';
 
 /* *
  *
@@ -40,7 +37,6 @@ const {
 /**
  * The TEMA series type.
  *
- * @private
  * @class
  * @name Highcharts.seriesTypes.tema
  *
@@ -69,9 +65,10 @@ class TEMAIndicator extends EMAIndicator {
      *               navigatorOptions, pointInterval, pointIntervalUnit,
      *               pointPlacement, pointRange, pointStart, showInNavigator,
      *               stacking
-     * @requires     stock/indicators/indicators
-     * @requires     stock/indicators/tema
+     * @requires     indicators/indicators
+     * @requires     indicators/tema
      * @optionparent plotOptions.tema
+     * @internal
      */
     public static defaultOptions: TEMAOptions = merge(EMAIndicator.defaultOptions);
 
@@ -81,6 +78,7 @@ class TEMAIndicator extends EMAIndicator {
      *
      * */
 
+    /** @internal */
     public EMApercent!: number;
     public data!: Array<TEMAPoint>;
     public options!: TEMAOptions;
@@ -92,6 +90,7 @@ class TEMAIndicator extends EMAIndicator {
      *
      * */
 
+    /** @internal */
     public getEMA(
         yVal: (Array<number>|Array<Array<number>>),
         prevEMA: (number|undefined),
@@ -111,6 +110,7 @@ class TEMAIndicator extends EMAIndicator {
         );
     }
 
+    /** @internal */
     public getTemaPoint(
         xVal: Array<number>,
         tripledPeriod: number,
@@ -128,8 +128,9 @@ class TEMAIndicator extends EMAIndicator {
         return TEMAPoint;
     }
 
+    /** @internal */
     public getValues<TLinkedSeries extends LineSeries>(
-        series: TLinkedSeries,
+        series: TLinkedSeries&IndicatorLinkedSeriesBase,
         params: TEMAParamsOptions
     ): (IndicatorValuesObject<TLinkedSeries>|undefined) {
         const period: number = (params.period as any),
@@ -300,6 +301,16 @@ namespace TEMAIndicator {
 
 /* *
  *
+ *  Class Prototype
+ *
+ * */
+
+interface TEMAIndicator {
+    pointClass: typeof TEMAPoint;
+}
+
+/* *
+ *
  *  Registry
  *
  * */
@@ -309,6 +320,7 @@ declare module '../../../Core/Series/SeriesType' {
         tema: typeof TEMAIndicator;
     }
 }
+
 SeriesRegistry.registerSeriesType('tema', TEMAIndicator);
 
 /* *
@@ -332,11 +344,11 @@ export default TEMAIndicator;
  * @extends   series,plotOptions.tema
  * @since     7.0.0
  * @product   highstock
- * @excluding allAreas, colorAxis, compare, compareBase, dataParser, dataURL,
+ * @excluding allAreas, colorAxis, compare, compareBase,
  *            joinBy, keys, navigatorOptions, pointInterval, pointIntervalUnit,
  *            pointPlacement, pointRange, pointStart, showInNavigator, stacking
- * @requires  stock/indicators/indicators
- * @requires  stock/indicators/tema
+ * @requires  indicators/indicators
+ * @requires  indicators/tema
  * @apioption series.tema
  */
 

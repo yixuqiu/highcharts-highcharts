@@ -76,7 +76,7 @@ const BulletSeriesDefaults: BulletSeriesOptions = {
          *
          * In styled mode, use class `highcharts-bullet-target` instead.
          *
-         * @type      {Highcharts.ColorString|Highcharts.GradientColorObject|Highcharts.PatternObject}
+         * @type      {Highcharts.ColorType}
          * @since     6.0.0
          * @product   highcharts
          * @apioption plotOptions.bullet.targetOptions.color
@@ -99,9 +99,7 @@ const BulletSeriesDefaults: BulletSeriesOptions = {
     },
 
     tooltip: {
-        pointFormat: '<span style="color:{series.color}">\u25CF</span>' +
-        ' {series.name}: <b>{point.y}</b>. Target: <b>{point.target}' +
-        '</b><br/>'
+        pointFormat: '<span style="color:{series.color}">\u25CF</span> {series.name}: <b>{point.y}</b>. Target: <b>{point.target}</b><br/>'
     }
 
 };
@@ -113,7 +111,7 @@ const BulletSeriesDefaults: BulletSeriesOptions = {
  * @extends   series,plotOptions.bullet
  * @since     6.0.0
  * @product   highcharts
- * @excluding dataParser, dataURL, marker, boostThreshold,
+ * @excluding marker, boostThreshold,
  *            boostBlending
  * @requires  modules/bullet
  * @apioption series.bullet
@@ -159,6 +157,7 @@ const BulletSeriesDefaults: BulletSeriesOptions = {
  *    }]
  *    ```
  *
+ * @basic
  * @type      {Array<Array<(number|string),number>|Array<(number|string),number,number>|*>}
  * @extends   series.column.data
  * @since     6.0.0

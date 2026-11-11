@@ -1,10 +1,12 @@
 /* *
  *
- *  (c) 2010-2024 Torstein Honsi
+ *  (c) 2010-2026 Highsoft AS
+ *  Author: Torstein Hønsi
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  * */
 
@@ -18,21 +20,15 @@
 
 import type LinePoint from './LinePoint';
 import type LineSeriesOptions from './LineSeriesOptions';
-import type { PlotOptionsOf, SeriesZonesOptions } from '../../Core/Series/SeriesOptions';
+import type { SeriesZonesOptions } from '../../Core/Series/SeriesOptions';
 import type SplineSeries from '../Spline/SplineSeries';
 import type SplinePoint from '../Spline/SplinePoint';
 import type SVGAttributes from '../../Core/Renderer/SVG/SVGAttributes';
 import type SVGPath from '../../Core/Renderer/SVG/SVGPath';
 
-import { Palette } from '../../Core/Color/Palettes.js';
 import Series from '../../Core/Series/Series.js';
 import SeriesRegistry from '../../Core/Series/SeriesRegistry.js';
-import U from '../../Core/Utilities.js';
-const {
-    defined,
-    merge,
-    isObject
-} = U;
+import { defined, isObject, merge } from '../../Shared/Utilities.js';
 
 /* *
  *
@@ -43,7 +39,6 @@ const {
 /**
  * The line series is the base type and is therefor the series base prototype.
  *
- * @private
  */
 class LineSeries extends Series {
 
@@ -53,16 +48,25 @@ class LineSeries extends Series {
      *
      * */
 
-    public static defaultOptions = merge(
+    /** @internal */
+    public static defaultOptions: LineSeriesOptions = merge(
         Series.defaultOptions,
-        /**
-         * General options for all series types.
-         *
-         * @optionparent plotOptions.series
-         */
         {
+            /**
+             * What type of legend symbol to render for this series. Can be one
+             * of `areaMarker`, `lineMarker` or `rectangle`. The financial
+             * series of Highcharts Stock add `candlestick`, `hlc` and `ohlc`.
+             *
+             * @sample {highcharts} highcharts/series/legend-symbol/
+             *         Change the legend symbol
+             *
+             * @type      {string}
+             * @default   lineMarker
+             * @since     11.0.1
+             * @apioption plotOptions.line.legendSymbol
+             */
             legendSymbol: 'lineMarker'
-        } as PlotOptionsOf<LineSeries>
+        }
     );
 
     /* *
@@ -91,6 +95,7 @@ class LineSeries extends Series {
      * positions and attributes.
      *
      * @function Highcharts.Series#drawGraph
+     * @internal
      */
     public drawGraph(): void {
         const options = this.options,
@@ -121,6 +126,7 @@ class LineSeries extends Series {
                  *
                  * @name Highcharts.Series#graph
                  * @type {Highcharts.SVGElement|undefined}
+                 * @internal
                  */
                 owner.graph = graph = this.chart.renderer
                     .path(graphPath)
@@ -141,7 +147,7 @@ class LineSeries extends Series {
                         owner.color ||
                         this.color ||
                         // When colorByPoint = true
-                        Palette.neutralColor20
+                        'var(--highcharts-neutral-color-20)'
                     ),
                     'stroke-width': options.lineWidth || 0,
                     // Polygon series use filled graph
@@ -160,20 +166,24 @@ class LineSeries extends Series {
                         attribs['stroke-linejoin'] = 'round';
                 }
 
-                graph[verb](attribs)
-                // Add shadow to normal series (0) or to first
-                // zone (1) #3932
-                    .shadow(
-                        (i < 2) &&
-                        options.shadow &&
-                        // If shadow is defined, call function with
-                        // `filterUnits: 'userSpaceOnUse'` to avoid known
-                        // SVG filter bug (#19093)
+                graph[verb](attribs);
+
+                // Add shadow only to the main series (not zones)
+                // If shadow is defined, use `filterUnits: 'userSpaceOnUse'`
+                // to avoid known SVG filter bug (#19093)
+                if (options.shadow) {
+                    const isInverted = this.chart.inverted;
+                    const filterUnits = { filterUnits: 'userSpaceOnUse' };
+                    const shadowOptions = isObject(options.shadow) ?
                         merge(
-                            { filterUnits: 'userSpaceOnUse' },
-                            isObject(options.shadow) ? options.shadow : {}
-                        )
-                    );
+                            isInverted ? {} : filterUnits,
+                            options.shadow
+                        ) : (
+                            isInverted ? true : filterUnits
+                        );
+
+                    graph.shadow(shadowOptions);
+                }
             }
 
             // Helpers for animation
@@ -188,7 +198,7 @@ class LineSeries extends Series {
     /**
      * Get the graph path.
      *
-     * @private
+     * @internal
      */
     public getGraphPath(
         points?: Array<LinePoint>,
@@ -198,7 +208,7 @@ class LineSeries extends Series {
         const series = this,
             options = series.options,
             graphPath = [] as SVGPath,
-            xMap = [] as Array<(number|null)>;
+            xMap: Array<(number|null)> = [];
         let gap: boolean,
             step = options.step as any;
 
@@ -222,7 +232,11 @@ class LineSeries extends Series {
         points = this.getValidPoints(
             points,
             false,
-            !(options.connectNulls && !nullsAsZeroes && !connectCliffs)
+            options.nullInteraction || !(
+                options.connectNulls &&
+                    !nullsAsZeroes &&
+                    !connectCliffs
+            )
         ) as Array<LinePoint>;
 
         // Build the line
@@ -236,7 +250,7 @@ class LineSeries extends Series {
             let pathToPoint: SVGPath;
 
             if (
-                (point.leftCliff || (lastPoint && lastPoint.rightCliff)) &&
+                (point.leftCliff || lastPoint?.rightCliff) &&
                 !connectCliffs
             ) {
                 gap = true; // ... and continue
@@ -329,7 +343,7 @@ class LineSeries extends Series {
             }
         });
 
-        (graphPath as any).xMap = xMap;
+        graphPath.xMap = xMap;
         series.graphPath = graphPath;
 
         return graphPath;
@@ -389,22 +403,10 @@ export default LineSeries;
  */
 
 /**
- * The SVG value used for the `stroke-linecap` and `stroke-linejoin`
- * of a line graph. Round means that lines are rounded in the ends and
- * bends.
- *
- * @type       {Highcharts.SeriesLinecapValue}
- * @default    round
- * @since      3.0.7
- * @apioption  plotOptions.line.linecap
- */
-
-/**
  * A `line` series. If the [type](#series.line.type) option is not
  * specified, it is inherited from [chart.type](#chart.type).
  *
  * @extends   series,plotOptions.line
- * @excluding dataParser,dataURL
  * @product   highcharts highstock
  * @apioption series.line
  */
@@ -473,6 +475,7 @@ export default LineSeries;
  * @sample {highcharts} highcharts/series/data-array-of-objects/
  *         Config objects
  *
+ * @basic
  * @declare   Highcharts.PointOptionsObject
  * @type      {Array<number|Array<(number|string),(number|null)>|null|*>}
  * @apioption series.line.data
@@ -488,7 +491,7 @@ export default LineSeries;
  *
  * @type      {string}
  * @since     5.0.0
- * @product   highcharts gantt
+ * @product   highcharts highstock gantt
  * @apioption series.line.data.className
  */
 
@@ -502,7 +505,7 @@ export default LineSeries;
  * @sample {highcharts} highcharts/point/color/
  *         Mark the highest point
  *
- * @type      {Highcharts.ColorString|Highcharts.GradientColorObject|Highcharts.PatternObject}
+ * @type      {Highcharts.ColorType}
  * @product   highcharts highstock gantt
  * @apioption series.line.data.color
  */
@@ -541,7 +544,8 @@ export default LineSeries;
 /**
  * Individual data label for each point. The options are the same as
  * the ones for [plotOptions.series.dataLabels](
- * #plotOptions.series.dataLabels).
+ * #plotOptions.series.dataLabels) with exception of `zIndex` which is applied
+ * on the data label's parent group.
  *
  * @sample highcharts/point/datalabels/
  *         Show a label for the last value
@@ -549,18 +553,9 @@ export default LineSeries;
  * @type      {*|Array<*>}
  * @declare   Highcharts.DataLabelsOptions
  * @extends   plotOptions.line.dataLabels
+ * @excluding zIndex
  * @product   highcharts highstock gantt
  * @apioption series.line.data.dataLabels
- */
-
-/**
- * A description of the point to add to the screen reader information
- * about the point.
- *
- * @type      {string}
- * @since     5.0.0
- * @requires  modules/accessibility
- * @apioption series.line.data.description
  */
 
 /**
@@ -577,9 +572,11 @@ export default LineSeries;
  */
 
 /**
- * The rank for this point's data label in case of collision. If two
+ * The rank for all this point's data labels in case of collision. If two
  * data labels are about to overlap, only the one with the highest `labelrank`
  * will be drawn.
+ *
+ * The `labelrank` set on `series.dataLabels` takes precedence over this.
  *
  * @type      {number}
  * @apioption series.line.data.labelrank
@@ -607,10 +604,14 @@ export default LineSeries;
  */
 
 /**
- * The x value of the point. For datetime axes, the X value is the timestamp
- * in milliseconds since 1970.
+ * The x value of the point.
  *
- * @type      {number}
+ * For datetime axes, a number value is the timestamp in milliseconds since
+ * 1970, while a date string is parsed according to the [current time zone]
+ * (https://api.highcharts.com/highcharts/time.timezone) of the
+ * chart. Date strings are supported since v12.
+ *
+ * @type      {number|string}
  * @product   highcharts highstock
  * @apioption series.line.data.x
  */

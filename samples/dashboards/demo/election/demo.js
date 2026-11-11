@@ -1,3 +1,8 @@
+Highcharts.setOptions({
+    chart: {
+        styledMode: true
+    }
+});
 /* eslint-disable max-len */
 /* eslint-disable jsdoc/require-description */
 
@@ -13,7 +18,7 @@
 
 // Data sources
 const mapUrl = 'https://code.highcharts.com/mapdata/countries/us/us-all.topo.json';
-const elVoteUrl = 'https://www.highcharts.com/samples/data/us-1976-2020-president.csv';
+const elVoteUrl = 'https://www.highcharts.com/samples/data/us-2008-2020-president.csv';
 const elCollegeUrl = 'https://www.highcharts.com/samples/data/us-electorial_votes.csv';
 
 const commonTitle = 'U.S. Presidential Election';
@@ -22,6 +27,73 @@ const electionYears = ['2020', '2016', '2012', '2008'];
 // Election data loaded from CSV and converted to JSON
 let electionData;
 
+// Passed whole on every update, because updating `columns` replaces the array
+// rather than merging into it. The `democrat`/`republican` classes mark the
+// party leading the column pair - electors and popular votes are compared
+// separately.
+function getGridColumns(candDem, candRep) {
+    return [{
+        id: 'state',
+        header: { format: 'State' }
+    }, {
+        id: 'demColVotes',
+        header: { format: candDem ? candDem + ' (Democrat)' : 'Dem. electors' },
+        cells: { className: '{#if (gt row.data.demColVotes row.data.repColVotes)}democrat{/if}' }
+    }, {
+        id: 'repColVotes',
+        header: { format: candRep ? candRep + ' (Republican)' : 'Rep. electors' },
+        cells: { className: '{#if (gt row.data.repColVotes row.data.demColVotes)}republican{/if}' }
+    }, {
+        id: 'demVotes',
+        header: { format: 'Dem. votes' },
+        cells: {
+            className: '{#if (gt row.data.demVotes row.data.repVotes)}democrat{/if}',
+            formatter: formatVotesCell
+        }
+    }, {
+        id: 'repVotes',
+        header: { format: 'Rep. votes' },
+        cells: {
+            className: '{#if (gt row.data.repVotes row.data.demVotes)}republican{/if}',
+            formatter: formatVotesCell
+        }
+    }, {
+        id: 'totalVotes',
+        header: { format: 'Total votes' },
+        cells: {
+            formatter: function () {
+                return Number(this.value).toLocaleString('en-US');
+            }
+        }
+        // Columns backing the map and the result panel, not shown in the grid
+    }, ...[
+        'demPercent', 'repPercent', 'postal-code', 'demVoteSummary',
+        'repVoteSummary'
+    ].map(id => ({ id, enabled: false }))];
+}
+
+// Vote count with its share of the row total, for a state row and for the
+// aggregated national one alike
+function formatVotesCell() {
+    const votes = Number(this.value),
+        total = Number(this.row.data.totalVotes);
+
+    return votes.toLocaleString('en-US') +
+        (total ? ' (' + (votes / total * 100).toFixed(1) + '%)' : '');
+}
+
+// Convert a cell value to a number.
+function convertToNumber(value, useNaN) {
+    switch (typeof value) {
+    case 'boolean':
+        return value ? 1 : 0;
+    case 'number':
+        return (isNaN(value) && !useNaN ? null : value);
+    default:
+        value = parseFloat(`${value ?? ''}`);
+        return (isNaN(value) && !useNaN ? null : value);
+    }
+}
 
 // Launches the Dashboards application
 async function setupDashboard() {
@@ -173,7 +245,7 @@ async function setupDashboard() {
                 }
             }
         }, {
-            renderTo: 'election-chart-national',
+            renderTo: 'election-chart-year',
             type: 'Highcharts',
             title: {
                 text: 'Historical ' + commonTitle + 's'
@@ -244,7 +316,7 @@ async function setupDashboard() {
                 }
             }
         }, {
-            renderTo: 'election-chart',
+            renderTo: 'election-chart-historical',
             type: 'Highcharts',
             chartOptions: {
                 title: {
@@ -310,48 +382,24 @@ async function setupDashboard() {
             }
         }, {
             renderTo: 'election-grid',
-            type: 'DataGrid',
+            type: 'Grid',
             connector: {
-                id: 'votes' + defaultYear
+                id: 'grid' + defaultYear
             },
             title: {
                 text: 'Updating...' // Populated later
             },
-            dataGridOptions: {
-                cellHeight: 38,
-                editable: false, // TBD: enable
-                columns: {
-                    state: {
-                        headerFormat: 'State'
-                    },
-                    'postal-code': {
-                        show: false
-                    },
-                    demPercent: {
-                        show: false
-                    },
-                    repPercent: {
-                        show: false
-                    },
-                    demVotes: {
-                        show: false
-                    },
-                    repVotes: {
-                        show: false
-                    },
-                    demVoteSummary: {
-                        headerFormat: 'Dem. votes'
-                    },
-                    repVoteSummary: {
-                        headerFormat: 'Rep. votes'
-                    },
-                    totalVotes: {
-                        headerFormat: 'Total votes',
-                        cellFormatter: function () {
-                            return Number(this.value).toLocaleString('en-US');
-                        }
-                    }
-                }
+            gridOptions: {
+                summaryRows: {
+                    id: 'national',
+                    position: 'top',
+                    aggregator: 'SUM',
+                    columns: [{
+                        id: 'state',
+                        value: 'National'
+                    }]
+                },
+                columns: getGridColumns()
             }
         }]
     }, true);
@@ -365,7 +413,7 @@ async function setupDashboard() {
         'change',
         function () {
             const selectedOption = this.options[this.selectedIndex];
-            const mapChart = getComponent(board, 'election-map').chart;
+            const mapChart = board.getComponentByCellId('election-map').chart;
 
             // Choose a different election year
             onYearClicked(board, selectedOption.value);
@@ -378,7 +426,7 @@ async function setupDashboard() {
 
 
     //
-    // Data set pre-processing (TBD: consider external script)
+    // Data set pre-processing
     //
     async function loadAndParseCsv(url, parser) {
         const data = await fetch(url)
@@ -474,7 +522,7 @@ async function setupDashboard() {
                     const percent = ((popVote / totalVote) * 100).toFixed(1);
 
                     // Accumulate nationwide data
-                    rowObj.state = state.toLowerCase(); // All state names are upper case
+                    rowObj.state = state;
                     rowObj['postal-code'] = postCode;
 
                     if (party === 'REPUBLICAN') {
@@ -516,8 +564,9 @@ async function setupDashboard() {
                                 repVotes = 0;
                             }
                         }
-                        rowObj.repColVotes = repVotes;
-                        rowObj.demColVotes = demVotes;
+                        // Numbers, so that the grid can aggregate them
+                        rowObj.repColVotes = Number(repVotes);
+                        rowObj.demColVotes = Number(demVotes);
                         rowObjNational.repColVotes += Number(repVotes);
                         rowObjNational.demColVotes += Number(demVotes);
 
@@ -548,7 +597,7 @@ async function setupDashboard() {
         for (let i = 1; i < lines.length; i++) {
             const line = lines[i];
             const items = line.split(';');
-            const state = items[0].toUpperCase();
+            const state = items[0];
 
             const obj = {};
             for (let j = 1; j < header.length; j++) {
@@ -591,15 +640,14 @@ async function setupDashboard() {
         const connectors = [];
 
         electionYears.forEach(function (year) {
+            const json = { type: 'JSON', firstRowAsNames: true },
+                data = electionData[year].data;
+
             connectors.push(
-                {
-                    id: 'votes' + year,
-                    type: 'JSON',
-                    options: {
-                        firstRowAsNames: true,
-                        data: electionData[year].data
-                    }
-                }
+                { id: 'votes' + year, ...json, data },
+                // Same data without the national row (index 1), which the
+                // grid renders as a summary row instead
+                { id: 'grid' + year, ...json, data: [data[0], ...data.slice(2)] }
             );
         });
         return connectors;
@@ -673,12 +721,9 @@ function getHistoricalElectionSeries(state, year) {
 
 
 async function getElectionTable(board, year) {
-    return await board.dataPool.getConnectorTable('votes' + year);
-}
-
-
-function getComponent(board, id) {
-    return board.mountedComponents.find(c => c.cell.id === id).component;
+    return await board.dataPool
+        .getConnector('votes' + year)
+        .then(connector => connector.getTable());
 }
 
 
@@ -689,13 +734,17 @@ async function updateResultComponent(electionTable, year) {
 
     // Candidate percentages/electors
     const row = electionTable.getRowIndexBy('postal-code', 'US');
-    const demColVotes = electionTable.getCellAsNumber('demColVotes', row);
-    const repColVotes = electionTable.getCellAsNumber('repColVotes', row);
+    const demColVotes =
+        convertToNumber(electionTable.getCell('demColVotes', row));
+    const repColVotes =
+        convertToNumber(electionTable.getCell('repColVotes', row));
     const totalColVotes = demColVotes + repColVotes;
-    const demVotes = electionTable.getCellAsNumber('demVotes', row);
-    const repVotes = electionTable.getCellAsNumber('repVotes', row);
-    const demPercent = electionTable.getCellAsNumber('demPercent', row);
-    const repPercent = electionTable.getCellAsNumber('repPercent', row);
+    const demVotes = convertToNumber(electionTable.getCell('demVotes', row));
+    const repVotes = convertToNumber(electionTable.getCell('repVotes', row));
+    const demPercent =
+        convertToNumber(electionTable.getCell('demPercent', row));
+    const repPercent =
+        convertToNumber(electionTable.getCell('repPercent', row));
 
     // Grab auxiliary data about the election (photos, description, etc.)
     const yearEl = document.querySelector('elections year#ei_' + year);
@@ -709,14 +758,14 @@ async function updateResultComponent(electionTable, year) {
 
     // Election information
     let el = document.getElementById('info-dem1');
-    el.innerHTML = `${candDem}: ${demColVotes}`;
+    el.textContent = `${candDem}: ${demColVotes}`;
     el = document.getElementById('info-dem2');
-    el.innerHTML = formatVotes(demVotes, demPercent, 'Total Votes');
+    el.textContent = formatVotes(demVotes, demPercent, 'Total Votes');
 
     el = document.getElementById('info-rep1');
-    el.innerHTML = `${candRep}: ${repColVotes}`;
+    el.textContent = `${candRep}: ${repColVotes}`;
     el = document.getElementById('info-rep2');
-    el.innerHTML = formatVotes(repVotes, repPercent, 'Total Votes');
+    el.textContent = formatVotes(repVotes, repPercent, 'Total Votes');
 
     // Result bar
     el = document.getElementById('bar-dem');
@@ -727,7 +776,7 @@ async function updateResultComponent(electionTable, year) {
     // Votes needed to win
     const neededVotes = Math.floor(totalColVotes / 2) + 1;
     el = document.getElementById('info-to-win');
-    el.innerHTML = neededVotes + ' to win';
+    el.textContent = neededVotes + ' to win';
 }
 
 
@@ -738,16 +787,21 @@ function updateControlComponent(year) {
     const descContainer = document.getElementById('election-description');
 
     // Update title with year
-    title.innerHTML = year + ' ' + commonTitle;
+    title.textContent = year + ' ' + commonTitle;
 
     // Brief text about the election
-    const brief = el.querySelector('descr').innerHTML;
+    const brief = el.querySelector('descr').cloneNode(true);
+    const link = document.createElement('a');
 
-    // Wikipedia link
-    const wikiUrl = el.querySelector('wiki').innerHTML;
+    link.textContent = 'Wikipedia';
+    link.target = '_blank';
+    link.href = 'https://en.wikipedia.org/wiki/' + Number(year) +
+        '_United_States_presidential_election';
 
     // Update custom HTML component
-    descContainer.innerHTML = `${brief}<a href="${wikiUrl}" target="_blank">Wikipedia</a>.`;
+    descContainer.replaceChildren(
+        ...brief.childNodes, link, document.createTextNode('.')
+    );
 }
 
 
@@ -759,8 +813,10 @@ async function updateMapComponent(component, electionTable, year) {
 
     voteSeries.forEach(async function (usState) {
         const row = electionTable.getRowIndexBy('postal-code', usState['postal-code']);
-        const percentRep = electionTable.getCellAsNumber('repPercent', row);
-        const percentDem = electionTable.getCellAsNumber('demPercent', row);
+        const percentRep =
+            convertToNumber(electionTable.getCell('repPercent', row));
+        const percentDem =
+            convertToNumber(electionTable.getCell('demPercent', row));
 
         usState.update({
             // Determine color
@@ -768,11 +824,14 @@ async function updateMapComponent(component, electionTable, year) {
             // For use in tooltip
             custom: {
                 winner: percentRep > percentDem ? electionData[year].candRep : electionData[year].candDem,
-                elVotesDem: electionTable.getCellAsNumber('demColVotes', row),
-                elVotesRep: electionTable.getCellAsNumber('repColVotes', row),
+                elVotesDem:
+                    convertToNumber(electionTable.getCell('demColVotes', row)),
+                elVotesRep:
+                    convertToNumber(electionTable.getCell('repColVotes', row)) || 0,
                 votesDem: electionTable.getCell('demVoteSummary', row),
                 votesRep: electionTable.getCell('repVoteSummary', row),
-                totalVotes: electionTable.getCellAsNumber('totalVotes', row)
+                totalVotes:
+                    convertToNumber(electionTable.getCell('totalVotes', row)) || 0
             }
         }, false); // No redraw at point level
     });
@@ -791,17 +850,13 @@ async function updateGridComponent(component, year) {
             text: year + ' ' + commonTitle
         },
         connector: {
-            id: 'votes' + year
+            id: 'grid' + year
         },
-        dataGridOptions: {
-            columns: {
-                repColVotes: {
-                    headerFormat: candRep + ' (Republican)'
-                },
-                demColVotes: {
-                    headerFormat: candDem + ' (Democrat)'
-                }
-            }
+        gridOptions: {
+            credits: {
+                enabled: false
+            },
+            columns: getGridColumns(candDem, candRep)
         }
     });
 }
@@ -828,34 +883,34 @@ async function onStateClicked(board, state) {
     const electionTable = await getElectionTable(board, electionYears[0]);
     const row = electionTable.getRowIndexBy('postal-code', state);
     const stateName = electionTable.getCell('state', row);
-    const stateTitle = stateName.charAt(0).toUpperCase() + stateName.slice(1);
+    const stateTitle = state === 'US' ? 'National' : stateName;
     const yearSelector = document.getElementById('election-year');
 
-    // Update chart title
-    const comp = getComponent(board, 'election-chart');
-    const barComponent = getComponent(board, 'election-chart-national');
+    // Update chart titles
+    const histComp = board.getComponentByCellId('election-chart-historical');
+    const elYearComp = board.getComponentByCellId('election-chart-year');
 
-    // Election data for current state
+    // Election data for currently selected state
     const stateSeries = getHistoricalElectionSeries(state);
     const yearStateSeries = getHistoricalElectionSeries(
         state, yearSelector.value
     );
 
-    await comp.update({
+    await histComp.update({
         chartOptions: {
             title: {
                 text: '<span class="title-bck-wrapper">Historic</span>' +
-                    (state === 'US' ? 'National' : stateTitle)
+                    stateTitle
             },
             series: stateSeries
         }
     });
 
-    await barComponent.update({
+    await elYearComp.update({
         chartOptions: {
             title: {
                 text: '<span class="title-bck-wrapper">' + yearSelector.value +
-                    '</span>' + (state === 'US' ? 'National' : stateTitle)
+                    '</span>' + stateTitle
             },
             series: yearStateSeries
         }
@@ -866,9 +921,9 @@ async function onStateClicked(board, state) {
 // Update board after changing data set (state or election year)
 async function onYearClicked(board, year) {
     // Dashboards components
-    const mapComponent = getComponent(board, 'election-map');
-    const gridComponent = getComponent(board, 'election-grid');
-    const barComponent = getComponent(board, 'election-chart-national');
+    const mapComponent = board.getComponentByCellId('election-map');
+    const gridComponent = board.getComponentByCellId('election-grid');
+    const elYearComp = board.getComponentByCellId('election-chart-year');
 
     // Get election data
     const electionTable = await getElectionTable(board, year);
@@ -883,11 +938,11 @@ async function onYearClicked(board, year) {
     resetMap(mapComponent.chart);
     updateMapComponent(mapComponent, electionTable, year);
 
-    // Update data grid component (Dashboards datagrid)
+    // Update data grid component (Dashboards grid)
     updateGridComponent(gridComponent, year);
 
     // Update national bar chart
-    updateBarComponent(barComponent, year);
+    updateBarComponent(elYearComp, year);
 }
 
 

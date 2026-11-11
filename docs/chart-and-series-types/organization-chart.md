@@ -1,9 +1,16 @@
+---
+description: >-
+  Build a hierarchy from nodes and links, then use node data labels as HTML
+  cards with optional titles, descriptions, and images. The article also
+  shows how to style nodes by level.
+---
+
 Organization chart
 ===
 
 An organization chart (org chart) is a diagram that portrays the structure of an organization and the relationships and relative ranks of its parts and positions.
 
-<iframe style="width: 100%; height: 700px; border: none;" src=https://www.highcharts.com/samples/embed/highcharts/demo/organization-chart allow="fullscreen"></iframe>
+<iframe style="width: 100%; height: 700px; border: none;" src="https://www.highcharts.com/samples/embed/highcharts/demo/organization-chart" allow="fullscreen"></iframe>
 
 Options structure
 -----------------

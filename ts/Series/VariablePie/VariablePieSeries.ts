@@ -2,11 +2,13 @@
  *
  *  Variable Pie module for Highcharts
  *
- *  (c) 2010-2024 Grzegorz Blachliński
+ *  (c) 2010-2026 Highsoft AS
+ *  Author: Grzegorz Blachliński
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  * */
 
@@ -21,21 +23,17 @@ import type DataLabel from '../../Core/Series/DataLabel';
 import type VariablePiePoint from './VariablePiePoint';
 import type VariablePieSeriesOptions from './VariablePieSeriesOptions';
 
+import PieSeries from '../Pie/PieSeries.js';
 import SeriesRegistry from '../../Core/Series/SeriesRegistry.js';
-const {
-    pie: PieSeries
-} = SeriesRegistry.seriesTypes;
-import U from '../../Core/Utilities.js';
-const {
+import VariablePieSeriesDefaults from './VariablePieSeriesDefaults.js';
+import {
     arrayMax,
     arrayMin,
     clamp,
     extend,
     fireEvent,
-    merge,
-    pick
-} = U;
-import VariablePieSeriesDefaults from './VariablePieSeriesDefaults.js';
+    merge
+} from '../../Shared/Utilities.js';
 
 /* *
  *
@@ -43,8 +41,9 @@ import VariablePieSeriesDefaults from './VariablePieSeriesDefaults.js';
  *
  * */
 
-declare module '../../Core/Series/SeriesLike' {
-    interface SeriesLike {
+/** @internal */
+declare module '../../Core/Series/SeriesBase' {
+    interface SeriesBase {
         maxPxSize?: number;
         minPxSize?: number;
     }
@@ -59,7 +58,6 @@ declare module '../../Core/Series/SeriesLike' {
 /**
  * The variablepie series type.
  *
- * @private
  * @class
  * @name Highcharts.seriesTypes.variablepie
  *
@@ -73,6 +71,7 @@ class VariablePieSeries extends PieSeries {
      *
      * */
 
+    /** @internal */
     public static defaultOptions: VariablePieSeriesOptions = merge(
         PieSeries.defaultOptions,
         VariablePieSeriesDefaults
@@ -90,6 +89,7 @@ class VariablePieSeries extends PieSeries {
 
     public points!: Array<VariablePiePoint>;
 
+    /** @internal */
     public radii!: Array<number>;
 
     /* *
@@ -101,7 +101,7 @@ class VariablePieSeries extends PieSeries {
     /**
      * Before standard translate method for pie chart it is needed to calculate
      * min/max radius of each pie slice based on its Z value.
-     * @private
+     * @internal
      */
     calculateExtremes(): void {
         const series = this,
@@ -110,7 +110,7 @@ class VariablePieSeries extends PieSeries {
             plotHeight = chart.plotHeight,
             seriesOptions = series.options,
             slicingRoom = 2 * (seriesOptions.slicedOffset || 0),
-            zData: Array<number> = series.zData as any,
+            zData = [...this.getColumn('z', false, true)],
             smallestSize = Math.min(plotWidth, plotHeight) - slicingRoom,
             // Min and max size of pie slice:
             extremes: Record<string, number> = {},
@@ -140,14 +140,10 @@ class VariablePieSeries extends PieSeries {
         );
 
         if (zData.length) {
-            zMin = pick(
-                seriesOptions.zMin,
-                arrayMin(zData.filter(series.zValEval))
-            );
-            zMax = pick(
-                seriesOptions.zMax,
-                arrayMax(zData.filter(series.zValEval))
-            );
+            zMin =
+                seriesOptions.zMin ?? arrayMin(zData.filter(series.zValEval));
+            zMax =
+                seriesOptions.zMax ?? arrayMax(zData.filter(series.zValEval));
             this.getRadii(zMin, zMax, series.minPxSize, series.maxPxSize);
         }
     }
@@ -156,7 +152,7 @@ class VariablePieSeries extends PieSeries {
      * Finding radius of series points based on their Z value and min/max Z
      * value for all series.
      *
-     * @private
+     * @internal
      * @function Highcharts.Series#getRadii
      *
      * @param {number} zMin
@@ -170,7 +166,7 @@ class VariablePieSeries extends PieSeries {
      * @param {number} minSize
      * Minimal pixel size possible for radius.
      *
-     * @param {numbner} maxSize
+     * @param {number} maxSize
      * Minimal pixel size possible for radius.
      */
     public getRadii(
@@ -179,7 +175,7 @@ class VariablePieSeries extends PieSeries {
         minSize: number,
         maxSize: number
     ): void {
-        const zData: Array<number> = this.zData as any,
+        const zData: Array<number> = [...this.getColumn('z', false, true)],
             radii: Array<number> = [],
             options = this.options,
             sizeByArea = options.sizeBy !== 'radius',
@@ -219,14 +215,14 @@ class VariablePieSeries extends PieSeries {
     /**
      * It is needed to null series.center on chart redraw. Probably good idea
      * will be to add this option in directly in pie series.
-     * @private
+     * @internal
      */
     public redraw(): void {
         this.center = null as any;
         super.redraw();
     }
 
-    /** @private */
+    /** @internal */
     getDataLabelPosition(
         point: VariablePiePoint,
         distance: number
@@ -277,7 +273,7 @@ class VariablePieSeries extends PieSeries {
     /**
      * Extend translate by updating radius for each pie slice instead of using
      * one global radius.
-     * @private
+     * @internal
      */
     public translate(positions?: Array<number>): void {
 
@@ -289,10 +285,9 @@ class VariablePieSeries extends PieSeries {
             slicedOffset: number = options.slicedOffset as any,
             startAngle = options.startAngle || 0,
             startAngleRad = Math.PI / 180 * (startAngle - 90),
-            endAngleRad = Math.PI / 180 * (pick(
-                options.endAngle,
-                startAngle + 360
-            ) - 90),
+            endAngleRad = Math.PI / 180 * (
+                (options.endAngle ?? startAngle + 360) - 90
+            ),
             circ = endAngleRad - startAngleRad, // 2 * Math.PI,
             points = series.points,
             ignoreHiddenPoint = options.ignoreHiddenPoint;
@@ -379,7 +374,7 @@ class VariablePieSeries extends PieSeries {
      * For arrayMin and arrayMax calculations array shouldn't have
      * null/undefined/string values. In this case it is needed to check if
      * points Z value is a Number.
-     * @private
+     * @internal
      */
     public zValEval(zVal: (number|string|undefined)): (boolean|null) {
         if (typeof zVal === 'number' && !isNaN(zVal)) {

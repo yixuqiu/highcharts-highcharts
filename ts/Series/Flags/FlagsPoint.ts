@@ -1,10 +1,12 @@
 /* *
  *
- *  (c) 2010-2024 Torstein Honsi
+ *  (c) 2010-2026 Highsoft AS
+ *  Author: Torstein Hønsi
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  * */
 
@@ -20,16 +22,17 @@ import type ColorType from '../../Core/Color/ColorType';
 import type CSSObject from '../../Core/Renderer/CSSObject';
 import type FlagsPointOptions from './FlagsPointOptions';
 import type FlagsSeries from './FlagsSeries';
-import SeriesRegistry from '../../Core/Series/SeriesRegistry.js';
-const {
-    column: {
-        prototype: {
-            pointClass: ColumnPoint
-        }
-    }
-} = SeriesRegistry.seriesTypes;
-import U from '../../Core/Utilities.js';
-const { isNumber } = U;
+
+import ColumnSeries from '../Column/ColumnSeries.js';
+import { isNumber } from '../../Shared/Utilities.js';
+
+/* *
+ *
+ *  Constants
+ *
+ * */
+
+const ColumnPoint = ColumnSeries.prototype.pointClass;
 
 /* *
  *
@@ -45,26 +48,36 @@ class FlagsPoint extends ColumnPoint {
      *
      * */
 
+    /** @internal */
     public _y?: number;
 
+    /** @internal */
     public anchorX?: number;
 
     public options!: FlagsPointOptions;
 
+    /** @internal */
     public series!: FlagsSeries;
 
+    /** @internal */
     public fillColor?: ColorType;
 
+    /** @internal */
     public lineWidth?: number;
 
+    /** @internal */
     public raised?: boolean;
 
+    /** @internal */
     public stackIndex?: number;
 
+    /** @internal */
     public style?: CSSObject;
 
+    /** @internal */
     public ttBelow?: boolean = false;
 
+    /** @internal */
     public unbindMouseOver?: Function;
 
     /* *
@@ -74,7 +87,7 @@ class FlagsPoint extends ColumnPoint {
      * */
 
     /**
-     * @private
+     * @internal
      */
     public isValid(): boolean {
         // #9233 - Prevent from treating flags as null points (even if
@@ -83,7 +96,7 @@ class FlagsPoint extends ColumnPoint {
     }
 
     /**
-     * @private
+     * @internal
      */
     public hasNewShapeType(): (boolean|undefined) {
         const shape = this.options.shape || this.series.options.shape;

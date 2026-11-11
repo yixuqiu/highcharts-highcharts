@@ -2,11 +2,13 @@
  *
  *  Vector plot series module
  *
- *  (c) 2010-2024 Torstein Honsi
+ *  (c) 2010-2026 Highsoft AS
+ *  Author: Torstein Hønsi
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  * */
 
@@ -70,7 +72,7 @@ const VectorSeriesDefaults: VectorSeriesOptions = {
         hover: {
 
             /**
-             * Additonal line width for the vector errors when they are
+             * Additional line width for the vector errors when they are
              * hovered.
              */
             lineWidthPlus: 1
@@ -98,7 +100,7 @@ const VectorSeriesDefaults: VectorSeriesOptions = {
  * specified, it is inherited from [chart.type](#chart.type).
  *
  * @extends   series,plotOptions.vector
- * @excluding dataParser, dataURL, boostThreshold, boostBlending
+ * @excluding boostThreshold, boostBlending
  * @product   highcharts highstock
  * @requires  modules/vector
  * @apioption series.vector
@@ -148,6 +150,7 @@ const VectorSeriesDefaults: VectorSeriesOptions = {
  * @sample {highcharts} highcharts/series/data-array-of-objects/
  *         Config objects
  *
+ * @basic
  * @type      {Array<Array<(number|string),number,number,number>|*>}
  * @extends   series.line.data
  * @product   highcharts highstock

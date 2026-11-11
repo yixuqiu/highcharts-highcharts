@@ -1,3 +1,18 @@
+QUnit.test(
+    'Only one body element in the document when using useHTML (#24839)',
+    function (assert) {
+        const chart = Highcharts.chart('container', {});
+
+        chart.renderer.text('Hello', 10, 10, true).add();
+
+        assert.strictEqual(
+            document.querySelectorAll('body').length,
+            1,
+            'There should only be one body element in the document'
+        );
+    }
+);
+
 QUnit.test('Hide label with useHTML (#4938)', function (assert) {
     var chart = Highcharts.chart('container', {}),
         renderer = chart.renderer,
@@ -19,7 +34,28 @@ QUnit.test('Hide label with useHTML (#4938)', function (assert) {
     );
 });
 
-QUnit.test('Legend rtl and useHTML(#4449)', function (assert) {
+QUnit.test(
+    'hide() must visually hide a useHTML element (#24606)',
+    function (assert) {
+        const renderer = new Highcharts.Renderer(
+                document.getElementById('container'),
+                400,
+                300
+            ),
+            text = renderer.text('Label', 100, 100, true).add();
+
+        text.hide();
+
+        assert.strictEqual(
+            window.getComputedStyle(text.element).visibility,
+            'hidden',
+            'Text element is hidden'
+        );
+
+        renderer.destroy();
+    });
+
+QUnit.test('Legend rtl and useHTML (#4449)', function (assert) {
     var ren = new Highcharts.Renderer(
         document.getElementById('container'),
         500,
@@ -47,9 +83,12 @@ QUnit.test('Legend rtl and useHTML(#4449)', function (assert) {
     });
 
     assert.strictEqual(
-        text.element.offsetLeft + text.element.offsetWidth,
+        text.foreignObject.attr('x') +
+            text.foreignObject.attr('width') -
+            // 4 is the additional width of the foreign object
+            4,
         100,
-        'Text is right aligned'
+        'Text should be right aligned'
     );
 });
 // Highcharts 4.0.1, Issue #3158
@@ -99,12 +138,14 @@ QUnit.test('Text word wrap with a long word (#3158)', function (assert) {
 });
 
 QUnit.test('Text word wrap with markup', function (assert) {
-    var renderer = new Highcharts.Renderer(
+    const renderer = new Highcharts.Renderer(
             document.getElementById('container'),
             400,
             300
         ),
-        width = 100;
+        width = 100,
+        fontSize = 12;
+
     renderer
         .rect(100, 20, width, 100)
         .attr({
@@ -113,7 +154,7 @@ QUnit.test('Text word wrap with markup', function (assert) {
         })
         .add();
 
-    var text = renderer
+    const text = renderer
         .text(
             'The quick <span style="color:brown">brown</span> fox jumps <em>' +
             'over</em> the lazy dog',
@@ -121,7 +162,8 @@ QUnit.test('Text word wrap with markup', function (assert) {
             40
         )
         .css({
-            fontSize: '12px',
+            fontFamily: 'Helvetica, Arial, sans-serif',
+            fontSize: fontSize + 'px',
             width: width + 'px'
         })
         .add();
@@ -148,51 +190,60 @@ QUnit.test('Text word wrap with markup', function (assert) {
         text: '<a href="https://www.highcharts.com">The quick brown fox jumps over the lazy dog</a>'
     });
 
+    const currentHeight = text.getBBox().height;
     assert.ok(
-        text.getBBox().width <= 100,
-        'Text directly inside anchor should be wrapped (#16173)'
+        Highcharts.clamp(
+            currentHeight,
+            3 * (fontSize + 1),
+            4 * (fontSize + 1)
+        ) === currentHeight,
+        'Text directly inside anchor should be wrapped (#16173) twice.'
+    );
+
+    text.attr({
+        text: 'Marked-up word <strong>finally</strong>'
+    });
+
+    assert.strictEqual(
+        text.element.querySelectorAll('tspan[x="100"]').length,
+        1,
+        'One line break should be applied (#22187)'
     );
 });
 
-QUnit.module('whiteSpace: "nowrap"', hooks => {
+QUnit.test('Skip tspans', assert => {
     const { Renderer } = Highcharts;
     const renderer = new Renderer(
         document.getElementById('container'),
         400,
         300
     );
-    const text = renderer
-        .text('test', 100, 40)
-        .css({
-            whiteSpace: 'nowrap'
-        })
-        .add();
+    try {
+        const text = renderer
+            .text('test', 100, 40)
+            .css({
+                whiteSpace: 'nowrap'
+            })
+            .add();
 
-    // Cleanup
-    hooks.after(() => {
-        renderer.destroy();
-        text.destroy();
-    });
-
-    QUnit.test('Skip tspans', assert => {
         text.attr({ text: 'single_word' });
         assert.strictEqual(
             text.element.innerHTML,
             'single_word',
-            'should not use tspan when whiteSpace equals "nowrap", and text ' +
-            'equals "single_word".'
+            'should not use tspan when whiteSpace equals "nowrap", and ' +
+            'text equals "single_word".'
         );
 
         text.attr({ text: 'two words' });
         assert.strictEqual(
             text.element.innerHTML,
             'two words',
-            'should not use tspan when whiteSpace equals "nowrap", and text ' +
-            'equals "two words".'
+            'should not use tspan when whiteSpace equals "nowrap", and ' +
+            'text equals "two words".'
         );
-    });
-
-    // TODO: move rest of nowrap tests into this module.
+    } finally {
+        renderer.destroy();
+    }
 });
 
 QUnit.test('Text word wrap with nowrap and break (#5689)', function (assert) {
@@ -239,7 +290,7 @@ QUnit.test('Text word wrap with nowrap and break (#5689)', function (assert) {
 
 QUnit.test('titleSetter', function (assert) {
     var chart = Highcharts.chart('container', {}),
-        str = 'The quick brown fox<br> jumps over the lazy dog',
+        str = 'TheQuickBrownFox<br>JumpsOverTheLazyDog',
         newTitle = 'Quick brown fox',
         text = chart.renderer
             .text(str, 100, 100)
@@ -249,10 +300,10 @@ QUnit.test('titleSetter', function (assert) {
     assert.strictEqual(
         text.element.getElementsByTagName(
             'title'
-        )[0].textContent, // Ideally there should be a
+        )[0]?.textContent, // Ideally there should be a
         // titleGetter. text.attr('title')
         str.replace('<br>', ''),
-        'Text element has a correct title. #5211'
+        'Text element title should match the original string. #5211'
     );
 
     // Update the title tag with a shorter text
@@ -344,8 +395,8 @@ QUnit.test('textOverflow: ellipsis.', function (assert) {
         getTextContent(text2),
         'Consistent result between different strings. #6258'
     );
-    // TODO 0px does not work, because ellipsis and breaks are not applied
-    // when width is considered falsy.
+
+    // In accordance with HTML/CSS, 0px does not work
     style.width = '1px';
     text1.destroy();
     text1 = ren.text('01234567', 0, 100).css(style).add();
@@ -353,6 +404,14 @@ QUnit.test('textOverflow: ellipsis.', function (assert) {
         getTextContent(text1),
         '',
         'Width was too small for ellipsis.'
+    );
+
+    text1.destroy();
+    text1 = ren.text('0123-4567', 0, 100).css({ lineClamp: 1, ...style }).add();
+    assert.strictEqual(
+        getTextContent(text1),
+        '',
+        'Width was too small for ellipsis (with lineClamp and hyphenation).'
     );
 
     /**
@@ -397,7 +456,8 @@ QUnit.test('textOverflow: ellipsis.', function (assert) {
         .text('The quick brown fox jumps over the lazy dog', 30, 30)
         .css({
             width: '100px',
-            textOverflow: 'ellipsis'
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap'
         })
         .add();
     assert.strictEqual(
@@ -405,6 +465,167 @@ QUnit.test('textOverflow: ellipsis.', function (assert) {
         1,
         'Ellipsis text should have a title tag'
     );
+
+    text1.destroy();
+    text1 = ren
+        .text('The quick brown fox jumps over the lazy dog', 30, 30)
+        .css({
+            width: '100px',
+            textOverflow: 'ellipsis'
+        })
+        .add();
+    assert.ok(
+        text1.getBBox().width <= 100,
+        'Multiline ellipsis, the width should be constrained'
+    );
+    assert.close(
+        text1.element.querySelectorAll('tspan[dy]').length,
+        3,
+        1.00001,
+        'Three line breaks should be applied'
+    );
+
+    text1.destroy();
+    text1 = ren
+        .text('Datavisualiseringsprodusent søkjer grafikkmedarbeidar', 30, 30)
+        .css({
+            width: '100px',
+            textOverflow: 'ellipsis'
+        })
+        .add();
+    assert.ok(
+        text1.getBBox().width <= 100,
+        'Multiline ellipsis, the width should be constrained'
+    );
+    assert.notEqual(
+        text1.element.textContent.indexOf('\u2026'),
+        -1,
+        'Ellipsis should be present'
+    );
+    assert.notEqual(
+        text1.element.textContent.lastIndexOf('\u2026'),
+        -1,
+        'Ellipsis should be present'
+    );
+    assert.notEqual(
+        text1.element.textContent.indexOf('\u2026'),
+        text1.element.textContent.lastIndexOf('\u2026'),
+        'Two ellipsis should be present'
+    );
+
+});
+
+
+QUnit.test('lineClamp', function (assert) {
+    const ren = new Highcharts.Renderer(
+        document.getElementById('container'),
+        600,
+        400
+    );
+
+    try {
+        const textSVG = ren.text(
+            'The quick brown fox jumps over the lazy dog',
+            30,
+            30
+        )
+            .css({
+                lineClamp: 2,
+                width: '100px'
+            })
+            .add();
+
+        assert.strictEqual(
+            textSVG.element.querySelectorAll('tspan[dy]').length,
+            1,
+            'Exactly one line break should be applied'
+        );
+
+        const height = textSVG.getBBox().height;
+
+        const textHTML = ren.text(
+            'The quick brown fox jumps over the lazy dog',
+            130,
+            30,
+            true
+        )
+            .css({
+                lineClamp: 2,
+                width: '100px'
+            })
+            .add();
+
+        assert.close(
+            textHTML.getBBox().height,
+            height,
+            2.5,
+            'The HTML bounding box should be approximately the same as the SVG'
+        );
+    } finally {
+        ren.destroy();
+    }
+});
+
+QUnit.test('lineClamp with textOverflow ellipsis (#24724)', function (assert) {
+    const ren = new Highcharts.Renderer(
+            document.getElementById('container'),
+            600,
+            400
+        ),
+        str = 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. ' +
+            'Nullam in dui mauris.';
+
+    /**
+     * Render the string with and without `useHTML` for a given line clamp, and
+     * return the rendered heights. Note that `getBBox` can't be used here,
+     * because the SVG and HTML texts share the same bounding box cache key.
+     * @param {number} lineClamp The line clamp to apply
+     * @return {Array<number>} The SVG and the HTML height
+     */
+    function heights(lineClamp) {
+        return [false, true].map(
+            useHTML => ren
+                .text(str, 30, 30, useHTML)
+                .css({
+                    width: '200px',
+                    textOverflow: 'ellipsis',
+                    lineClamp
+                })
+                .add()
+                .element
+                .getBoundingClientRect()
+                .height
+        );
+    }
+
+    try {
+        const [svg1, html1] = heights(1),
+            [svg2, html2] = heights(2);
+
+        assert.close(
+            html1,
+            svg1,
+            2.5,
+            'With `lineClamp: 1`, the HTML text should stay on one line like ' +
+            'the SVG text'
+        );
+
+        assert.ok(
+            html2 > html1,
+            'With `lineClamp: 2`, the HTML text should wrap instead of ' +
+            'staying on one line'
+        );
+
+        assert.close(
+            html2,
+            svg2,
+            2.5,
+            'With `lineClamp: 2`, the HTML text should be clamped to the ' +
+            'same height as the SVG text'
+        );
+    } finally {
+        ren.destroy();
+    }
 });
 
 QUnit.test('BBox for mulitiple lines', function (assert) {
@@ -486,15 +707,21 @@ QUnit.test('HTML', function (assert) {
             'Tags don\'t start with spaces (#7126)'
         );
 
-        var html = renderer.text('useHTML', 100, 100, true).add();
+        text = renderer.text('useHTML', 100, 100, true).add();
+
         assert.close(
-            html.element.offsetLeft,
+            text.foreignObject ?
+                text.foreignObject.attr('x') :
+                text.element.offsetLeft,
             100,
             1,
             'Left offset should reflect initial position'
         );
         assert.close(
-            html.element.offsetHeight + html.element.offsetTop,
+            text.foreignObject ?
+                text.foreignObject.attr('height') +
+                    text.foreignObject.attr('y') :
+                text.element.offsetHeight + text.element.offsetTop,
             100,
             10,
             'Top offset should reflect initial position'
@@ -513,6 +740,7 @@ QUnit.test('HTML', function (assert) {
             '100px',
             'The style width should should now 100px'
         );
+
         text.css({
             fontWeight: 'bold'
         });
@@ -528,7 +756,7 @@ QUnit.test('HTML', function (assert) {
         });
         assert.strictEqual(
             text.element.style.width,
-            '',
+            'auto',
             'The style width should be removed when setting to null'
         );
 
@@ -546,7 +774,7 @@ QUnit.test('HTML', function (assert) {
         });
         assert.strictEqual(
             text.element.style.width,
-            '',
+            'auto',
             'The style width should be removed when setting to undefined'
         );
 
@@ -740,6 +968,17 @@ QUnit.test('Text height', function (assert) {
             })
             .add();
 
+        // Backwards compatibility, #22807
+        assert.deepEqual(
+            renderer.fontMetrics(14),
+            {
+                h: 17,
+                b: 14,
+                f: 14
+            },
+            'Number should be supported by fontMetrics.'
+        );
+
         // Highcharts 4.1.1, Issue #3842:
         // Bar dataLabels positions in 4.1.x - Firefox, Internet Explorer
         assert.equal(
@@ -888,11 +1127,12 @@ QUnit.test('textPath', assert => {
 
     const text = ren
         .text('Hello path', 20, 20)
-        .setTextPath(path, {})
-        .add();
+        .add()
+        .setTextPath(path, {});
 
     const textPathHref = text.element.querySelector('textPath')
         .getAttribute('href');
+
     assert.ok(
         textPathHref,
         'A `textPath` element should be present'
@@ -924,7 +1164,8 @@ QUnit.test('textPath', assert => {
     text.css({
         width: '100px',
         overflow: 'hidden',
-        textOverflow: 'ellipsis'
+        textOverflow: 'ellipsis',
+        whiteSpace: 'nowrap'
     });
     assert.ok(
         text.element.textContent.indexOf('\u2026') !== -1,
@@ -943,3 +1184,36 @@ QUnit.test('textPath', assert => {
 
     ren.destroy();
 });
+
+QUnit.test(
+    'Rotated useHTML text without initial position (#25277)',
+    function (assert) {
+        const chart = Highcharts.chart('container', {}),
+            text = chart.renderer
+                .text('Rotated', undefined, undefined, true)
+                .attr({ rotation: -45 })
+                .add(),
+            foreignObject = text.foreignObject.element;
+
+        assert.notOk(
+            /NaN/.test(foreignObject.getAttribute('transform')),
+            'The foreign object should not be rotated around a NaN origin'
+        );
+        assert.strictEqual(
+            foreignObject.getAttribute('x'),
+            null,
+            'An unpositioned foreign object should not be laid out'
+        );
+
+        text.attr({ x: 100, y: 50 });
+
+        assert.ok(
+            foreignObject.getAttribute('transform').includes(
+                'rotate(-45 100 50)'
+            ),
+            'The rotation origin should follow the position once it is set'
+        );
+
+        text.destroy();
+    }
+);

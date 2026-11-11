@@ -1,13 +1,15 @@
 /* *
  *
- *  (c) 2009-2024 Highsoft AS
+ *  (c) 2009-2026 Highsoft AS
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  *  Authors:
- *  - Karol Kolodziej
+ *  - Karol Kołodziej
+ *  - Kamil Kubik
  *
  * */
 
@@ -18,7 +20,10 @@
  * */
 
 import type DataConnectorOptions from './DataConnectorOptions';
-
+import type {
+    BasicColumn as DataTableBasicColumn
+} from '../DataTable';
+import type { DataTableConnectorOptions } from './DataConnectorOptions';
 
 /* *
  *
@@ -28,8 +33,15 @@ import type DataConnectorOptions from './DataConnectorOptions';
 
 /**
  * Options of the GoogleSheetsConnector.
+ *
+ * @sample grid-lite/basic/data-connector-google-sheets
+ *         Grid with Google Sheets connector
  */
 export interface GoogleSheetsConnectorOptions extends DataConnectorOptions {
+    /**
+     * The corresponding connector type.
+     */
+    type: 'GoogleSheets';
     /**
      * The rate in seconds for polling for live data.
      * Note that polling requires the option `enablePolling` to be true.
@@ -52,14 +64,15 @@ export interface GoogleSheetsConnectorOptions extends DataConnectorOptions {
      */
     firstRowAsNames?: boolean;
     /**
-     * The key for a Google Spreadsheet to load. See [general information
-     * on GS](https://developers.google.com/gdata/samples/spreadsheet_sample).
+     * The API key for a Google Spreadsheet (user's credentials).
+     * See [general information on GS](https://developers.google.com/sheets/api/quickstart/js#create_an_api_key).
      */
     googleAPIKey: string;
     /**
-     * The Google Spreadsheet worksheet to use in combination with
-     * [googleSpreadsheetKey](#data.googleSpreadsheetKey). The available id's from
-     * your sheet can be read from `https://spreadsheets.google.com/feeds/worksheets/{key}/public/basic`.
+     * The Google Spreadsheet key that identifies the sheet to use. See
+     * [general information on googleSpreadsheetKey](#data.googleSpreadsheetKey).
+     * The key for a sheet can be extracted from the sheet's URL
+     * `https://docs.google.com/spreadsheets/d/{key}`.
      */
     googleSpreadsheetKey: string;
     /**
@@ -80,10 +93,76 @@ export interface GoogleSheetsConnectorOptions extends DataConnectorOptions {
      * The number of the first row to load.
      */
     startRow?: number;
+
     /**
-     * The number of the worksheet to load.
+     * Allows defining multiple data tables within a single connector to adjust
+     * options or data parsing in various ways based on the same data source.
+     *
+     * ```js
+     * dataPool: {
+     *     connectors: [{
+     *         id: 'data-connector',
+     *         type: 'JSON',
+     *         data: {
+     *             kpis: { a: 1, b: 2 },
+     *             more: {
+     *                 alpha: [1, 2, 3, 4, 5],
+     *                 beta: [10, 20, 30, 40, 50]
+     *             }
+     *         },
+     *         dataTables: [{
+     *             key: 'more',
+     *             beforeParse: function ({ more }) {
+     *                 const keys = Object.keys(more);
+     *                 return [
+     *                     keys,
+     *                     ...more[keys[0]].map((_, index) =>
+     *                         keys.map(key => more[key][index])
+     *                     )
+     *                 ];
+     *             }
+     *         }, {
+     *             key: 'kpis',
+     *             firstRowAsNames: false,
+     *             columnIds: ['a', 'b'],
+     *             beforeParse: function ({ kpis }) {
+     *                 return [[kpis.a, kpis.b]];
+     *             },
+     *             dataModifier: {
+     *                 type: 'Math',
+     *                 columnFormulas: [{
+     *                     column: 'c',
+     *                     formula: 'A1+B1'
+     *                 }]
+     *             }
+     *         }]
+     *     }]
+     * }
+     * ```
+     **/
+    dataTables?: GoogleSheetsDataTableConnectorOptions[];
+
+    /**
+     * A custom callback function that parses the data before it's being parsed
+     * to the data table format inside the converter.
      */
-    worksheet?: number;
+    beforeParse?: GoogleSheetsBeforeParseCallbackFunction;
+}
+
+/**
+ * Options of the GoogleSheetsConnector dataTable.
+ */
+export interface GoogleSheetsDataTableConnectorOptions extends DataTableConnectorOptions {
+    beforeParse?: GoogleSheetsBeforeParseCallbackFunction;
+}
+
+/**
+ * Callback function allowing modification of the GoogleSheets data
+ * before parsing it. Must return an array of DataTable columns.
+ *
+ */
+export interface GoogleSheetsBeforeParseCallbackFunction {
+    (data: DataTableBasicColumn[]): DataTableBasicColumn[];
 }
 
 /* *

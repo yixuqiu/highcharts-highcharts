@@ -1,3 +1,10 @@
+---
+description: >-
+  Customize tooltip appearance, content, and positioning with chart options or
+  CSS. Learn about formatters, HTML content, shared and split tooltips, fixed
+  placement, and crosshairs that connect points to axes.
+---
+
 Tooltip
 =======
 
@@ -10,7 +17,7 @@ Appearance
 
  The following code example shows the most common appearance options for tooltip:
 
-```js
+```javascript
 tooltip: {
     backgroundColor: '#FCFFC5',
     borderColor: 'black',
@@ -21,27 +28,57 @@ tooltip: {
 
 The background color can also be set to a gradient, see [an example](https://jsfiddle.net/gh/get/library/pure/highcharts/highcharts/tree/master/samples/highcharts/tooltip/backgroundcolor-gradient/). Text properties can be set using the [style](https://api.highcharts.com/highcharts/tooltip.style) option.
 
+Alternatively, the tooltip can be styled with CSS by enabling [styled mode](https://www.highcharts.com/docs/chart-design-and-style/style-by-css):
+
+```css
+.highcharts-tooltip-box {
+    fill: #FCFFC5;
+    stroke: black;
+    stroke-width: 3;
+}
+```
+
+**Note:** Since the tooltip content is rendered as SVG by default, you have to specify SVG properties such as `fill` and `stroke` in CSS.
+
 Tooltip formatting
 ------------------
 
 The tooltip's content is rendered from a subset of HTML that can be altered in a number of ways, all in all giving the implementer full control over the content. In addition to options on the [tooltip](https://api.highcharts.com/highcharts/tooltip) configuration object, you can set the options for how each series should be represented in the tooltip by [series.tooltip](https://api.highcharts.com/highcharts/plotOptions.series.tooltip). 
 
-*   The header part of the tooltip can be altered using the [tooltip.headerFormat](https://api.highcharts.com/highcharts/tooltip.headerFormat). In a shared tooltip, the first series' headerFormat is used.
+*   The header part of the tooltip can be altered using the [tooltip.headerFormat](https://api.highcharts.com/highcharts/tooltip.headerFormat). In a shared tooltip, the first series' headerFormat is used. In v12+, locale-aware date names for `point.key` follow the browser's casing (often lower-case), so use `{ucfirst point.key}` if you want a capitalized header.
 *   The listing of each series is given in the [tooltip.pointFormat](https://api.highcharts.com/highcharts/tooltip.pointFormat) option, or an individual pointFormat for each series. 
 *   The footer part can be set in the [tooltip.footerFormat](https://api.highcharts.com/highcharts/tooltip.footerFormat) option.
 *   All the options above can be overridden by the [tooltip.formatter](https://api.highcharts.com/highcharts/tooltip.formatter) callback for programmatic control.
 
 By default the tooltip only allows a subset of HTML because the HTML is parsed and rendered using SVG. By setting the [useHTML](https://api.highcharts.com/highcharts/tooltip.useHTML) option to true, the renderer switches to full HTML, which allows for instance table layouts or images inside the tooltip.
 
+For clickable links inside the tooltip, use [tooltip.stickOnContact](https://api.highcharts.com/highcharts/tooltip.stickOnContact). This keeps the tooltip visible when moving the pointer from the point to the tooltip content. See [an example](https://jsfiddle.net/gh/get/library/pure/highcharts/highcharts/tree/master/samples/highcharts/tooltip/stickoncontact-anchor-link/).
+
 ```js
 tooltip: {
-    formatter: function() {
-        return 'The value for <b>' + this.x + '</b> is <b>' + this.y + '</b>, in series '+ this.series.name;
-    }
+    format: 'The value for <b>{x}</b> is <b>{y}</b>, in series {series.name}'
 }
 ```
 
-For more info about formatting see [Labels and string formatting](https://www.highcharts.com/docs/chart-concepts/labels-and-string-formatting)
+For more info about formatting see [Labels and string
+formatting](https://www.highcharts.com/docs/chart-concepts/labels-and-string-formatting)
+
+Positioning
+-----------
+Highcharts offers several options to tailor tooltip positioning to your needs,
+improving both functionality and design.
+
+* **Shared** tooltips are great for charts with multiple series. A single tooltip
+displays information for all series at a specific x-axis value, reducing clutter
+and making comparisons easier. See
+[tooltip.shared](https://api.highcharts.com/highcharts/tooltip.shared).
+* **Split** tooltips display separate tooltips for each series point, which can
+  be useful when detailed information for each data point is needed. See
+  [tooltip.split](https://api.highcharts.com/highcharts/tooltip.split).
+* **Fixed** tooltips (since v12.2) display the tooltips in a fixed position on
+  the chart - by default the top left corner of the data pane. Fixed tooltips
+  can be combined with `shared` or `split`. See
+  [tooltip.fixed](https://api.highcharts.com/highcharts/tooltip.fixed).
 
 Crosshairs
 ----------

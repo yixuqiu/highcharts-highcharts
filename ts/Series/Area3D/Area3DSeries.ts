@@ -1,10 +1,12 @@
 /* *
  *
- *  (c) 2010-2024 Grzegorz Blachliński
+ *  (c) 2010-2026 Highsoft AS
+ *  Author: Grzegorz Blachliński
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  * */
 
@@ -16,17 +18,9 @@ import type SVGPath from '../../Core/Renderer/SVG/SVGPath';
 
 import H from '../../Core/Globals.js';
 const { composed } = H;
-import Math3D from '../../Core/Math3D.js';
-const { perspective } = Math3D;
-import SeriesRegistry from '../../Core/Series/SeriesRegistry.js';
-const {
-    line: { prototype: lineProto }
-} = SeriesRegistry.seriesTypes;
-import U from '../../Core/Utilities.js';
-const {
-    pushUnique,
-    wrap
-} = U;
+import { perspective } from '../../Core/Math3D.js';
+import LineSeries from '../Line/LineSeries.js';
+import { pushUnique, wrap } from '../../Shared/Utilities.js';
 
 /* *
  *
@@ -35,7 +29,8 @@ const {
  * */
 
 /**
- *
+ * Adds 3D behavior to the area series.
+ * @internal
  */
 function compose(
     AreaSeriesClass: typeof AreaSeries
@@ -52,7 +47,8 @@ function compose(
 }
 
 /**
- *
+ * Extends the area path with a projected bottom path in 3D charts.
+ * @internal
  */
 function wrapAreaSeriesGetGraphPath(
     this: AreaSeries,
@@ -67,7 +63,7 @@ function wrapAreaSeriesGetGraphPath(
         return svgPath;
     }
 
-    const getGraphPath = lineProto.getGraphPath,
+    const getGraphPath = LineSeries.prototype.getGraphPath,
         options = series.options,
         translatedThreshold = Math.round( // #10909
             series.yAxis.getThreshold(options.threshold as any)
@@ -98,7 +94,10 @@ function wrapAreaSeriesGetGraphPath(
             series.markerGroup.add(series.group);
             series.markerGroup.attr({
                 translateX: 0,
-                translateY: 0
+                translateY: 0,
+
+                // Preserve the established 3D area paint order.
+                zIndex: 0
             });
         }
         series.group.attr({
@@ -139,8 +138,29 @@ function wrapAreaSeriesGetGraphPath(
  *
  * */
 
+/** @internal */
 const Area3DSeries = {
     compose
 };
 
+/** @internal */
 export default Area3DSeries;
+
+/* *
+ *
+ *  API Options
+ *
+ * */
+
+/**
+ * The z-axis offset of a 3D area series.
+ *
+ * @type      {number}
+ * @default   0
+ * @since     4.0
+ * @product   highcharts
+ * @requires  highcharts-3d
+ * @apioption plotOptions.area.depth
+ */
+
+''; // Keeps doclets above after transpilation

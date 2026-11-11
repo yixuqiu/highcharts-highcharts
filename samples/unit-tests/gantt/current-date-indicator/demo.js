@@ -15,6 +15,9 @@
         today.setUTCMilliseconds(0);
 
         defaultConfig = {
+            time: {
+                locale: 'en-GB'
+            },
             title: {
                 text: 'Current Date Indicator'
             },
@@ -65,7 +68,7 @@
     QUnit.test('Value', function (assert) {
         var chart = Highcharts.chart('container', defaultConfig),
             axis = chart.xAxis[0],
-            cdi = axis.plotLinesAndBands[0],
+            cdi = axis.plotLines[0],
             wait = 1, // Comparing milliseconds, so 1 millisecond is enough
             oldValue,
             newValue,
@@ -105,7 +108,7 @@
         };
         var chart = Highcharts.chart('container', config),
             axis = chart.xAxis[0],
-            cdi = axis.plotLinesAndBands[0],
+            cdi = axis.plotLines[0],
             wait = 1,
             oldLabelText,
             newLabelText,
@@ -136,25 +139,24 @@
      * Checks that the default and custom label formats are applied
      */
     QUnit.test('Format', function (assert) {
-        // %a, %b %d %Y, %H:%M:%S
-        var formatRegex = new RegExp(
-                // 'Tue, Dec 06 2016, '
-                /^[A-Z][a-z]{2}, [A-Z][a-z]{2} [0-9]{2} [0-9]{4}, /.source +
-                    // '21:35:12'
-                    /[0-9]{2}:[0-9]{2}$/.source
-            ),
-            customFormat,
+        var customFormat,
             chart = Highcharts.chart('container', defaultConfig),
             axis = chart.xAxis[0],
-            cdi = axis.plotLinesAndBands[0];
+            cdi = axis.plotLines[0],
+            defaultFormat = chart.time.dateFormat(
+                '%[abdYHM]',
+                cdi.options.value,
+                true
+            );
 
-        assert.ok(
-            formatRegex.test(cdi.label.textStr),
-            'Default format is correct'
+        assert.strictEqual(
+            cdi.label.textStr,
+            defaultFormat,
+            'Default format should match current date indicator label format'
         );
 
         // Custom format
-        formatRegex = new RegExp(
+        var formatRegex = new RegExp(
             /^[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}$/.source
         );
         customFormat = '%Y-%d-%m %H:%M:%S';
@@ -174,7 +176,7 @@
         );
 
         axis = chart.xAxis[0];
-        cdi = axis.plotLinesAndBands[0];
+        cdi = axis.plotLines[0];
 
         assert.ok(
             formatRegex.test(cdi.label.textStr),
@@ -189,21 +191,20 @@
     QUnit.test('Formatter', function (assert) {
         // Today: Tue, Dec 06 2016
         var formatRegex =
-                /^Today: [A-Z][a-z]{2}, [A-Z][a-z]{2} [0-9]{2} [0-9]{4}$/,
+                /^Today: [A-Z][a-z]{2}, [A-Z][a-z]{2,3} [0-9]{2} [0-9]{4}$/,
             customFormat,
             chart,
             axis,
-            cdi;
+            cdi,
+            formatterCtx;
 
         // Custom formatter
         defaultConfig.xAxis[0].currentDateIndicator = {
             label: {
-                formatter: function () {
+                formatter: (value, _format, ctx) => {
                     var dateFormat = '%a, %b %d %Y',
-                        date = Highcharts.dateFormat(
-                            dateFormat,
-                            this.options.value
-                        );
+                        date = Highcharts.dateFormat(dateFormat, value);
+                    formatterCtx = ctx;
                     return 'Today: ' + date;
                 }
             }
@@ -211,11 +212,17 @@
 
         chart = Highcharts.chart('container', defaultConfig);
         axis = chart.xAxis[0];
-        cdi = axis.plotLinesAndBands[0];
+        cdi = axis.plotLines[0];
 
         assert.ok(
             formatRegex.test(cdi.label.textStr),
             'Custom formatter is applied when no custom format is defined'
+        );
+        assert.strictEqual(
+            formatterCtx,
+            cdi,
+            'Current date indicator formatter got plot line ctx ' +
+            'as last argument'
         );
 
         // Custom format
@@ -239,7 +246,7 @@
         );
 
         axis = chart.xAxis[0];
-        cdi = axis.plotLinesAndBands[0];
+        cdi = axis.plotLines[0];
 
         assert.ok(
             formatRegex.test(cdi.label.textStr),
@@ -249,17 +256,17 @@
 
     QUnit.test('#14166: Per-chart time options', function (assert) {
         var chart = Highcharts.chart('container', defaultConfig);
-        var t0 = Date.parse(chart.xAxis[0].plotLinesAndBands[0].label.textStr);
+        var t0 = Date.parse(chart.xAxis[0].plotLines[0].label.textStr);
 
         chart = Highcharts.chart(
             'container',
             Highcharts.merge(defaultConfig, {
                 time: {
-                    timezoneOffset: -5
+                    timezoneOffset: -60
                 }
             })
         );
-        var t1 = Date.parse(chart.xAxis[0].plotLinesAndBands[0].label.textStr);
+        var t1 = Date.parse(chart.xAxis[0].plotLines[0].label.textStr);
 
         assert.ok(t1 - t0 >= 300000, 'Per-chart time options work');
     });

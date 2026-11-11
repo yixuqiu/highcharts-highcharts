@@ -1,8 +1,9 @@
 /* *
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  * */
 
@@ -20,19 +21,13 @@ import type {
 } from './ABandsOptions';
 import type ABandsPoint from './ABandsPoint';
 import type IndicatorValuesObject from '../IndicatorValuesObject';
+import type { IndicatorLinkedSeriesBase } from '../IndicatorBase';
 import type LineSeries from '../../../Series/Line/LineSeries';
 
 import MultipleLinesComposition from '../MultipleLinesComposition.js';
+import SMAIndicator from '../SMA/SMAIndicator.js';
 import SeriesRegistry from '../../../Core/Series/SeriesRegistry.js';
-const {
-    sma: SMAIndicator
-} = SeriesRegistry.seriesTypes;
-import U from '../../../Core/Utilities.js';
-const {
-    correctFloat,
-    extend,
-    merge
-} = U;
+import { correctFloat, extend, merge } from '../../../Shared/Utilities.js';
 
 /* *
  *
@@ -40,9 +35,7 @@ const {
  *
  * */
 
-/**
- * @private
- */
+/** @internal */
 function getBaseForBand(low: number, high: number, factor: number): number {
     return ((
         (correctFloat(high - low)) /
@@ -50,16 +43,12 @@ function getBaseForBand(low: number, high: number, factor: number): number {
     ) * 1000) * factor;
 }
 
-/**
- * @private
- */
+/** @internal */
 function getPointUB(high: number, base: number): number {
     return high * (correctFloat(1 + 2 * base));
 }
 
-/**
- * @private
- */
+/** @internal */
 function getPointLB(low: number, base: number): number {
     return low * (correctFloat(1 - 2 * base));
 }
@@ -73,7 +62,6 @@ function getPointLB(low: number, base: number): number {
 /**
  * The ABands series type
  *
- * @private
  * @class
  * @name Highcharts.seriesTypes.abands
  *
@@ -103,13 +91,14 @@ class ABandsIndicator extends SMAIndicator {
      *               navigatorOptions, pointInterval, pointIntervalUnit,
      *               pointPlacement, pointRange, pointStart, showInNavigator,
      *               stacking,
-     * @requires     stock/indicators/indicators
-     * @requires     stock/indicators/acceleration-bands
+     * @requires     indicators/indicators
+     * @requires     indicators/acceleration-bands
      * @optionparent plotOptions.abands
+     * @internal
      */
     public static defaultOptions: ABandsOptions = merge(SMAIndicator.defaultOptions, {
         /**
-         * Option for fill color between lines in Accelleration bands Indicator.
+         * Option for fill color between lines in Acceleration bands Indicator.
          *
          * @sample {highstock} stock/indicators/indicator-area-fill
          *      Background fill between lines.
@@ -169,9 +158,10 @@ class ABandsIndicator extends SMAIndicator {
      *
      * */
 
+    /** @internal */
     public getValues<TLinkedSeries extends LineSeries>(
         this: ABandsIndicator,
-        series: TLinkedSeries,
+        series: TLinkedSeries&IndicatorLinkedSeriesBase,
         params: ABandsParamsOptions
     ): (IndicatorValuesObject<TLinkedSeries>|undefined) {
         const period: number = (params.period as any),
@@ -269,6 +259,7 @@ class ABandsIndicator extends SMAIndicator {
  *
  * */
 
+/** @internal */
 interface ABandsIndicator extends MultipleLinesComposition.IndicatorComposition {
     nameBase: string;
     nameComponents: Array<string>;
@@ -320,12 +311,12 @@ export default ABandsIndicator;
  * @extends   series,plotOptions.abands
  * @since     7.0.0
  * @product   highstock
- * @excluding allAreas, colorAxis, compare, compareBase, dataParser, dataURL,
+ * @excluding allAreas, colorAxis, compare, compareBase,
  *            joinBy, keys, navigatorOptions, pointInterval,
  *            pointIntervalUnit, pointPlacement, pointRange, pointStart,
  *            stacking, showInNavigator,
- * @requires  stock/indicators/indicators
- * @requires  stock/indicators/acceleration-bands
+ * @requires  indicators/indicators
+ * @requires  indicators/acceleration-bands
  * @apioption series.abands
  */
 

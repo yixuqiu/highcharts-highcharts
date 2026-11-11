@@ -1,10 +1,12 @@
 /* *
  *
- *  (c) 2010-2024 Torstein Honsi
+ *  (c) 2010-2026 Highsoft AS
+ *  Author: Torstein Hønsi
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  * */
 
@@ -16,14 +18,8 @@
  *
  * */
 
-import SeriesRegistry from '../../Core/Series/SeriesRegistry.js';
+import CandlestickSeries from '../Candlestick/CandlestickSeries.js';
 import HollowCandlestickSeries from './HollowCandlestickSeries.js';
-
-const {
-    seriesTypes: {
-        candlestick: CandlestickSeries
-    }
-} = SeriesRegistry;
 
 /* *
  *
@@ -47,11 +43,9 @@ class HollowCandlestickPoint extends CandlestickSeries.prototype.pointClass {
      *
      * */
 
-    /* eslint-disable valid-jsdoc */
-
     /**
      * Update class name if needed.
-     * @private
+     * @internal
      * @function Highcharts.seriesTypes.hollowcandlestick#getClassName
      */
     public getClassName(): string {
@@ -66,14 +60,7 @@ class HollowCandlestickPoint extends CandlestickSeries.prototype.pointClass {
 
         return className;
     }
-    /* eslint-enable valid-jsdoc */
 }
-
-/* *
- *
- *  Class Namespace
- *
- * */
 
 /* *
  *

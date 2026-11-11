@@ -2,7 +2,6 @@
     const {
         addEvent,
         Chart,
-        each,
         seriesTypes
     } = H;
 
@@ -33,7 +32,7 @@
 
     Chart.prototype.callbacks.push(function (chart) {
         let total = 0;
-        each(chart.series, function (series) {
+        chart.series.forEach(function (series) {
             if (series.initPuzzle) {
                 total += series.initPuzzle();
             }
@@ -50,10 +49,20 @@
 
         function updateCount(diff) {
             chart.puzzle.remaining += diff;
-            chart.puzzleCount.attr({
-                text: (chart.puzzle.total - chart.puzzle.remaining) +
-                    ' / ' + chart.puzzle.total
-            });
+
+            if (chart.puzzle.remaining) {
+                chart.puzzleCount.attr({
+                    text: (chart.puzzle.total - chart.puzzle.remaining) +
+                        ' / ' + chart.puzzle.total
+                });
+            } else {
+                chart.puzzleCount
+                    .attr({ text: '🎉' })
+                    .animate({ opacity: 0 }, {
+                        defer: 1000,
+                        duration: 1000
+                    });
+            }
         }
         updateCount(0);
 
@@ -94,6 +103,8 @@
                     chartX: e.chartX,
                     chartY: e.chartY,
                     scale: graphic.scaleX,
+                    seriesScale: point?.series.transformGroups[0]
+                        .attr('scaleX'),
                     translateX: graphic.translateX,
                     translateY: graphic.translateY
                 };
@@ -119,16 +130,19 @@
                 startTranslateY = dragStart.translateY / dragStart.scale;
 
                 // Get the movement
-                translateX = startTranslateX + e.chartX - dragStart.chartX;
-                translateY = startTranslateY + e.chartY - dragStart.chartY;
+                translateX = startTranslateX + (
+                    e.chartX - dragStart.chartX
+                ) / dragStart.seriesScale;
+                translateY = startTranslateY + (
+                    e.chartY - dragStart.chartY
+                ) / -dragStart.seriesScale;
 
 
                 // Pixel distance to target
                 dist = Math.sqrt(
                     Math.pow(translateX, 2) +
                     Math.pow(translateY, 2)
-                );
-
+                ) * dragStart.seriesScale;
 
                 // Proximity snap to the true position
                 if (dist < 20) {
@@ -171,13 +185,16 @@
 
             const seriesScale = this.transformGroups[0].scaleX;
 
-            each(this.points, function (point) {
+            this.points.forEach(function (point) {
                 const bBox = point.graphic.getBBox(),
                     scale = Math.min(100 / bBox.width, 100 / bBox.height) /
                         seriesScale;
 
                 // Small items are hard to place
-                if (bBox.width > 5 && bBox.height > 5) {
+                if (
+                    bBox.width * seriesScale > 5 &&
+                    bBox.height * seriesScale > 5
+                ) {
 
                     // Put it in the dock
                     point.graphic.attr({
@@ -236,7 +253,7 @@ Highcharts.mapChart('container', {
 
     tooltip: {
         headerFormat: '',
-        pointFormat: '{point.name}',
+        pointFormat: '{point.properties.name}',
         style: {
             fontSize: '20px'
         }

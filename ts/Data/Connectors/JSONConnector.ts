@@ -1,13 +1,15 @@
 /* *
  *
- *  (c) 2009-2024 Highsoft AS
+ *  (c) 2009-2026 Highsoft AS
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  *  Authors:
- *  - Pawel Lysy
+ *  - Paweł Lysy
+ *  - Kamil Kubik
  *
  * */
 
@@ -19,14 +21,20 @@
  *
  * */
 
-import type DataEvent from '../DataEvent';
-import type Types from '../../Shared/Types';
+import type {
+    DataEventDetail
+} from '../DataEvent';
 import type JSONConnectorOptions from './JSONConnectorOptions';
+import type { JSONData } from '../Converters/JSONConverterOptions';
+import type {
+    ColumnCollection as DataTableColumnCollection
+} from '../DataTable';
 
-import DataConnector from './DataConnector.js';
-import U from '../../Core/Utilities.js';
+import DataConnector, {
+    type Event as DataConnectorEvent
+} from './DataConnector.js';
 import JSONConverter from '../Converters/JSONConverter.js';
-const { merge } = U;
+import { fireEvent, merge } from '../../Shared/Utilities.js';
 
 /* *
  *
@@ -40,6 +48,7 @@ const { merge } = U;
  * @private
  */
 class JSONConnector extends DataConnector {
+
     /* *
      *
      *  Static Properties
@@ -47,6 +56,8 @@ class JSONConnector extends DataConnector {
      * */
 
     protected static readonly defaultOptions: JSONConnectorOptions = {
+        type: 'JSON',
+        id: 'json-connector',
         data: [],
         enablePolling: false,
         dataRefreshRate: 0,
@@ -63,22 +74,18 @@ class JSONConnector extends DataConnector {
     /**
      * Constructs an instance of JSONConnector.
      *
-     * @param {JSONConnector.UserOptions} [options]
+     * @param {Partial<JSONConnectorOptions>} [options]
      * Options for the connector and converter.
      */
-    public constructor(
-        options?: JSONConnector.UserOptions
-    ) {
+    public constructor(options?: Partial<JSONConnectorOptions>) {
         const mergedOptions = merge(JSONConnector.defaultOptions, options);
 
         super(mergedOptions);
-
-        this.converter = new JSONConverter(mergedOptions);
         this.options = mergedOptions;
 
         if (mergedOptions.enablePolling) {
             this.startPolling(
-                Math.max(mergedOptions.dataRefreshRate || 0, 1) * 1000
+                DataConnector.getPollingInterval(mergedOptions.dataRefreshRate)
             );
         }
     }
@@ -98,7 +105,7 @@ class JSONConnector extends DataConnector {
     /**
      * The attached parser that converts the data format to the table.
      */
-    public readonly converter: JSONConverter;
+    public converter?: JSONConverter;
 
     /* *
      *
@@ -107,115 +114,121 @@ class JSONConnector extends DataConnector {
      * */
 
     /**
+     * Overrides the DataConnector method. Emits an event on the connector to
+     * all registered callbacks of this event.
+     *
+     * @param {Event} e
+     * Event object containing additional event information.
+     */
+    public emit(e: Event): void {
+        fireEvent(this, e.type, e);
+    }
+
+    /**
      * Initiates the loading of the JSON source to the connector
      *
-     * @param {DataEvent.Detail} [eventDetail]
+     * @param {DataEventDetail} [eventDetail]
      * Custom information for pending events.
      *
      * @emits JSONConnector#load
      * @emits JSONConnector#afterLoad
      */
-    public load(eventDetail?: DataEvent.Detail): Promise<this> {
-        const connector = this,
-            converter = connector.converter,
-            table = connector.table,
-            { data, dataUrl, dataModifier } = connector.options;
+    public load(eventDetail?: DataEventDetail): Promise<this> {
+        const connector = this;
+        const options = connector.options;
+        const { data, dataUrl, dataTables } = options;
 
-        connector.emit<JSONConnector.Event>({
+        connector.emit({
             type: 'load',
-            data,
             detail: eventDetail,
-            table
+            data
         });
-
 
         return Promise
             .resolve(
                 dataUrl ?
-                    fetch(dataUrl).then(
-                        (json): Promise<any> => json.json()
-                    ) :
+                    fetch(dataUrl, {
+                        signal: connector?.pollingController?.signal
+                    }).then(
+                        (response): Promise<JSONData> => response.json()
+                    )['catch']((error): void => {
+                        connector.emit({
+                            type: 'loadError',
+                            detail: eventDetail,
+                            error
+                        });
+                        console.warn(`Unable to fetch data from ${dataUrl}.`); // eslint-disable-line no-console
+                    }) :
                     data || []
             )
-            .then((data): Promise<Array<Array<number|string>>> => {
+            .then(async (data): Promise<JSONData> => {
                 if (data) {
-                    // If already loaded, clear the current rows
-                    table.deleteColumns();
-                    converter.parse({ data });
-                    table.setColumns(converter.getTable().getColumns());
+                    this.initConverters<JSONData>(
+                        data,
+                        (key): JSONConverter => {
+                            const tableOptions = dataTables?.find(
+                                (dataTable): boolean => dataTable.key === key
+                            );
+
+                            // The data table options takes precedence over the
+                            // connector options.
+                            const {
+                                columnIds = options.columnIds,
+                                firstRowAsNames = options.firstRowAsNames,
+                                orientation = options.orientation,
+                                beforeParse = options.beforeParse
+                            } = tableOptions || {};
+                            const converterOptions = {
+                                data,
+                                columnIds,
+                                firstRowAsNames,
+                                orientation,
+                                beforeParse
+                            };
+                            return new JSONConverter(converterOptions);
+                        },
+                        (converter, data): DataTableColumnCollection =>
+                            converter.parse({ data })
+                    );
                 }
-                return connector.setModifierOptions(dataModifier).then((): Array<Array<number|string>> => data);
+                return connector.applyTableModifiers().then(
+                    (): JSONData => data ?? []
+                );
             })
             .then((data): this => {
-                connector.emit<JSONConnector.Event>({
+                connector.emit({
                     type: 'afterLoad',
-                    data,
                     detail: eventDetail,
-                    table
+                    data
                 });
                 return connector;
             })['catch']((error): never => {
-                connector.emit<JSONConnector.Event>({
+                connector.emit({
                     type: 'loadError',
                     detail: eventDetail,
-                    error,
-                    table
+                    error
                 });
                 throw error;
             });
     }
-
 }
 
 /* *
  *
- *  Class Namespace
+ *  Declarations
  *
  * */
 
 /**
- * Types for class-specific options and events.
+ * Event objects fired from JSONConnector events.
  */
-namespace JSONConnector {
-
-    /* *
-     *
-     *  Declarations
-     *
-     * */
-
-    /**
-     * Event objects fired from JSONConnector events.
-     */
-    export type Event = (ErrorEvent|LoadEvent);
-
-    /**
-     * The event object that is provided on errors within JSONConnector.
-     */
-    export interface ErrorEvent extends DataConnector.ErrorEvent {
-        data?: JSONConverter.Data;
-    }
-
-    /**
-     * The event object that is provided on load events within JSONConnector.
-     */
-    export interface LoadEvent extends DataConnector.LoadEvent {
-        data?: JSONConverter.Data
-    }
-
-    /**
-     * Available options for constructor and converter of the JSONConnector.
-     */
-    export type UserOptions = (
-        Types.DeepPartial<JSONConnectorOptions>&
-        JSONConverter.UserOptions
-    );
-
+export interface Event extends DataConnectorEvent {
+    readonly data?: JSONData;
 }
 
 /* *
  *
- *  Registry
+ *  Declarations
  *
  * */
 
@@ -224,6 +237,12 @@ declare module './DataConnectorType' {
         JSON: typeof JSONConnector;
     }
 }
+
+/* *
+ *
+ *  Registry
+ *
+ * */
 
 DataConnector.registerType('JSON', JSONConnector);
 

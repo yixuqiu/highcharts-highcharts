@@ -251,7 +251,7 @@ QUnit.test('Combination charts and column mapping', function (assert) {
     });
 
     assert.strictEqual(
-        chart.xAxis[0].options.type,
+        chart.xAxis[0].type,
         'category',
         `After setting first column as string in data.columnTypes, x-axis should
         be configured as category axis (#16920).`
@@ -374,6 +374,39 @@ QUnit.test(
     }
 );
 
+QUnit.test(
+    'Data module - table cells should be read as text (#25454).',
+    function (assert) {
+        const table = document.createElement('table');
+        document.body.appendChild(table);
+        table.id = 'entityTable';
+        table.innerHTML = `
+        <tr><th></th><th>&lt; 0.5 m/s</th></tr>
+        <tr><th>R&amp;D</th><td>1</td></tr>
+        <tr><th>Sales</th><td>2</td></tr>`;
+
+        const chart = Highcharts.chart('container', {
+            data: {
+                table: 'entityTable'
+            }
+        });
+
+        assert.strictEqual(
+            chart.series[0].name,
+            '< 0.5 m/s',
+            'HTML entities in a header cell should be decoded in series name.'
+        );
+
+        assert.strictEqual(
+            chart.series[0].points[0].name,
+            'R&D',
+            'HTML entities in a body cell should be decoded in point name.'
+        );
+
+        document.body.removeChild(table);
+    }
+);
+
 
 QUnit.test('Updating with firstRowAsNames', function (assert) {
     const chart = Highcharts.chart('container', {
@@ -386,6 +419,8 @@ QUnit.test('Updating with firstRowAsNames', function (assert) {
     chart.update({
         data: {
             googleSpreadsheetKey: 'placeholder'
+            // This change throws a connection error (400 - API key not valid),
+            // but it's done after the chart is already destroyed in Playwright.
         }
     });
 

@@ -51,9 +51,35 @@ QUnit.test('Split tooltip and tooltip.style. #5838', function (assert) {
         value;
 
     chart.tooltip.refresh([p1, p2]);
+
+    const ttCorrectVals = {
+            x: 51.5,
+            y: 94.5,
+            width: (Highcharts.isFirefox) ? 125 : 113,
+            height: 252
+        },
+        candidate = chart
+            .tooltip
+            .label
+            .element
+            .getBoundingClientRect(),
+        chartPos = chart.pointer.getChartPosition();
+
+    candidate.x -= chartPos.left;
+    candidate.y -= chartPos.top;
+
+    for (const key of ['x', 'y', 'width', 'height']) {
+        assert.close(
+            ttCorrectVals[key],
+            candidate[key],
+            15,
+            `The '${key}' of the label should be close to ${ttCorrectVals[key]}`
+        );
+    }
+
     el = chart.tooltip.tt.text.element;
 
-    value = window.getComputedStyle(el).getPropertyValue('color');
+    value = window.getComputedStyle(el).getPropertyValue('fill');
     assert.strictEqual(value, 'rgb(51, 51, 51)', 'tooltip default color.');
 
     el = chart.tooltip.tt.element;
@@ -73,7 +99,7 @@ QUnit.test('Split tooltip and tooltip.style. #5838', function (assert) {
     ]);
 
     el = chart.tooltip.tt.text.element;
-    value = window.getComputedStyle(el).getPropertyValue('color');
+    value = window.getComputedStyle(el).getPropertyValue('fill');
     assert.strictEqual(value, 'rgb(255, 0, 0)', 'tooltip color from style.');
 });
 
@@ -167,11 +193,9 @@ QUnit.test('Split tooltip with useHTML and outside', function (assert) {
         chart: {
             width: 600
         },
-        series: [
-            {
-                data: [1, 2, 3]
-            }
-        ],
+        series: [{
+            data: [1, 2, 3]
+        }],
         tooltip: {
             split: true,
             useHTML: true,
@@ -195,8 +219,8 @@ QUnit.test('Split tooltip with useHTML and outside', function (assert) {
 
     assert.strictEqual(
         chart.series[0].tt.text.element.tagName,
-        'SPAN',
-        '#7238: The label is a span'
+        'DIV',
+        '#7238: The label should be HTML'
     );
 
     chart.update({
@@ -210,34 +234,51 @@ QUnit.test('Split tooltip with useHTML and outside', function (assert) {
         type: 'scatter'
     });
 
+    // Force refresh tooltip position for non-headless tests.
+    delete chart.pointer.chartPosition;
     chart.tooltip.refresh(chart.series[0].points[0]);
 
     const point = chart.series[0].points[0],
-        pointBox = point.graphic.getBBox(),
-        tooltipClient = chart.tooltip.container.getBoundingClientRect();
+        tooltipClient = chart.tooltip.container.getBoundingClientRect(),
+        docBodyStyle = getComputedStyle(Highcharts.doc.body),
+        chartBox = chart.container.getBoundingClientRect();
+
+    // Notice: in browser tests add QUnit messages that push down the chart
+    // but not the tooltip making it look off. Tooltip triggered with mouse
+    // events via the TestController doesn't fix this. Clearing chartPosition
+    // for the pointer helps.
 
     assert.close(
-        chart.xAxis[0].toPixels(point.x),
-        tooltipClient.x + (tooltipClient.width / 2) - pointBox.width,
-        2,
+        chart.xAxis[0].toPixels(point.x) + parseFloat(docBodyStyle.marginLeft),
+        tooltipClient.x + (tooltipClient.width / 2),
+        1.5,
         `Tooltip with outside and split properties set to true should be
         rendered properly - x position (#17720).`
     );
 
+    // The additional difference is due to the browser height calculation that
+    // is not visible. Can be reduced by 4 px with CSS adjustment like
+    // .highcharts-tooltip-container svg { vertical-align: top; }, but still
+    // there will be a difference of:
+    // - Chrome v135: ~1.5 px
+    // - Firefox v128esr: 2 px (~2.25 px on Linux/CI)
+    const magicNumber = 5;
     assert.close(
-        chart.yAxis[0].toPixels(point.y),
-        tooltipClient.y + tooltipClient.height - 2 -
-            pointBox.height - (pointBox.height / 2),
-        4,
+        chart.yAxis[0].toPixels(point.y) + chartBox.top,
+        tooltipClient.bottom - magicNumber,
+        5,
         `Tooltip with outside and split properties set to true should be
         rendered properly - y position (#17720).`
     );
+
     chart.update({
         tooltip: {
             shadow: false
         }
     });
 
+    // Force refresh tooltip position for non-headless tests.
+    delete chart.pointer.chartPosition;
     chart.tooltip.refresh(chart.series[0].points[0]);
     const tooltipClientRect = chart.tooltip.container.getBoundingClientRect();
 
@@ -264,6 +305,10 @@ QUnit.test('Split tooltip with useHTML and outside', function (assert) {
         `Tooltip's shadow offsetY should be evaluated in container height
         to avoid cutting it off (#19314).`
     );
+
+    // When all tests pass the QUnit messages get collapsed and the tooltip
+    // moves out of position. This is not a bug as long as this usage has
+    // no sensible value.
 });
 
 QUnit.test('Split tooltip in floated container (#13943),', function (assert) {
@@ -388,7 +433,8 @@ QUnit.test(
                 }
             ],
             tooltip: {
-                split: true
+                split: true,
+                borderColor: undefined
             }
         });
         const firstPointColor = chart.series[0].points[0].color,
@@ -574,7 +620,8 @@ QUnit.test('Split tooltip, vertical scrollable plot area', assert => {
 });
 
 QUnit.test('Split tooltip, hideDelay set to 0 (#12994)', assert => {
-    const chart = Highcharts.chart('container', {
+    const clock = TestUtilities.lolexInstall(),
+        chart = Highcharts.chart('container', {
             tooltip: {
                 hideDelay: 0,
                 split: true
@@ -609,4 +656,51 @@ QUnit.test('Split tooltip, hideDelay set to 0 (#12994)', assert => {
         );
         endTest();
     }, 1000);
+
+    TestUtilities.lolexRunAndUninstall(clock);
+});
+
+QUnit.test('Split tooltip, hovering between series', assert => {
+    const clock = TestUtilities.lolexInstall(),
+        chart = Highcharts.chart('container', {
+            tooltip: {
+                split: true,
+                animation: {
+                    // We need some time to catch the tooltip
+                    duration: 2000
+                }
+            },
+            series: [{
+                data: [0, 1, 3]
+            }, {
+                data: [[1, 2]],
+                type: 'scatter'
+            }]
+        }),
+        { plotLeft, plotTop, series } = chart,
+        startPoint = series[0].points[2],
+        endPoint =  series[1].points[0],
+        controller = new TestController(chart),
+        controlPos = endPoint.plotX + plotLeft,
+        endTest = assert.async();
+
+    controller.moveTo(
+        startPoint.plotX + plotLeft,
+        startPoint.plotY + plotTop
+    );
+    controller.moveTo(
+        controlPos,
+        endPoint.plotY + plotTop
+    );
+
+    setTimeout(function () {
+        assert.strictEqual(
+            true,
+            chart.tooltip.label.x > controlPos,
+            'Tooltip should travel from the right side.'
+        );
+        endTest();
+    }, 1000);
+
+    TestUtilities.lolexRunAndUninstall(clock);
 });

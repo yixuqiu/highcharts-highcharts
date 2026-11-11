@@ -18,7 +18,7 @@ const chart = new Highcharts.StockChart({
             216.4, 194.1,
             95.6, 54.4
         ],
-        pointStart: Date.UTC(2013, 0, 1),
+        pointStart: '2013-01-01',
         pointInterval: 24 * 36e5
     }],
 
@@ -31,5 +31,5 @@ const chart = new Highcharts.StockChart({
 });
 
 document.getElementById('getcsv').addEventListener('click', function () {
-    alert(chart.getCSV());
+    alert(chart.exporting.getCSV());
 });

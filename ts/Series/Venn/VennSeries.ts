@@ -1,17 +1,18 @@
 /* *
  *
- *  Experimental Highcharts module which enables visualization of a Venn
+ *  Highcharts module which enables visualization of a Venn
  *  diagram.
  *
- *  (c) 2016-2024 Highsoft AS
- *  Authors: Jon Arild Nygard
+ *  (c) 2016-2026 Highsoft AS
+ *  Authors: Jon Arild Nygård
  *
  *  Layout algorithm by Ben Frederickson:
  *  https://www.benfrederickson.com/better-venn-diagrams/
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  * */
 
@@ -24,7 +25,6 @@
  * */
 
 import type CircleObject from '../../Core/Geometry/CircleObject';
-import type DataLabelOptions from '../../Core/Series/DataLabelOptions';
 import type IntersectionObject from '../../Core/Geometry/IntersectionObject';
 import type {
     NelderMeadPointArray,
@@ -41,8 +41,7 @@ import type SVGElement from '../../Core/Renderer/SVG/SVGElement';
 import type SVGPath from '../../Core/Renderer/SVG/SVGPath';
 import type VennSeriesOptions from './VennSeriesOptions';
 
-import A from '../../Core/Animation/AnimationUtilities.js';
-const { animObject } = A;
+import { animObject } from '../../Core/Animation/AnimationUtilities.js';
 import Color from '../../Core/Color/Color.js';
 const { parse: color } = Color;
 import CU from '../../Core/Geometry/CircleUtilities.js';
@@ -56,22 +55,19 @@ const {
 import DPU from '../DrawPointUtilities.js';
 import GU from '../../Core/Geometry/GeometryUtilities.js';
 const { getCenterOfPoints } = GU;
+import ScatterSeries from '../Scatter/ScatterSeries.js';
 import SeriesRegistry from '../../Core/Series/SeriesRegistry.js';
-const {
-    scatter: ScatterSeries
-} = SeriesRegistry.seriesTypes;
 import VennPoint from './VennPoint.js';
 import VennSeriesDefaults from './VennSeriesDefaults.js';
 import VennUtils from './VennUtils.js';
-import U from '../../Core/Utilities.js';
-const {
+import {
     addEvent,
     extend,
     isArray,
     isNumber,
     isObject,
     merge
-} = U;
+} from '../../Shared/Utilities.js';
 
 /* *
  *
@@ -80,7 +76,6 @@ const {
  * */
 
 /**
- * @private
  * @class
  * @name Highcharts.seriesTypes.venn
  *
@@ -94,8 +89,10 @@ class VennSeries extends ScatterSeries {
      *
      * */
 
+    /** @internal */
     public static splitter = 'highcharts-split';
 
+    /** @internal */
     public static defaultOptions: VennSeriesOptions = merge(
         ScatterSeries.defaultOptions,
         VennSeriesDefaults
@@ -111,8 +108,8 @@ class VennSeries extends ScatterSeries {
      * Finds the optimal label position by looking for a position that has a low
      * distance from the internal circles, and as large possible distance to the
      * external circles.
-     * @private
-     * @todo Optimize the intial position.
+     * @internal
+     * @todo Optimize the initial position.
      * @todo Add unit tests.
      * @param {Array<Highcharts.CircleObject>} internal
      * Internal circles.
@@ -152,7 +149,7 @@ class VennSeries extends ScatterSeries {
                         );
 
                         // If the margin better than the current best, then
-                        // update sbest.
+                        // update best.
                         if (best.margin < margin) {
                             best.point = point;
                             best.margin = margin;
@@ -208,7 +205,7 @@ class VennSeries extends ScatterSeries {
     /**
      * Calculates data label values for a given relations object.
      *
-     * @private
+     * @internal
      * @todo add unit tests
      * @param {Highcharts.VennRelationObject} relation A relations object.
      * @param {Array<Highcharts.VennRelationObject>} setRelations The list of
@@ -273,9 +270,9 @@ class VennSeries extends ScatterSeries {
      * Calculates the positions, and the label values of all the sets in the
      * venn diagram.
      *
-     * @private
+     * @internal
      * @todo Add support for constrained MDS.
-     * @param {Array<Highchats.VennRelationObject>} relations
+     * @param {Array<Highcharts.VennRelationObject>} relations
      * List of the overlap between two or more sets, or the size of a single
      * set.
      * @return {Highcharts.Dictionary<*>}
@@ -321,7 +318,7 @@ class VennSeries extends ScatterSeries {
 
     /**
      * Calculates the proper scale to fit the cloud inside the plotting area.
-     * @private
+     * @internal
      * @todo add unit test
      * @param {number} targetWidth
      * Width of target area.
@@ -357,7 +354,7 @@ class VennSeries extends ScatterSeries {
      * If a circle is outside a give field, then the boundaries of the field is
      * adjusted accordingly. Modifies the field object which is passed as the
      * first parameter.
-     * @private
+     * @internal
      * @todo NOTE: Copied from wordcloud, can probably be unified.
      * @param {Highcharts.PolygonBoxObject} field
      * The bounding box of a playing field.
@@ -399,6 +396,7 @@ class VennSeries extends ScatterSeries {
 
     public data!: Array<VennPoint>;
 
+    /** @internal */
     public mapOfIdToRelation!: Record<string, VennRelationObject>;
 
     public options!: VennSeriesOptions;
@@ -411,8 +409,8 @@ class VennSeries extends ScatterSeries {
      *
      * */
 
-    /* eslint-disable valid-jsdoc */
 
+    /** @internal */
     public animate(init?: boolean): void {
         if (!init) {
             const series = this,
@@ -442,11 +440,9 @@ class VennSeries extends ScatterSeries {
                     // animation
                     if (args.d) {
                         setTimeout((): void => {
-                            if (point && point.graphic) {
-                                point.graphic.animate({
-                                    opacity: 1
-                                });
-                            }
+                            point?.graphic?.animate({
+                                opacity: 1
+                            });
                         }, animOptions.duration);
                     }
                 }
@@ -456,7 +452,7 @@ class VennSeries extends ScatterSeries {
 
     /**
      * Draw the graphics for each point.
-     * @private
+     * @internal
      */
     public drawPoints(): void {
         const series = this,
@@ -485,12 +481,13 @@ class VennSeries extends ScatterSeries {
                 attribs: attribs,
                 group: group,
                 renderer: renderer,
-                shapeType: shapeArgs && shapeArgs.d ? 'path' : 'circle'
+                shapeType: shapeArgs?.d ? 'path' : 'circle'
             });
         }
 
     }
 
+    /** @internal */
     public init(): void {
         ScatterSeries.prototype.init.apply(this, arguments);
 
@@ -501,7 +498,7 @@ class VennSeries extends ScatterSeries {
     /**
      * Calculates the style attributes for a point. The attributes can vary
      * depending on the state of the point.
-     * @private
+     * @internal
      * @param {Highcharts.Point} point
      * The point which will get the resulting attributes.
      * @param {string} [state]
@@ -515,20 +512,18 @@ class VennSeries extends ScatterSeries {
     ): SVGAttributes {
         const series = this,
             seriesOptions = series.options || {},
-            pointOptions = point && point.options || {},
-            stateOptions =
-                (state && (seriesOptions.states as any)[state as any]) || {},
+            pointOptions = point?.options || {},
+            stateOptions = (state && seriesOptions.states?.[state]) || {},
             options = merge(
                 seriesOptions,
-                { color: point && point.color },
                 pointOptions,
                 stateOptions
             );
 
         // Return resulting values for the attributes.
         return {
-            'fill': color(options.color)
-                .brighten(options.brightness as any)
+            'fill': color(options.color || point.color)
+                .brighten(options.brightness || 0)
                 .get(),
             // Set opacity directly to the SVG element, not to pattern #14372.
             opacity: options.opacity,
@@ -538,16 +533,17 @@ class VennSeries extends ScatterSeries {
         };
     }
 
+    /** @internal */
     public translate(): void {
 
         const chart = this.chart;
 
-        this.processedXData = this.xData as any;
+        this.dataTable.modified = this.dataTable;
         this.generatePoints();
 
         // Process the data before passing it into the layout function.
         const relations = VennUtils.processVennData(
-            this.options.data as any,
+            this.dataTable,
             VennSeries.splitter
         );
 
@@ -591,7 +587,7 @@ class VennSeries extends ScatterSeries {
                 id = sets.join(),
                 shape = mapOfIdToShape[id],
                 dataLabelValues = mapOfIdToLabelValues[id] || {},
-                dlOptions = point.options && point.options.dataLabels;
+                dlOptions = point.options?.dataLabels;
 
             let shapeArgs: (SVGAttributes|undefined),
                 dataLabelWidth = dataLabelValues.width,
@@ -645,14 +641,12 @@ class VennSeries extends ScatterSeries {
             // Add width for the data label
             if (dataLabelWidth && shapeArgs) {
                 point.dlOptions = merge(
-                    true,
-                    {
-                        style: {
-                            width: dataLabelWidth
-                        }
-                    } as DataLabelOptions,
-                    isObject(dlOptions, true) ? dlOptions : void 0
+                    { style: { width: dataLabelWidth } },
+                    isObject(dlOptions, true) ? dlOptions : void 0,
+                    { zIndex: void 0 }
                 );
+                // Delete so it doesn't override anything on merge.
+                delete point.dlOptions.zIndex;
             }
 
             // Set name for usage in tooltip and in data label.
@@ -660,7 +654,6 @@ class VennSeries extends ScatterSeries {
         }
     }
 
-    /* eslint-enable valid-jsdoc */
 }
 
 /* *
@@ -670,10 +663,15 @@ class VennSeries extends ScatterSeries {
  * */
 
 interface VennSeries {
+    /** @internal */
     directTouch: boolean;
+    /** @internal */
     isCartesian: boolean;
+    /** @internal */
     pointArrayMap: Array<string>;
+    /** @internal */
     pointClass: typeof VennPoint;
+    /** @internal */
     utils: typeof VennUtils;
 }
 
@@ -688,10 +686,11 @@ extend(VennSeries.prototype, {
 
 // Modify final series options.
 addEvent(VennSeries, 'afterSetOptions', function (
+    /** @internal */
     e: { options: VennSeriesOptions }
 ): void {
     const options = e.options,
-        states: SeriesStatesOptions<VennSeries> = options.states || {};
+        states: SeriesStatesOptions<VennSeriesOptions> = options.states || {};
 
     if (this.is('venn')) {
         // Explicitly disable all halo options.

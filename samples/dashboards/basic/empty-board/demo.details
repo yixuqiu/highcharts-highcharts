@@ -1,0 +1,6 @@
+---
+ name: Highcharts Dashboards Demo
+ authors:
+   - Karol Kołodziej
+ js_wrap: b
+...

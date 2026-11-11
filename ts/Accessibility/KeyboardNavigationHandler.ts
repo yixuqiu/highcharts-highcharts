@@ -1,12 +1,14 @@
 /* *
  *
- *  (c) 2009-2024 Øystein Moseng
+ *  (c) 2009-2026 Highsoft AS
+ *  Author: Øystein Moseng
  *
  *  Keyboard navigation handler base class definition
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  * */
 
@@ -20,8 +22,8 @@
 
 import type Chart from '../Core/Chart/Chart';
 
-import U from '../Core/Utilities.js';
-const { find } = U;
+import { find } from '../Shared/Utilities.js';
+
 
 /* *
  *
@@ -35,7 +37,7 @@ const { find } = U;
  * layer for keyboard navigation, and defines a map of keyCodes to handler
  * functions.
  *
- * @requires module:modules/accessibility
+ * @requires modules/accessibility
  *
  * @sample highcharts/accessibility/custom-component
  *         Custom accessibility component
@@ -140,10 +142,33 @@ namespace KeyboardNavigationHandler {
      *
      * */
 
+    /**
+     * Options for the keyboard navigation handler.
+     */
     export interface Options {
+
+        /**
+         * An array containing pairs of an array of keycodes, mapped to a
+         * handler function. When the keycode is received, the handler is called
+         * with the keycode as parameter.
+         */
         keyCodeMap: Array<[Array<number>, Function]>;
+
+        /**
+         * Function to run on initialization of module.
+         */
         init: Function;
+
+        /**
+         * Function to run before moving to next/prev module. Receives moving
+         * direction as parameter: +1 for next, -1 for previous.
+         */
         terminate?: Function;
+
+        /**
+         * Function to run to validate module. Should return false if module
+         * should not run, true otherwise. Receives chart as parameter.
+         */
         validate?: Function;
     }
 

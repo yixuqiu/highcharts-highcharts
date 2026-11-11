@@ -228,7 +228,7 @@ QUnit.test('Axis.update', assert => {
         'Should have tickPositions equal [0] after render.'
     );
     assert.strictEqual(
-        getStyle(element, 'color', false),
+        getStyle(element, 'fill', false),
         'rgb(0, 0, 0)',
         'Should have color equal rgb(0, 0, 0) after render.'
     );
@@ -257,7 +257,7 @@ QUnit.test('Axis.update', assert => {
         'Should still have tickPositions equal [0] after update.'
     );
     assert.strictEqual(
-        getStyle(element, 'color', false),
+        getStyle(element, 'fill', false),
         'rgb(255, 0, 0)',
         'Should have color equal rgb(255, 0, 0) after update.'
     );
@@ -493,8 +493,14 @@ QUnit.test('series.data[].collapsed', assert => {
     );
     assert.strictEqual(
         axis.max,
-        0,
-        'should have axis.max equal 0 when "Node 1" is collapsed.'
+        2,
+        'should have axis.max equal 2 when "Node 1" is collapsed.'
+    );
+    assert.close(
+        axis.toValue(axis.pos + axis.len),
+        0.5,
+        0.001,
+        'y axis should end on the collapsed "Node 1".'
     );
 
     fireEvent(label.element, 'click');
@@ -507,6 +513,13 @@ QUnit.test('series.data[].collapsed', assert => {
         axis.max,
         2,
         'should have axis.max equal 2 when "Node 1" is expanded.'
+    );
+    assert.close(
+        axis.toValue(axis.pos + axis.len),
+        // +.5 because of the grid categories layout
+        chart.series[0].points.length - 1 + 0.5,
+        0.001,
+        'y axis should end after the last point'
     );
 
     assert.strictEqual(
@@ -526,5 +539,34 @@ QUnit.test('series.data[].collapsed', assert => {
         document.querySelector('.highcharts-label-icon'),
         `After updating data,
         the unnecessary label icons should be removed, 16673.`
+    );
+});
+
+QUnit.test('Linking a treegrid axis by id (#24658)', function (assert) {
+    const chart = Highcharts.ganttChart('container', {
+        yAxis: [
+            { type: 'treegrid', id: 'main' },
+            { type: 'treegrid', linkedTo: 'main', opposite: true }
+        ],
+        series: [{
+            data: [
+                { name: 'A', start: 1, end: 5, y: 0 },
+                { name: 'B', start: 3, end: 8, y: 1 }
+            ]
+        }]
+    });
+
+    const main = chart.get('main'),
+        linked = chart.yAxis[1];
+
+    assert.strictEqual(
+        linked.linkedParent?.options.id,
+        'main',
+        'Treegrid axis resolves linkedTo by id.'
+    );
+    assert.strictEqual(
+        linked.max,
+        main.max,
+        'Linked treegrid axis inherits the parent extremes.'
     );
 });

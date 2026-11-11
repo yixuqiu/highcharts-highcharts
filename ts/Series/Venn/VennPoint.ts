@@ -3,15 +3,16 @@
  *  Experimental Highcharts module which enables visualization of a Venn
  *  diagram.
  *
- *  (c) 2016-2024 Highsoft AS
- *  Authors: Jon Arild Nygard
+ *  (c) 2016-2026 Highsoft AS
+ *  Authors: Jon Arild Nygård
  *
  *  Layout algorithm by Ben Frederickson:
  *  https://www.benfrederickson.com/better-venn-diagrams/
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  * */
 
@@ -26,12 +27,16 @@
 import type VennPointOptions from './VennPointOptions';
 import type VennSeries from './VennSeries';
 
-import SeriesRegistry from '../../Core/Series/SeriesRegistry.js';
-const {
-    scatter: { prototype: { pointClass: ScatterPoint } }
-} = SeriesRegistry.seriesTypes;
-import U from '../../Core/Utilities.js';
-const { isNumber } = U;
+import ScatterSeries from '../Scatter/ScatterSeries.js';
+import { isNumber } from '../../Shared/Utilities.js';
+
+/* *
+ *
+ *  Constants
+ *
+ * */
+
+const ScatterPoint = ScatterSeries.prototype.pointClass;
 
 /* *
  *
@@ -49,10 +54,13 @@ class VennPoint extends ScatterPoint {
 
     public options!: VennPointOptions;
 
+    /** @internal */
     public series!: VennSeries;
 
+    /** @internal */
     public sets?: Array<string>;
 
+    /** @internal */
     public value?: number;
 
     /* *
@@ -61,10 +69,12 @@ class VennPoint extends ScatterPoint {
      *
      * */
 
+    /** @internal */
     public isValid(): boolean {
         return isNumber(this.value);
     }
 
+    /** @internal */
     public shouldDraw(): boolean {
         // Only draw points with single sets.
         return !!this.shapeArgs;

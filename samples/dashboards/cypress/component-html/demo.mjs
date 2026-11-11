@@ -1,7 +1,10 @@
-import Dashboards from '../../../../code/dashboards/es-modules/masters/dashboards.src.js';
-import EditMode from '../../../../code/dashboards/es-modules/masters/modules/layout.src.js';
-
 Dashboards.board('container', {
+    editMode: {
+        enabled: true,
+        contextMenu: {
+            enabled: true
+        }
+    },
     gui: {
         layouts: [{
             rows: [{

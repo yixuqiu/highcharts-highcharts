@@ -12,14 +12,15 @@ const argv = require('yargs').argv;
  * */
 
 const DEFAULT_GLOBS = [
-    'samples/*/*/*/demo.js',
-    'samples/*/*/*/test.js',
-    'samples/*/*/*/unit-tests.js'
+    'samples/**/*.{js,ts}'
 ];
 
+// Generated files ignored by Git, but not by ESLint.
 const IGNORE_GLOBS = [
-    'samples/highcharts/common-js/*/demo.js',
-    'samples/cloud/*/*/demo.js'
+    'samples/**/config.js',
+    'samples/stock/demo/candlestick/demo.js',
+    'samples/unit-tests/performance/highcharts-chart/demo.js',
+    'samples/unit-tests/performance/test-template/demo.js'
 ];
 
 /* *
@@ -35,43 +36,47 @@ const IGNORE_GLOBS = [
  *
  * - `--fix`: Fix eslint failures
  *
- * - `-p`/`--path`: Change glob pattern. e.g. `npx gulp lint -p './samples/**'`
+ * - `-p`/`--path`: Change glob pattern.
+ *   e.g. `npx gulp lint-samples -p samples/highcharts/demo/accessible-line/demo.js`
  *
  * @return {Promise<void>}
  *         Promise to keep
  */
-function task() {
+async function task() {
 
     const eslint = require('eslint');
     const log = require('../libs/log');
 
-    return new Promise(resolve => {
-
-        const cli = new eslint.CLIEngine({
-            fix: argv.fix,
-            ignorePattern: IGNORE_GLOBS
-        });
-        const globs = (
-            (argv.p || argv.path) ?
-                (argv.p || argv.path).split(',') :
-                DEFAULT_GLOBS
-        );
-
-        log.message('Linting [', globs.join(', '), ']...');
-
-        const report = cli.executeOnFiles(globs);
-
-        if (argv.fix) {
-            eslint.CLIEngine.outputFixes(report);
+    const linter = new eslint.ESLint({
+        overrideConfigFile: 'samples/.eslintrc',
+        fix: argv.fix,
+        overrideConfig: {
+            ignorePatterns: IGNORE_GLOBS
         }
-
-        log.message(
-            'Finished linting...\n',
-            cli.getFormatter()(report.results)
-        );
-
-        resolve();
     });
+    const globs = (
+        (argv.p || argv.path) ?
+            (argv.p || argv.path).split(',') :
+            DEFAULT_GLOBS
+    );
+    const formatter = await linter.loadFormatter();
+
+    log.message('Linting [', globs.join(', '), ']...');
+
+    const results = await linter.lintFiles(globs);
+
+    if (argv.fix) {
+        await eslint.ESLint.outputFixes(results);
+    }
+
+    log.message(
+        'Finished linting...\n',
+        await formatter.format(results)
+    );
+
+    if (results.some(result => result.errorCount > 0)) {
+        throw new Error('Sample linting failed.');
+    }
 }
 
 gulp.task('lint-samples', task);

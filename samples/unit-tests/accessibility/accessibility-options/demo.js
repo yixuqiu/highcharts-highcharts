@@ -21,6 +21,13 @@ function isPointAriaHidden(point) {
     return point.graphic.element.getAttribute('aria-hidden') === 'true';
 }
 
+// The forced colors opt-out is scoped to the series group, so that axes,
+// legend and tooltip still follow the user's system setting.
+function getForcedColorAdjust(chart) {
+    return chart.seriesGroup &&
+        chart.seriesGroup.element.style.forcedColorAdjust;
+}
+
 QUnit.test('Accessibility disabled', function (assert) {
     var chart = Highcharts.chart('container', {
             accessibility: {
@@ -56,6 +63,47 @@ QUnit.test('Accessibility disabled', function (assert) {
         'img',
         'SVG root has img role'
     );
+
+    assert.strictEqual(
+        chart.renderTo.getAttribute('aria-label'),
+        'No a11y',
+        'Chart container has aria label'
+    );
+
+    assert.strictEqual(
+        chart.renderTo.getAttribute('role'),
+        'img',
+        'Chart container has img role'
+    );
+
+    chart.update({
+        accessibility: {
+            enabled: true
+        }
+    });
+
+    assert.strictEqual(
+        chart.renderer.box.getAttribute('role'),
+        null,
+        'SVG root has no role after enabling a11y'
+    );
+
+    assert.strictEqual(
+        chart.renderTo.getAttribute('role'),
+        'region',
+        'Chart container has region role after enabling a11y'
+    );
+
+    chart.update({
+        accessibility: {
+            enabled: false
+        }
+    });
+    assert.strictEqual(
+        chart.renderTo.getAttribute('role'),
+        'img',
+        'Chart container has img role again after disabling a11y'
+    );
 });
 
 QUnit.test('Point hidden from AT', function (assert) {
@@ -83,11 +131,18 @@ QUnit.test('Point hidden from AT', function (assert) {
 });
 
 QUnit.test('Keyboard navigation', function (assert) {
+    let eventProps;
     const
         chart = Highcharts.chart('container', {
             series: [
                 {
-                    data: [0]
+                    events: {
+                        click: function (e) {
+                            eventProps = e;
+                        }
+                    },
+                    data: [0, null],
+                    nullInteraction: true
                 },
                 {
                     data: [0]
@@ -97,11 +152,38 @@ QUnit.test('Keyboard navigation', function (assert) {
                 }
             ]
         }),
+        /*
+            KEYCODE DICTIONARY:
+                + Right =   39
+                + Left  =   37
+                + Up    =   38
+                + Down  =   40
+                + Tab   =   9
+                + Home  =   36
+        */
         keyboardNavigation = chart.accessibility.keyboardNavigation,
         eventDispatcher = keyCode => {
             const event = new KeyboardEvent('keydown', { keyCode });
             keyboardNavigation.onKeydown(event);
         };
+
+    eventDispatcher(36);
+    eventDispatcher(13);
+
+    assert.strictEqual(
+        chart.series[0].data[0].graphic.element,
+        eventProps.target,
+        'Event target should be first points graphic'
+    );
+
+    eventDispatcher(39);
+
+    assert.strictEqual(
+        chart.focusElement.element.outerHTML.includes('highcharts-null-point'),
+        true,
+        'Null points should be targetable via keyboard navigation'
+    );
+
 
     eventDispatcher(9);
     eventDispatcher(37);
@@ -141,6 +223,9 @@ QUnit.test('Keyboard navigation', function (assert) {
         'First legend item should still be highlighted when wrapAround is off.'
     );
 
+    eventDispatcher(13);
+    eventDispatcher(36);
+
     chart.update({
         accessibility: {
             keyboardNavigation: {
@@ -173,8 +258,384 @@ QUnit.test('Keyboard navigation', function (assert) {
         3,
         'The colors array should be updated with high contrast colors.'
     );
-
 });
+
+QUnit.test('HCM colors override series colors', function (assert) {
+    var colors = ['#f00', '#0f0', '#00f'],
+        chart = Highcharts.chart('container', {
+            accessibility: {
+                highContrastMode: true,
+                highContrastTheme: {
+                    colors: colors
+                }
+            },
+            series: [{
+                type: 'area',
+                data: [1, 2, 3]
+            }, {
+                type: 'line',
+                color: '#abc',
+                data: [3, 2, 1]
+            }, {
+                type: 'column',
+                color: '#def',
+                data: [2, 2, 2]
+            }]
+        });
+
+    assert.strictEqual(
+        chart.series[0].area && chart.series[0].area.attr('fill'),
+        colors[0],
+        'Area series should use the configured high contrast fill.'
+    );
+
+    assert.strictEqual(
+        chart.series[0].graph && chart.series[0].graph.attr('stroke'),
+        'windowText',
+        'Area series should keep a visible high contrast outline.'
+    );
+
+    assert.strictEqual(
+        chart.series[0].points[0].graphic &&
+        chart.series[0].points[0].graphic.attr('stroke'),
+        'windowText',
+        'Area series markers should keep a visible high contrast outline.'
+    );
+
+    assert.strictEqual(
+        chart.series[0].points[0].graphic &&
+        chart.series[0].points[0].graphic.element.getAttribute('stroke-width'),
+        '1',
+        'Area series markers should render a visible outline width.'
+    );
+
+    assert.strictEqual(
+        chart.series[1].graph && chart.series[1].graph.attr('stroke'),
+        colors[1],
+        'Line series should use the configured high contrast stroke.'
+    );
+
+    assert.strictEqual(
+        chart.series[2].points[0].graphic &&
+        chart.series[2].points[0].graphic.attr('fill'),
+        colors[2],
+        'Column series should use the configured high contrast fill.'
+    );
+
+    assert.strictEqual(
+        getForcedColorAdjust(chart),
+        'none',
+        'Custom high contrast colors should be preserved in forced colors mode.'
+    );
+
+    chart = Highcharts.chart('container', {
+        accessibility: {
+            highContrastMode: true,
+            highContrastTheme: {
+                colors: colors
+            }
+        },
+        series: [{
+            type: 'column',
+            data: [5, 4, 3]
+        }, {
+            type: 'pareto',
+            baseSeries: 0
+        }]
+    });
+
+    assert.strictEqual(
+        chart.series[1].graph && chart.series[1].graph.attr('stroke'),
+        colors[1],
+        'Pareto series should use the configured high contrast stroke.'
+    );
+
+    assert.strictEqual(
+        chart.series[1].color,
+        colors[1],
+        'Pareto series color should be updated for tooltip and legend state.'
+    );
+
+    chart = Highcharts.chart('container', {
+        accessibility: {
+            highContrastMode: true,
+            highContrastTheme: {
+                plotOptions: {
+                    series: {
+                        color: '#0f0'
+                    }
+                }
+            }
+        },
+        series: [{
+            type: 'line',
+            data: [1, 2, 3]
+        }]
+    });
+
+    const series = chart.series[0];
+
+    assert.strictEqual(
+        getForcedColorAdjust(chart),
+        'none',
+        'Single custom high contrast series colors should also be preserved.'
+    );
+
+    assert.strictEqual(
+        series.graph && series.graph.attr('stroke'),
+        '#0f0',
+        'Single custom high contrast series colors should drive the ' +
+        'line stroke.'
+    );
+
+    assert.strictEqual(
+        series.points[0].graphic && series.points[0].graphic.attr('fill'),
+        '#0f0',
+        'Single custom high contrast series colors should drive marker colors.'
+    );
+
+    chart = Highcharts.chart('container', {
+        accessibility: {
+            highContrastMode: true,
+            highContrastTheme: {
+                colors: ['windowText']
+            }
+        },
+        series: [{
+            data: [1, 2, 3]
+        }]
+    });
+
+    assert.notOk(
+        getForcedColorAdjust(chart),
+        'System color high contrast themes should keep browser adjustments.'
+    );
+
+    chart.update({
+        accessibility: {
+            highContrastTheme: {
+                colors: ['#f00']
+            }
+        }
+    });
+
+    assert.strictEqual(
+        getForcedColorAdjust(chart),
+        'none',
+        'Switching to author colors should opt out of browser adjustments.'
+    );
+
+    chart.update({
+        accessibility: {
+            highContrastTheme: {
+                colors: ['windowText']
+            }
+        }
+    });
+
+    assert.notOk(
+        getForcedColorAdjust(chart),
+        'Switching back to system colors should restore browser adjustments.'
+    );
+
+    chart.options.accessibility.highContrastTheme.plotOptions.series
+        .marker.lineWidth = 3;
+    chart.update({
+        title: {
+            text: 'Reapply high contrast theme'
+        }
+    });
+
+    assert.strictEqual(
+        chart.series[0].points[0].graphic &&
+        chart.series[0].points[0].graphic.element.getAttribute('stroke-width'),
+        '3',
+        'Reapplying the theme should preserve its marker line width.'
+    );
+});
+
+QUnit.test('HCM colors set through global options', function (assert) {
+    const colors = ['#f00', '#0f0'],
+        originalTheme = Highcharts.merge(
+            Highcharts.defaultOptions.accessibility.highContrastTheme
+        );
+
+    Highcharts.setOptions({
+        accessibility: {
+            highContrastTheme: {
+                colors: colors
+            }
+        }
+    });
+
+    const chart = Highcharts.chart('container', {
+        accessibility: {
+            highContrastMode: true
+        },
+        series: [{
+            data: [1, 2, 3]
+        }]
+    });
+
+    assert.strictEqual(
+        chart.series[0].graph && chart.series[0].graph.attr('stroke'),
+        colors[0],
+        'Global high contrast colors should be rendered.'
+    );
+
+    assert.strictEqual(
+        getForcedColorAdjust(chart),
+        'none',
+        'Global high contrast colors should be preserved in forced colors ' +
+        'mode.'
+    );
+
+    Highcharts.defaultOptions.accessibility.highContrastTheme = originalTheme;
+});
+
+QUnit.test(
+    'HCM recognizes gradient, pattern and type specific theme colors',
+    function (assert) {
+        const linearGradient = { x1: 0, y1: 0, x2: 0, y2: 1 };
+
+        let chart = Highcharts.chart('container', {
+            accessibility: {
+                highContrastMode: true,
+                highContrastTheme: {
+                    colors: [{
+                        linearGradient: linearGradient,
+                        stops: [[0, '#f00'], [1, '#00f']]
+                    }]
+                }
+            },
+            series: [{
+                type: 'column',
+                data: [1, 2, 3]
+            }]
+        });
+
+        assert.strictEqual(
+            getForcedColorAdjust(chart),
+            'none',
+            'Gradient high contrast colors should be preserved in forced ' +
+            'colors mode.'
+        );
+
+        chart = Highcharts.chart('container', {
+            accessibility: {
+                highContrastMode: true,
+                highContrastTheme: {
+                    plotOptions: {
+                        pie: {
+                            colors: ['#f00', '#0f0']
+                        }
+                    }
+                }
+            },
+            series: [{
+                type: 'pie',
+                data: [1, 2]
+            }]
+        });
+
+        assert.strictEqual(
+            chart.series[0].points[1].graphic.attr('fill'),
+            '#0f0',
+            'Type specific high contrast colors should be rendered.'
+        );
+
+        assert.strictEqual(
+            getForcedColorAdjust(chart),
+            'none',
+            'Type specific high contrast colors should be preserved in ' +
+            'forced colors mode.'
+        );
+
+        chart = Highcharts.chart('container', {
+            accessibility: {
+                highContrastMode: true,
+                highContrastTheme: {
+                    colors: [{
+                        pattern: {
+                            path: 'M 0 0 L 10 10',
+                            width: 10,
+                            height: 10
+                        }
+                    }]
+                }
+            },
+            series: [{
+                type: 'column',
+                data: [1, 2, 3]
+            }]
+        });
+
+        assert.strictEqual(
+            getForcedColorAdjust(chart),
+            'none',
+            'Pattern high contrast colors should be preserved in forced ' +
+            'colors mode.'
+        );
+
+        chart = Highcharts.chart('container', {
+            accessibility: {
+                highContrastMode: true,
+                highContrastTheme: {
+                    colors: [{
+                        linearGradient: linearGradient,
+                        stops: [[0, 'window'], [1, 'windowText']]
+                    }]
+                }
+            },
+            series: [{
+                type: 'column',
+                data: [1, 2, 3]
+            }]
+        });
+
+        assert.notOk(
+            getForcedColorAdjust(chart),
+            'Gradients built from system colors should keep browser ' +
+            'adjustments.'
+        );
+    }
+);
+
+QUnit.test(
+    'skipNullPoints only skips null points, not valid ones (#24650)',
+    function (assert) {
+        const homeKey = 36;
+        const chart = Highcharts.chart('container', {
+            accessibility: {
+                keyboardNavigation: {
+                    seriesNavigation: {
+                        skipNullPoints: true
+                    }
+                }
+            },
+            series: [{
+                // The first null must be skipped, but the valid points
+                // after it should still be reachable.
+                data: [null, 2, 3]
+            }]
+        });
+
+        chart.accessibility.keyboardNavigation.onKeydown(
+            new KeyboardEvent('keydown', { keyCode: homeKey })
+        );
+        const point = chart.highlightedPoint;
+
+        assert.ok(
+            point,
+            'Keyboard navigation should reach a point when skipNullPoints ' +
+            'is true.'
+        );
+        assert.notOk(
+            point && point.isNull,
+            'Navigation should skip the null point and land on a valid point.'
+        );
+    }
+);
 
 QUnit.test('No data', function (assert) {
     var chart = Highcharts.chart('container', {
@@ -227,6 +688,60 @@ QUnit.test('pointDescriptionEnabledThreshold', function (assert) {
         'There be no ARIA on point'
     );
     assert.ok(getSeriesAriaLabel(series), 'There be ARIA on series');
+});
+
+QUnit.test('High contrast theme should persist on chart update', function (
+    assert
+) {
+    const options = {
+        chart: {
+            animation: false
+        },
+        accessibility: {
+            highContrastMode: true,
+            highContrastTheme: {
+                yAxis: {
+                    plotLines: [{
+                        color: '#ff0000',
+                        value: 2,
+                        width: 5
+                    }]
+                }
+            }
+        },
+        yAxis: {
+            plotLines: [{
+                color: '#0000ff',
+                value: 2,
+                width: 2
+            }]
+        },
+        series: [{
+            data: [1, 2, 3]
+        }]
+    };
+    const chart = Highcharts.chart('container', options);
+    const plotLine = chart.yAxis[0].plotLines[0];
+
+    assert.strictEqual(
+        plotLine.svgElem.element.getAttribute('stroke'),
+        '#ff0000',
+        'Plot line should use the high contrast color on first render'
+    );
+
+    chart.update(options);
+    const plotLineAfterUpdate = chart.yAxis[0].plotLines[0];
+
+    assert.ok(
+        plotLine === plotLineAfterUpdate,
+        'Plot line should be the same instance after update'
+    );
+
+    assert.strictEqual(
+        plotLineAfterUpdate.svgElem.element.getAttribute('stroke'),
+        '#ff0000',
+        'Plot line should keep the high contrast color after chart.update'
+    );
 });
 
 QUnit.test('pointNavigationThreshold', function (assert) {
@@ -489,9 +1004,10 @@ QUnit.test('Focus border', function (assert) {
         stroke: 'blue',
         strokeWidth: 1
     };
+    const padding = 2;
 
     const regularText = ren.text('regular text', 50, 50).add();
-    regularText.addFocusBorder(2, style);
+    regularText.addFocusBorder(padding, style);
 
     const wordcloudText = ren
         .text('wordcloud text', 100, 100)
@@ -504,7 +1020,7 @@ QUnit.test('Focus border', function (assert) {
             whiteSpace: 'nowrap'
         })
         .add();
-    wordcloudText.addFocusBorder(2, style);
+    wordcloudText.addFocusBorder(padding, style);
 
     const regularRotatedText = ren
         .text('regular rotated text', 150, 150)
@@ -512,7 +1028,7 @@ QUnit.test('Focus border', function (assert) {
             rotation: 90
         })
         .add();
-    regularRotatedText.addFocusBorder(2, style);
+    regularRotatedText.addFocusBorder(padding, style);
 
     const wordcloudRotatedText = ren
         .text('wordcloud rotated text', 200, 200)
@@ -526,7 +1042,7 @@ QUnit.test('Focus border', function (assert) {
             whiteSpace: 'nowrap'
         })
         .add();
-    wordcloudRotatedText.addFocusBorder(2, style);
+    wordcloudRotatedText.addFocusBorder(padding, style);
 
     const labelText = ren
         .label('label', 250, 250)
@@ -534,7 +1050,7 @@ QUnit.test('Focus border', function (assert) {
             color: 'blue'
         })
         .add();
-    labelText.addFocusBorder(2, style);
+    labelText.addFocusBorder(padding, style);
 
     const labelRotatedText = ren
         .label('rotated label', 300, 300)
@@ -545,7 +1061,7 @@ QUnit.test('Focus border', function (assert) {
             color: 'blue'
         })
         .add();
-    labelRotatedText.addFocusBorder(2, style);
+    labelRotatedText.addFocusBorder(padding, style);
 
     // Comparing the midpoint of the border with the midpoint of the text.
     assert.close(
@@ -556,11 +1072,12 @@ QUnit.test('Focus border', function (assert) {
         'should be correctly applied for text horizontally.'
     );
 
+    const lineHeight = ren.fontMetrics(regularText).h;
     assert.close(
         regularText.focusBorder.getBBox().y +
-            regularText.focusBorder.getBBox().height / 2,
-        regularText.attr('y') - (regularText.getBBox().height / 2) * 0.5,
-        0.1,
+        (regularText.focusBorder.getBBox().height / 2),
+        regularText.attr('y') - (lineHeight / 4),
+        1,
         'should be correctly applied for text vertically.'
     );
 

@@ -1,10 +1,11 @@
 /* *
  *
- *  (c) 2009-2024 Highsoft AS
+ *  (c) 2009-2026 Highsoft AS
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  *  Authors:
  *  - Sebastian Bochan
@@ -14,17 +15,18 @@
  *
  * */
 
+import type {
+    Options as MenuItemOptions,
+    ToggleOptions as MenuItemToggleOptions
+} from './Menu/MenuItem';
+import type { Options as MenuOptions } from './Menu/Menu';
+
 import EditGlobals from './EditGlobals.js';
-import U from '../../Core/Utilities.js';
 import MenuItem from './Menu/MenuItem.js';
 import Menu from './Menu/Menu.js';
 import EditMode from './EditMode.js';
 import { HTMLDOMElement } from '../../Core/Renderer/DOMElementType.js';
-
-const {
-    addEvent,
-    merge
-} = U;
+import { addEvent, merge } from '../../Shared/Utilities.js';
 
 /**
  * Class to create context menu.
@@ -36,7 +38,7 @@ class EditContextMenu extends Menu {
     *  Static Properties
     *
     * */
-    protected static readonly defaultOptions: EditContextMenu.Options = {
+    protected static readonly defaultOptions: Options = {
         enabled: true,
         width: 150,
         className: EditGlobals.classNames.contextMenu,
@@ -54,10 +56,17 @@ class EditContextMenu extends Menu {
             getValue: function (item: MenuItem): boolean {
                 return item.menu.editMode.isActive();
             },
+            setValue: function (item: MenuItem, value: boolean): void {
+                const inputElem = item.innerElement?.querySelector('input');
+
+                if (inputElem) {
+                    inputElem.checked = value;
+                }
+            },
             langKey: 'editMode',
             events: {
                 click: function (this: MenuItem): void {
-                    (this.menu as EditContextMenu).editMode.onEditModeToggle();
+                    (this.menu as EditContextMenu).editMode.toggleEditMode();
                 }
             }
         }
@@ -70,7 +79,7 @@ class EditContextMenu extends Menu {
      * */
     constructor(
         parentElement: HTMLElement,
-        options: EditContextMenu.Options,
+        options: Options,
         editMode: EditMode
     ) {
         super(
@@ -98,8 +107,8 @@ class EditContextMenu extends Menu {
             for (let i = 0, iEnd = this.options.items.length; i < iEnd; ++i) {
                 if (typeof this.options.items[i] === 'string') {
                     items.push(this.options.items[i] as string);
-                } else if ((this.options.items[i] as MenuItem.Options).id) {
-                    items.push((this.options.items[i] as MenuItem.Options).id);
+                } else if ((this.options.items[i] as MenuItemOptions).id) {
+                    items.push((this.options.items[i] as MenuItemOptions).id);
                 }
             }
 
@@ -115,7 +124,7 @@ class EditContextMenu extends Menu {
     *
     * */
     public editMode: EditMode;
-    public options: EditContextMenu.Options;
+    public options: Options;
 
     /* *
     *
@@ -167,6 +176,18 @@ class EditContextMenu extends Menu {
                 );
             }
         }
+
+        // Set editMode toggle state
+        const toggleEditMode = this.activeItems.find(
+            (item): boolean => item.options.langKey === 'editMode'
+        );
+
+        if (toggleEditMode) {
+            (toggleEditMode.options as MenuItemToggleOptions).setValue(
+                toggleEditMode,
+                this.editMode.isActive()
+            );
+        }
     }
 
     public updatePosition(
@@ -190,37 +211,36 @@ class EditContextMenu extends Menu {
     }
 }
 
-namespace EditContextMenu {
+/**
+ * Options for the context menu.
+ */
+export interface Options extends MenuOptions {
     /**
-     * Options for the context menu.
+     * The icon name.
+     *
+     * Try it:
+     *
+     * {@link https://jsfiddle.net/gh/get/library/pure/highcharts/highcharts/tree/master/samples/dashboards/edit-mode/change-ctx-icon/ | Change icon}
      */
-    export interface Options extends Menu.Options {
-        /**
-         * The icon name.
-         *
-         * Try it:
-         *
-         * {@link https://jsfiddle.net/gh/get/library/pure/highcharts/highcharts/tree/master/samples/dashboards/edit-mode/change-ctx-icon/ | Change icon}
-         */
-        icon?: string;
-        /**
-         * The text added next to the icon.
-         * @default undefined
-         *
-         * Try it:
-         *
-         * {@link https://jsfiddle.net/gh/get/library/pure/highcharts/highcharts/tree/master/samples/dashboards/edit-mode/change-ctx-icon/ | Add text next to icon}
-         */
-        text?: string;
-        /**
-         * Width of the context menu.
-         *
-         * Try it:
-         *
-         * {@link https://jsfiddle.net/gh/get/library/pure/highcharts/highcharts/tree/master/samples/dashboards/edit-mode/ctx-menu-width/ | Change width}
-         */
-        width?: number;
-    }
+    icon?: string;
+    /**
+     * The text added next to the icon.
+     *
+     * Try it:
+     *
+     * {@link https://jsfiddle.net/gh/get/library/pure/highcharts/highcharts/tree/master/samples/dashboards/edit-mode/change-ctx-icon/|Add text next to icon}
+     *
+     * @default undefined
+     */
+    text?: string;
+    /**
+     * Width of the context menu.
+     *
+     * Try it:
+     *
+     * {@link https://jsfiddle.net/gh/get/library/pure/highcharts/highcharts/tree/master/samples/dashboards/edit-mode/ctx-menu-width/ | Change width}
+     */
+    width?: number;
 }
 
 export default EditContextMenu;

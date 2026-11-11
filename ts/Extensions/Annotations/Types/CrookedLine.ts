@@ -1,6 +1,5 @@
 /* *
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  * */
 
@@ -14,182 +13,80 @@
 
 import type { AnnotationEventObject } from '../EventEmitter';
 import type {
-    AnnotationOptions,
-    AnnotationTypeOptions,
-    AnnotationTypePointsOptions
+    AnnotationMockPointFunction
 } from '../AnnotationOptions';
 import type { AnnotationPointType } from '../AnnotationSeries';
 import type Controllable from '../Controllables/Controllable';
 import type PositionObject from '../../../Core/Renderer/PositionObject';
-import type MockPointOptions from '../MockPointOptions';
+import type {
+    AnnotationMockPointOptionsObject
+} from '../AnnotationMockPointOptionsObject';
 
 import Annotation from '../Annotation.js';
 import ControlPoint from '../ControlPoint.js';
+import D from '../../../Core/Defaults.js';
+const { defaultOptions } = D;
 import MockPoint from '../MockPoint.js';
-import U from '../../../Core/Utilities.js';
-const { merge } = U;
+import { merge } from '../../../Shared/Utilities.js';
 
-/* *
- *
- *  Class
- *
- * */
-
-class CrookedLine extends Annotation {
-
-    /* *
-     *
-     *  Functions
-     *
-     * */
-
+if (defaultOptions.annotations?.types) {
     /**
-     * Overrides default setter to get axes from typeOptions.
-     * @private
-     */
-    public setClipAxes(): void {
-        this.clipXAxis = this.chart.xAxis[
-            this.options.typeOptions.xAxis as any
-        ];
-        this.clipYAxis = this.chart.yAxis[
-            this.options.typeOptions.yAxis as any
-        ];
-    }
-
-    public getPointsOptions(): Array<MockPointOptions> {
-        const typeOptions = this.options.typeOptions;
-
-        return (typeOptions.points || []).map((
-            pointOptions
-        ): MockPointOptions => {
-            pointOptions.xAxis = typeOptions.xAxis;
-            pointOptions.yAxis = typeOptions.yAxis;
-
-            return pointOptions as any;
-        });
-    }
-
-    public getControlPointsOptions(): Array<MockPointOptions> {
-        return this.getPointsOptions();
-    }
-
-    public addControlPoints(): void {
-        this.getControlPointsOptions().forEach(
-            function (
-                pointOptions: MockPointOptions,
-                i: number
-            ): void {
-                const controlPoint = new ControlPoint(
-                    this.chart,
-                    this as any,
-                    merge(
-                        this.options.controlPointOptions,
-                        pointOptions.controlPoint
-                    ),
-                    i
-                );
-
-                this.controlPoints.push(controlPoint);
-
-                pointOptions.controlPoint = controlPoint.options;
-            },
-            this
-        );
-    }
-
-    public addShapes(): void {
-        const typeOptions = this.options.typeOptions,
-            shape = this.initShape(
-                merge(typeOptions.line, {
-                    type: 'path',
-                    className: 'highcharts-crooked-lines',
-                    points: this.points.map((_point, i): Function => (
-                        function (
-                            target: Controllable
-                        ): AnnotationPointType {
-                            return target.annotation.points[i];
-                        }
-                    ))
-                }),
-                0
-            );
-
-        typeOptions.line = shape.options;
-    }
-}
-
-/* *
- *
- *  Class Prototype
- *
- * */
-
-interface CrookedLine {
-    defaultOptions: Annotation['defaultOptions'];
-}
-
-CrookedLine.prototype.defaultOptions = merge(
-    Annotation.prototype.defaultOptions,
-    /**
-     * A crooked line annotation.
-     *
-     * @sample highcharts/annotations-advanced/crooked-line/
-     *         Crooked line
-     *
-     * @product      highstock
-     * @optionparent annotations.crookedLine
-     */
-    {
+    * Options for the crooked line annotation type.
+    *
+    * @sample highcharts/annotations-advanced/crooked-line/
+    *         Crooked line
+    *
+    * @product      highstock
+    * @requires     modules/annotations-advanced
+    * @optionparent annotations.types.crookedLine
+    */
+    defaultOptions.annotations.types.crookedLine = {
         /**
          * @extends   annotations.labelOptions
-         * @apioption annotations.crookedLine.labelOptions
+         * @apioption annotations.types.crookedLine.labelOptions
          */
 
-        /**
-         * @extends   annotations.shapeOptions
-         * @apioption annotations.crookedLine.shapeOptions
-         */
 
         /**
          * Additional options for an annotation with the type.
          */
         typeOptions: {
             /**
-             * This number defines which xAxis the point is connected to.
+             * This option defines which `xAxis` the point is connected to.
              * It refers to either the axis id or the index of the axis
-             * in the xAxis array.
+             * in the `xAxis` array.
              */
             xAxis: 0,
             /**
-             * This number defines which yAxis the point is connected to.
+             * This option defines which `yAxis` the point is connected to.
              * It refers to either the axis id or the index of the axis
-             * in the xAxis array.
+             * in the `yAxis` array.
              */
             yAxis: 0,
 
             /**
              * @type      {Array<*>}
-             * @apioption annotations.crookedLine.typeOptions.points
+             * @apioption annotations.types.crookedLine.typeOptions.points
              */
 
             /**
              * The x position of the point.
              *
              * @type      {number}
-             * @apioption annotations.crookedLine.typeOptions.points.x
+             * @apioption annotations.types.crookedLine.typeOptions.points.x
              */
 
             /**
              * The y position of the point.
              *
              * @type      {number}
-             * @apioption annotations.crookedLine.typeOptions.points.y
+             * @apioption annotations.types.crookedLine.typeOptions.points.y
              */
 
             /**
              * @type      {number}
              * @excluding positioner, events
-             * @apioption annotations.crookedLine.typeOptions.points.controlPoint
+             * @apioption annotations.types.crookedLine.typeOptions.points.controlPoint
              */
 
             /**
@@ -204,6 +101,7 @@ CrookedLine.prototype.defaultOptions = merge(
 
         /**
          * @excluding positioner, events
+         * @extends annotations.controlPointOptions
          */
         controlPointOptions: {
             positioner: function (
@@ -245,32 +143,111 @@ CrookedLine.prototype.defaultOptions = merge(
 
                         // Update options:
                         typeOptions.points[this.index].x =
-                            target.points[this.index].x;
+                        target.points[this.index].x;
                         typeOptions.points[this.index].y =
-                            target.points[this.index].y;
+                        target.points[this.index].y;
 
                         target.redraw(false);
                     }
                 }
             }
         }
-    }
-);
+    };
+}
 
 /* *
  *
- *  Class Namespace
+ *  Class
  *
  * */
 
-namespace CrookedLine {
-    export interface Options extends AnnotationOptions {
-        typeOptions: TypeOptions;
+/** @internal */
+class CrookedLine extends Annotation {
+
+    /* *
+     *
+     *  Functions
+     *
+     * */
+
+    /**
+     * Overrides default setter to get axes from typeOptions.
+     */
+    public setClipAxes(): void {
+        this.clipXAxis = this.chart.xAxis[
+            this.options.typeOptions?.xAxis as any
+        ];
+        this.clipYAxis = this.chart.yAxis[
+            this.options.typeOptions?.yAxis as any
+        ];
     }
-    export interface TypeOptions extends AnnotationTypeOptions {
-        points?: Array<AnnotationTypePointsOptions>;
+
+    public getPointsOptions(): Array<AnnotationMockPointOptionsObject> {
+        const typeOptions = this.options.typeOptions ||= {};
+
+        return (typeOptions.points || []).map((
+            pointOptions
+        ): AnnotationMockPointOptionsObject => {
+            if (typeof pointOptions !== 'string') {
+                pointOptions.xAxis = typeOptions.xAxis;
+                pointOptions.yAxis = typeOptions.yAxis;
+            }
+
+            return pointOptions as any;
+        });
+    }
+
+    public getControlPointsOptions(): Array<AnnotationMockPointOptionsObject> {
+        return this.getPointsOptions();
+    }
+
+    public addControlPoints(): void {
+        this.getControlPointsOptions().forEach(
+            function (
+                this: CrookedLine,
+                pointOptions: AnnotationMockPointOptionsObject,
+                i: number
+            ): void {
+                const controlPoint = new ControlPoint(
+                    this.chart,
+                    this as any,
+                    merge(
+                        this.options.controlPointOptions,
+                        pointOptions.controlPoint
+                    ),
+                    i
+                );
+
+                this.controlPoints.push(controlPoint);
+
+                pointOptions.controlPoint = controlPoint.options;
+            },
+            this
+        );
+    }
+
+    public addShapes(): void {
+        const typeOptions = this.options.typeOptions ||= {},
+            shape = this.initShape(
+                merge(typeOptions.line, {
+                    type: 'path',
+                    className: 'highcharts-crooked-lines',
+                    points: this.points.map(
+                        (_point, i): AnnotationMockPointFunction =>
+                            function (
+                                target: Controllable
+                            ): AnnotationPointType {
+                                return target.annotation.points[i];
+                            }
+                    )
+                }),
+                0
+            );
+
+        typeOptions.line = shape.options;
     }
 }
+
 
 /* *
  *
@@ -278,6 +255,7 @@ namespace CrookedLine {
  *
  * */
 
+/** @internal */
 declare module './AnnotationType' {
     interface AnnotationTypeRegistry {
         crookedLine: typeof CrookedLine;

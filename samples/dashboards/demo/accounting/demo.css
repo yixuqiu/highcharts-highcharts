@@ -1,6 +1,22 @@
 @import url("https://code.highcharts.com/css/highcharts.css");
 @import url("https://code.highcharts.com/dashboards/css/dashboards.css");
-@import url("https://code.highcharts.com/dashboards/css/datagrid.css");
+@import url("https://code.highcharts.com/grid-pro/css/grid-pro.css");
+
+body {
+    font-family:
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        Roboto,
+        Helvetica,
+        Arial,
+        "Apple Color Emoji",
+        "Segoe UI Emoji",
+        "Segoe UI Symbol",
+        sans-serif;
+    background: var(--highcharts-background-color);
+    color: var(--highcharts-neutral-color-100);
+}
 
 /* Dashboards */
 
@@ -95,6 +111,10 @@
     display: none;
 }
 
+.highcharts-gauge-series .highcharts-data-label text {
+    font-size: 1em;
+}
+
 .highcharts-gauge-series .highcharts-pivot,
 .highcharts-gauge-series .highcharts-dial {
     fill: var(--highcharts-neutral-color-60);
@@ -125,10 +145,6 @@
     fill: var(--highcharts-neutral-color-60);
 }
 
-.highcharts-column-chart .highcharts-point {
-    cursor: pointer;
-}
-
 .highcharts-stock-chart .highcharts-color-1,
 .highcharts-stock-chart .highcharts-color-2 {
     fill: var(--demo-prediction-color);
@@ -144,56 +160,15 @@
 }
 
 .highcharts-description {
-    padding: 0 20px;
+    background: light-dark(#f2f6f2, #323232);
+    border-radius: 0 4px 4px 0;
+    border-left: 2px solid light-dark(#1d6aff, #fff);
+    font-size: 0.8rem;
+    font-style: italic;
+    padding: 8px 16px;
+    margin: 2em 10px 1em;
 }
 
 #csv {
     display: none;
-}
-
-/* Popup */
-
-#popup {
-    position: fixed;
-    top: 0;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    background: #fff5;
-    display: none;
-    align-items: center;
-    justify-content: center;
-}
-
-#popup .container {
-    height: 60%;
-    width: 90%;
-    max-height: 800px;
-    max-width: 900px;
-    min-height: 100px;
-    min-width: 100px;
-    background: #555;
-    position: relative;
-}
-
-#datagrid-container {
-    width: 100%;
-    height: 100%;
-}
-
-#popup .close {
-    position: absolute;
-    right: 0;
-    top: 0;
-    background: transparent;
-    border: 0;
-    color: var(--highcharts-neutral-color-100);
-    cursor: pointer;
-    width: 24px;
-    height: 24px;
-    padding: 4px;
-}
-
-#popup .close:hover {
-    color: #d33;
 }

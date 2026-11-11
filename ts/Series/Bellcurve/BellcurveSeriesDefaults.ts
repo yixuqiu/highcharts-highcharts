@@ -1,12 +1,13 @@
 /* *
  *
- *  (c) 2010-2024 Highsoft AS
+ *  (c) 2010-2026 Highsoft AS
  *
  *  Author: Sebastian Domas
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  * */
 
@@ -22,7 +23,7 @@ import type BellcurveSeriesOptions from './BellcurveSeriesOptions';
 
 /* *
  *
- *  API Optiions
+ *  API Options
  *
  * */
 
@@ -40,7 +41,7 @@ import type BellcurveSeriesOptions from './BellcurveSeriesOptions';
  * @product      highcharts
  * @excluding    boostThreshold, connectNulls, dragDrop, stacking,
  *               pointInterval, pointIntervalUnit
- * @requires     modules/bellcurve
+ * @requires     modules/histogram-bellcurve
  * @optionparent plotOptions.bellcurve
  */
 const BellcurveSeriesDefaults: BellcurveSeriesOptions = {
@@ -104,8 +105,8 @@ const BellcurveSeriesDefaults: BellcurveSeriesOptions = {
  * @extends   series,plotOptions.bellcurve
  * @since     6.0.0
  * @product   highcharts
- * @excluding dataParser, dataURL, data, boostThreshold, boostBlending
- * @requires  modules/bellcurve
+ * @excluding boostThreshold, boostBlending
+ * @requires  modules/histogram-bellcurve
  * @apioption series.bellcurve
  */
 

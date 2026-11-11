@@ -86,7 +86,12 @@ QUnit.test('Overlapping dataLabels should be hidden', function (assert) {
     });
 
     assert.strictEqual(
-        chart.series[1].points[0].dataLabel.div.style['pointer-events'],
+        (
+            // Parallel HTML
+            chart.series[1].points[0].dataLabel.div ||
+            // Foreign object
+            chart.series[1].points[0].dataLabel.element
+        ).style['pointer-events'],
         'none',
         'Pointer events for overlapped labels should be disabled (#18821)'
     );
@@ -145,45 +150,138 @@ QUnit.test(
     }
 );
 
-QUnit.test('Overlapping labels with paddings', function (assert) {
-    var chart = Highcharts.chart('container', {
-        chart: {
-            type: 'bar',
-            width: 530
-        },
-        yAxis: {
-            min: -10,
-            stackLabels: {
-                enabled: true
-            }
-        },
-        plotOptions: {
-            series: {
-                stacking: 'normal',
-                dataLabels: {
+QUnit.test(
+    'Overlapping labels with paddings, applying width in styledMode (#20499)',
+    function (assert) {
+        var chart = Highcharts.chart('container', {
+            chart: {
+                type: 'bar',
+                width: 530
+            },
+            yAxis: {
+                min: -10,
+                stackLabels: {
                     enabled: true
                 }
-            }
+            },
+            plotOptions: {
+                series: {
+                    stacking: 'normal',
+                    dataLabels: {
+                        enabled: true
+                    }
+                }
+            },
+            series: [
+                {
+                    name: 'John',
+                    data: [2.89765436543]
+                },
+                {
+                    name: 'Jane',
+                    data: [1.89765436543]
+                },
+                {
+                    name: 'Joe',
+                    data: [5.89765436543]
+                }
+            ]
+        });
+
+        assert.ok(
+            chart.series[0].points[0].dataLabel.attr('y') < 0 ||
+                chart.series[0].points[0].dataLabel.attr('opacity') === 0,
+            'Overlapping dataLabel is hidden (#9119).'
+        );
+
+        chart.destroy();
+
+        const markerWidth = 60;
+        chart = Highcharts.chart('container', {
+            chart: {
+                styledMode: true
+            },
+            series: [{
+                type: 'treegraph',
+                keys: ['parent', 'id', 'level'],
+                data: [
+                    [undefined, 'Proto Indo-European'],
+                    ['Proto Indo-European', 'Balto-Slavic'],
+                    ['Proto Indo-European', 'Indo-Iraniasdsan']
+                ],
+                marker: {
+                    symbol: 'rect',
+                    height: '40px',
+                    width: markerWidth
+                },
+                dataLabels: {
+                    pointFormat: '{point.id}'
+                }
+            }]
+        });
+
+        assert.equal(
+            chart.series[0].data[0].dataLabels[0].text.textWidth,
+            markerWidth,
+            'Defined width should be applied in styledMode (#20499).'
+        );
+    }
+);
+
+QUnit.test('Overlapping labels with responsive rotation (#23564)', assert => {
+    const chart = Highcharts.chart('container', {
+        chart: {
+            width: 120,
+            margin: 0
         },
-        series: [
-            {
-                name: 'John',
-                data: [2.89765436543]
-            },
-            {
-                name: 'Jane',
-                data: [1.89765436543]
-            },
-            {
-                name: 'Joe',
-                data: [5.89765436543]
+        title: {
+            text: ''
+        },
+        yAxis: {
+            visible: false
+        },
+        xAxis: {
+            categories: [
+                'Apples',
+                'Pears',
+                'Oranges',
+                'Bananas',
+                'Avocados',
+                'Grapes'
+            ],
+            visible: false
+        },
+        series: [{
+            data: [3, 4, 3, 5, 4, 5],
+            type: 'column',
+            dataLabels: {
+                enabled: true,
+                format: '{point.category}',
+                align: 'right',
+                inside: true,
+                padding: 0
             }
-        ]
+        }],
+        responsive: {
+            rules: [{
+                condition: {
+                    maxWidth: 500
+                },
+                chartOptions: {
+                    series: [{
+                        dataLabels: {
+                            rotation: 90
+                        }
+                    }]
+                }
+            }]
+        }
     });
 
     assert.ok(
-        chart.series[0].points[0].dataLabel.attr('y') < 0 ||
-            chart.series[0].points[0].dataLabel.attr('opacity') === 0,
-        'Overlapping dataLabel is hidden (#9119).'
+        chart.series[0].points.every(
+            point => point.dataLabel.opacity === 1
+        ),
+        'All dataLabels should be visible (#23564).'
     );
 });

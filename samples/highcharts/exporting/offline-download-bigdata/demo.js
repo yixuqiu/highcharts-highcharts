@@ -36,7 +36,21 @@ Highcharts.chart('container', {
         sourceWidth: 400,
         sourceHeight: 300,
         scale: 1,
-        error: fallbackHandler
+        libURL: 'https://code.highcharts.com/lib/',
+        error: fallbackHandler,
+        buttons: {
+            contextButton: {
+                menuItems: [
+                    'viewFullscreen',
+                    'printChart',
+                    'separator',
+                    'downloadPNG',
+                    'downloadJPEG',
+                    'downloadSVG',
+                    'downloadPDF'
+                ]
+            }
+        }
     },
     title: {
         text: 'Lots of data points, test PDF in particular'

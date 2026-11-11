@@ -1,0 +1,175 @@
+/* *
+ *
+ *  Grid Querying Controller class
+ *
+ *  (c) 2020-2026 Highsoft AS
+ *
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
+ *
+ *
+ *  Authors:
+ *  - Dawid Draguła
+ *
+ * */
+
+'use strict';
+
+
+/* *
+ *
+ *  Imports
+ *
+ * */
+
+import type DataModifier from '../../../Data/Modifiers/DataModifier.js';
+import type Grid from '../Grid.js';
+
+import SortingController from './SortingController.js';
+import FilteringController from './FilteringController.js';
+import PaginationController from './PaginationController.js';
+import { fireEvent } from '../../../Shared/Utilities.js';
+
+/* *
+ *
+ *  Class
+ *
+ * */
+
+/**
+ * Class that manage data modification of the visible data in the data grid.
+ * It manages the modifiers that are applied to the data table.
+ */
+class QueryingController {
+
+    /* *
+    *
+    *  Properties
+    *
+    * */
+
+    /**
+     * The data grid instance.
+     */
+    public grid: Grid;
+
+    /**
+     * Sorting controller instance.
+     */
+    public sorting: SortingController;
+
+    /**
+     * Filtering controller instance.
+     */
+    public filtering: FilteringController;
+
+    /**
+     * Pagination controller instance
+     */
+    public pagination: PaginationController;
+
+    /**
+     * This flag should be set to `true` if the modifiers should reapply to the
+     * data table due to some data change or other important reason.
+     */
+    public shouldBeUpdated: boolean = false;
+
+
+    /* *
+    *
+    *  Constructor
+    *
+    * */
+
+    constructor(grid: Grid) {
+        this.grid = grid;
+
+        this.filtering = new FilteringController(this);
+        this.sorting = new SortingController(this);
+        this.pagination = new PaginationController(this);
+    }
+
+
+    /* *
+    *
+    *  Functions
+    *
+    * */
+
+    /**
+     * Proceeds with the data modification if needed.
+     *
+     * @param force
+     * If the data should be modified even if the significant options are not
+     * changed.
+     */
+    public async proceed(force: boolean = false): Promise<void> {
+        if (force || this.shouldBeUpdated) {
+            await this.modifyData();
+        }
+    }
+
+    /**
+     * Load all options needed to generate the modifiers.
+     */
+    public loadOptions(): void {
+        this.filtering.loadOptions();
+        this.sorting.loadOptions();
+        this.pagination.loadOptions();
+    }
+
+    /**
+     * Whether the query leaves the data table untouched, so that a cell edit
+     * does not need a requery.
+     */
+    public willNotModify(): boolean {
+        return this.getGroupedModifiers().length === 0;
+    }
+
+    /**
+     * Returns a list of modifiers that should be applied to the data table.
+     *
+     * Features can contribute their own modifiers through the
+     * `getGroupedModifiers` event. Those run first, so that sorting and
+     * filtering see the columns they produce.
+     */
+    public getGroupedModifiers(): DataModifier[] {
+        const modifiers: DataModifier[] = [];
+
+        fireEvent(this.grid, 'getGroupedModifiers', { modifiers });
+
+        if (this.sorting.modifier) {
+            modifiers.push(this.sorting.modifier);
+        }
+
+        if (this.filtering.modifier) {
+            modifiers.push(this.filtering.modifier);
+        }
+
+        return modifiers;
+    }
+
+    /**
+     * Apply all modifiers to the data provider.
+     */
+    private async modifyData(): Promise<void> {
+        const dataProvider = this.grid.dataProvider;
+        if (!dataProvider) {
+            return;
+        }
+
+        await dataProvider.applyQuery();
+
+        this.shouldBeUpdated = false;
+    }
+}
+
+
+/* *
+ *
+ *  Default Export
+ *
+ * */
+
+export default QueryingController;

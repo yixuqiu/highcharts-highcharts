@@ -1,17 +1,27 @@
 /* *
  *
- *  (c) 2009-2024 Highsoft AS
+ *  (c) 2009-2026 Highsoft AS
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  *  Authors:
  *  - Sophie Bremer
+ *  - Dawid Draguła
  *
  * */
 
 'use strict';
+
+/* *
+ *
+ *  Imports
+ *
+ * */
+
+import type { TypedArray } from '../Shared/Types';
 
 
 /* *
@@ -24,27 +34,33 @@
 /**
  * Options to initialize a new DataTable instance.
  */
-export interface DataTableOptions {
-
-
+export interface DataTableOptionsObject {
     /**
-     * Initial map of column aliases to original column names.
+     * For type-safe check against a DataTable instance.
+     * @internal
      */
-    aliases?: Record<string, string>;
-
+    isDataTable?: never;
 
     /**
      * Initial columns with their values.
      */
-    columns?: Record<string, Array<DataTableValue>>;
-
+    columns?: Record<string, Array<DataTableValue>|TypedArray>;
 
     /**
      * Custom ID to identify the new DataTable instance.
      */
     id?: string;
 
+    /**
+     * A reference to the specific data table key defined in the component's
+     * connector options.
+     */
+    key?: string;
 
+    /**
+     * Metadata to describe the dataTable.
+     */
+    metadata?: Record<string, DataTableValue>;
 }
 
 
@@ -58,4 +74,4 @@ export type DataTableValue = (boolean|null|number|string|undefined);
  * */
 
 
-export default DataTableOptions;
+export default DataTableOptionsObject;

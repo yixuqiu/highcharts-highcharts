@@ -1,10 +1,12 @@
 /* *
  *
- *  (c) 2010-2024 Torstein Honsi
+ *  (c) 2010-2026 Highsoft AS
+ *  Author: Torstein Hønsi
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  * */
 
@@ -16,9 +18,8 @@
  *
  * */
 
-import type ColorAxis from './ColorAxis';
-
-import { Palette } from '../../Color/Palettes.js';
+import type ColorAxisOptions from './ColorAxisOptions';
+import type { DeepPartial } from '../../../Shared/Types';
 
 /* *
  *
@@ -52,7 +53,7 @@ import { Palette } from '../../Color/Palettes.js';
  * convenient to add each category to a separate series.
  *
  * Color axis does not work with: `sankey`, `sunburst`, `dependencywheel`,
- * `networkgraph`, `wordcloud`, `venn`, `gauge` and `solidgauge` series
+ * `networkgraph`, `venn`, `gauge` and `solidgauge` series
  * types.
  *
  * Since v7.2.0 `colorAxis` can also be an array of options objects.
@@ -70,17 +71,19 @@ import { Palette } from '../../Color/Palettes.js';
  *               Min color and max color
  *
  * @extends      xAxis
- * @excluding    alignTicks, allowDecimals, alternateGridColor, breaks,
- *               categories, crosshair, dateTimeLabelFormats, left,
+ * @excluding    alignTicks, allowDecimals, alternateGridColor, angle, breaks,
+ *               categories, crosshair, crossing, dateTimeLabelFormats, left,
  *               lineWidth, linkedTo, maxZoom, minRange, minTickInterval,
- *               offset, opposite, pane, plotBands, plotLines,
- *               reversedStacks, scrollbar, showEmpty, title, top,
+ *               offset, opposite, pane, panningEnabled, plotBands, plotLines,
+ *               reversedStacks, scrollbar, showEmpty, startOfWeek,
+ *               tickPlacement, title, top, uniqueNames, units,
  *               zoomEnabled
  * @product      highcharts highstock highmaps
+ * @requires     modules/coloraxis
  * @type         {*|Array<*>}
  * @optionparent colorAxis
  */
-const colorAxisDefaults: DeepPartial<ColorAxis.Options> = {
+const colorAxisDefaults: DeepPartial<ColorAxisOptions> = {
 
     /**
      * Whether to allow decimals on the color axis.
@@ -124,19 +127,6 @@ const colorAxisDefaults: DeepPartial<ColorAxis.Options> = {
      */
 
     /**
-     * The layout of the color axis. Can be `'horizontal'` or `'vertical'`.
-     * If none given, the color axis has the same layout as the legend.
-     *
-     * @sample highcharts/coloraxis/horizontal-layout/
-     *         Horizontal color axis layout with vertical legend
-     *
-     * @type      {string|undefined}
-     * @since     7.2.0
-     * @product   highcharts highstock highmaps
-     * @apioption colorAxis.layout
-     */
-
-    /**
      * The color of each data class. If not set, the color is pulled
      * from the global or chart-specific [colors](#colors) array. In
      * styled mode, this option is ignored. Instead, use colors defined
@@ -145,7 +135,7 @@ const colorAxisDefaults: DeepPartial<ColorAxis.Options> = {
      * @sample {highmaps} maps/demo/data-class-two-ranges/
      *         Explicit colors
      *
-     * @type      {Highcharts.ColorString|Highcharts.GradientColorObject|Highcharts.PatternObject}
+     * @type      {Highcharts.ColorType}
      * @product   highcharts highstock highmaps
      * @apioption colorAxis.dataClasses.color
      */
@@ -190,6 +180,19 @@ const colorAxisDefaults: DeepPartial<ColorAxis.Options> = {
      * @type      {number}
      * @product   highcharts highstock highmaps
      * @apioption colorAxis.dataClasses.to
+     */
+
+    /**
+     * The layout of the color axis. Can be `'horizontal'` or `'vertical'`.
+     * If none given, the color axis has the same layout as the legend.
+     *
+     * @sample highcharts/coloraxis/horizontal-layout/
+     *         Horizontal color axis layout with vertical legend
+     *
+     * @type      {string|undefined}
+     * @since     7.2.0
+     * @product   highcharts highstock highmaps
+     * @apioption colorAxis.layout
      */
 
     /** @ignore-option */
@@ -245,10 +248,10 @@ const colorAxisDefaults: DeepPartial<ColorAxis.Options> = {
      * @sample {highmaps} maps/coloraxis/gridlines/
      *         Grid lines demonstrated
      *
-     * @type      {Highcharts.ColorString|Highcharts.GradientColorObject|Highcharts.PatternObject}
+     * @type      {Highcharts.ColorType}
      * @product   highcharts highstock highmaps
      */
-    gridLineColor: Palette.backgroundColor,
+    gridLineColor: 'var(--highcharts-background-color)',
 
     /**
      * The width of the grid lines extending from the axis across the
@@ -313,27 +316,63 @@ const colorAxisDefaults: DeepPartial<ColorAxis.Options> = {
     marker: {
 
         /**
-         * Animation for the marker as it moves between values. Set to
-         * `false` to disable animation. Defaults to `{ duration: 50 }`.
+         * The symbol of the marker. Can be one of the predefined symbols
+         * ('circle', 'square', 'diamond', 'triangle', 'triangle-down') or a
+         * custom symbol URL.
+         *
+         * @type   {string}
+         * @since  13.0.0
+         * @sample highcharts/coloraxis/marker
+         *         Marker symbol options
+         * @apioption colorAxis.marker.symbol
+         */
+
+        /**
+         * Animation for the marker as it moves between values. Set to `false`
+         * to disable animation.
          *
          * @type    {boolean|Partial<Highcharts.AnimationOptionsObject>}
          * @product highcharts highstock highmaps
+         * @default { duration: 50 }
          */
         animation: {
             /** @internal */
             duration: 50
         },
 
-        /** @internal */
-        width: 0.01,
+        /**
+         * The fill color of the marker.
+         * @internal */
+        clip: false,
+
+        /**
+         * The color of the marker's outline.
+         *
+         * @sample highcharts/coloraxis/marker
+         *         Marker symbol options
+         */
+        lineColor: 'var(--highcharts-neutral-color-40)',
+
+        /**
+         * The width of the marker's outline.
+         */
+        lineWidth: 0,
 
         /**
          * The color of the marker.
          *
-         * @type    {Highcharts.ColorString|Highcharts.GradientColorObject|Highcharts.PatternObject}
+         * @sample  highcharts/coloraxis/marker
+         *          Marker symbol options
+         * @type    {Highcharts.ColorType}
          * @product highcharts highstock highmaps
          */
-        color: Palette.neutralColor40
+        color: 'var(--highcharts-neutral-color-40)',
+
+        /**
+         * Maps to stroke-width because marker options are passed as crosshair.
+         * @internal
+         */
+        width: 0.01
     },
 
     /**
@@ -379,10 +418,10 @@ const colorAxisDefaults: DeepPartial<ColorAxis.Options> = {
      * @sample {highmaps} maps/coloraxis/mincolor-maxcolor-dataclasses/
      *         On data classes
      *
-     * @type    {Highcharts.ColorString|Highcharts.GradientColorObject|Highcharts.PatternObject}
+     * @type    {Highcharts.ColorType}
      * @product highcharts highstock highmaps
      */
-    minColor: Palette.highlightColor10,
+    minColor: 'var(--highcharts-highlight-color-10)',
 
     /**
      * The color to represent the maximum of the color axis. Unless
@@ -399,10 +438,10 @@ const colorAxisDefaults: DeepPartial<ColorAxis.Options> = {
      * @sample {highmaps} maps/coloraxis/mincolor-maxcolor-dataclasses/
      *         On data classes
      *
-     * @type    {Highcharts.ColorString|Highcharts.GradientColorObject|Highcharts.PatternObject}
+     * @type    {Highcharts.ColorType}
      * @product highcharts highstock highmaps
      */
-    maxColor: Palette.highlightColor100,
+    maxColor: 'var(--highcharts-highlight-color-100)',
 
     /**
      * Color stops for the gradient of a scalar color axis. Use this in
@@ -429,6 +468,20 @@ const colorAxisDefaults: DeepPartial<ColorAxis.Options> = {
     tickLength: 5,
 
     /**
+     * The color axis title. Displayed alongside the color axis. When the
+     * legend is vertical the title is rotated accordingly.
+     *
+     * @sample highcharts/coloraxis/coloraxis-title/
+     * Color axis with title
+     *
+     * @type      {Highcharts.AxisTitleOptions}
+     * @product   highcharts highstock highmaps
+     */
+    title: {
+        margin: 5
+    },
+
+    /**
      * The type of interpolation to use for the color axis. Can be
      * `linear` or `logarithmic`.
      *
@@ -444,11 +497,10 @@ const colorAxisDefaults: DeepPartial<ColorAxis.Options> = {
 
     /**
      * Whether to reverse the axis so that the highest number is closest
-     * to the origin. Defaults to `false` in a horizontal legend and
-     * `true` in a vertical legend, where the smallest value starts on
-     * top.
+     * to the origin. Defaults to `false`.
      *
      * @type      {boolean}
+     * @default   false
      * @product   highcharts highstock highmaps
      * @apioption colorAxis.reversed
      */
@@ -463,9 +515,13 @@ const colorAxisDefaults: DeepPartial<ColorAxis.Options> = {
      * Fires when the legend item belonging to the colorAxis is clicked.
      * One parameter, `event`, is passed to the function.
      *
-     * @type      {Function}
-     * @product   highcharts highstock highmaps
-     * @apioption colorAxis.events.legendItemClick
+     * **Note:** This option is deprecated in favor of
+     * [legend.events.itemClick](#legend.events.itemClick).
+     *
+     * @deprecated 11.4.4
+     * @type       {Function}
+     * @product    highcharts highstock highmaps
+     * @apioption  colorAxis.events.legendItemClick
      */
 
     /**
@@ -479,7 +535,7 @@ const colorAxisDefaults: DeepPartial<ColorAxis.Options> = {
      *            Percentage width and pixel height for color axis
      *
      * @type      {number|string}
-     * @since     @next
+     * @since     11.3.0
      * @product   highcharts highstock highmaps
      * @apioption colorAxis.width
      */
@@ -495,7 +551,7 @@ const colorAxisDefaults: DeepPartial<ColorAxis.Options> = {
      *            Percentage width and pixel height for color axis
      *
      * @type      {number|string}
-     * @since     @next
+     * @since     11.3.0
      * @product   highcharts highstock highmaps
      * @apioption colorAxis.height
      */

@@ -1,10 +1,12 @@
 /* *
  *
- *  (c) 2010-2024 Torstein Honsi
+ *  (c) 2010-2026 Highsoft AS
+ *  Author: Torstein Hønsi
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  * */
 
@@ -16,10 +18,9 @@
  *
  * */
 
-import type { AlignObject, AlignValue } from '../Renderer/AlignObject';
+import type { AlignValue } from '../Renderer/AlignObject';
 import type BBoxObject from '../Renderer/BBoxObject';
 import type ColorString from '../Color/ColorString';
-import type ColumnPoint from '../../Series/Column/ColumnPoint';
 import type CorePositionObject from '../../Core/Renderer/PositionObject';
 import type DataLabelOptions from './DataLabelOptions';
 import type PiePoint from '../../Series/Pie/PiePoint';
@@ -31,25 +32,23 @@ import type SVGLabel from '../Renderer/SVG/SVGLabel';
 import type SVGPath from '../../Core/Renderer/SVG/SVGPath';
 import type AnimationOptions from '../Animation/AnimationOptions';
 
-import A from '../Animation/AnimationUtilities.js';
-const { getDeferredAnimation } = A;
+import { getDeferredAnimation } from '../Animation/AnimationUtilities.js';
 import F from '../Templating.js';
 const { format } = F;
-import { Palette } from '../Color/Palettes.js';
 import R from '../Renderer/RendererUtilities.js';
-import U from '../Utilities.js';
-const {
+import {
     defined,
     extend,
     fireEvent,
+    getAlignFactor,
     isArray,
+    isNumber,
     isString,
     merge,
     objectEach,
-    pick,
     pInt,
     splat
-} = U;
+} from '../../Shared/Utilities.js';
 
 /* *
  *
@@ -57,8 +56,9 @@ const {
  *
  * */
 
-declare module './PointLike' {
-    interface PointLike {
+/** @internal */
+declare module './PointBase' {
+    interface PointBase {
         bottom?: number;
         contrastColor?: ColorString;
         dataLabel?: SVGElement|SVGLabel;
@@ -68,7 +68,7 @@ declare module './PointLike' {
         dataLabels?: Array<SVGElement>;
         distributeBox?: R.BoxObject;
         dlBox?: BBoxObject;
-        dlOptions?: DataLabelOptions;
+        dlOptions?: DataLabelOptions & { zIndex?: undefined };
         top?: number;
         getDataLabelPath(dataLabel: SVGElement): SVGElement;
     }
@@ -76,19 +76,57 @@ declare module './PointLike' {
 
 declare module './PointOptions' {
     interface PointOptions {
-        dataLabels?: (DataLabelOptions|Array<DataLabelOptions>);
+        /**
+         * Individual data label for each point. The options are the same as
+         * the ones for [plotOptions.series.dataLabels](#plotOptions.series.dataLabels)
+         * with exception of `zIndex` which is applied on the data label's
+         * parent group.
+         *
+         * @sample highcharts/point/datalabels/
+         *         Show a label for the last value
+         */
+        dataLabels?: (PointDataLabelOptions | Array<PointDataLabelOptions>);
+
+        /**
+         * The rank for all this point's data labels in case of collision. If
+         * two data labels are about to overlap, only the one with the highest
+         * `labelrank` will be drawn.
+         *
+         * The `labelrank` set on `series.dataLabels` takes precedence over
+         * this.
+         */
         labelrank?: number;
     }
 }
 
-declare module './SeriesLike' {
-    interface SeriesLike {
+export interface PointDataLabelOptionsModifier {
+    /* *
+     *
+     *  Excluded
+     *
+     * */
+
+    zIndex?: undefined;
+}
+
+export type PointDataLabelOptions =
+    DataLabelOptions & PointDataLabelOptionsModifier;
+
+/** @internal */
+declare module './SeriesBase' {
+    interface SeriesBase {
         dataLabelPositioners?: DataLabel.PositionersObject;
         dataLabelsGroup?: SVGElement;
+        dataLabelsGroups?: Array<SVGElement|undefined>;
         hasDataLabels?(): boolean;
-        initDataLabelsGroup(): SVGElement;
+        initDataLabelsGroup(
+            index: number,
+            dataLabelsOptions?: DataLabelOptions
+        ): SVGElement;
         initDataLabels(
-            animationConfig?: Partial<AnimationOptions>
+            index: number,
+            animationConfig?: Partial<AnimationOptions>,
+            dataLabelsOptions?: DataLabelOptions
         ): SVGElement;
         alignDataLabel(
             point: Point,
@@ -110,26 +148,46 @@ declare module './SeriesLike' {
             alignTo?: BBoxObject,
             isNew?: boolean
         ): (boolean|undefined);
+        mergeArrays(
+            one: (DataLabelOptions|Array<DataLabelOptions>|undefined),
+            two: (DataLabelOptions|Array<DataLabelOptions>|undefined)
+        ): (DataLabelOptions|Array<DataLabelOptions>);
         placeDataLabels?(): void;
-        setDataLabelStartPos(
-            point: ColumnPoint,
-            dataLabel: SVGElement,
-            isNew: boolean|undefined,
-            isInside: boolean,
-            alignOptions: AlignObject
-        ): void;
         verifyDataLabelOverflow?(overflow: Array<number>): boolean;
     }
 }
 
 declare module './SeriesOptions' {
     interface SeriesOptions {
+        /**
+         * Options for the series data labels, appearing next to each data
+         * point.
+         *
+         * Since v6.2.0, multiple data labels can be applied to each single
+         * point by defining them as an array of configs.
+         *
+         * In styled mode, the data labels can be styled with the
+         * `.highcharts-data-label-box` and `.highcharts-data-label` class names
+         * ([see example](https://www.highcharts.com/samples/highcharts/css/series-datalabels)).
+         *
+         * @sample {highcharts} highcharts/plotoptions/series-datalabels-enabled
+         *         Data labels enabled
+         * @sample {highcharts} highcharts/plotoptions/series-datalabels-multiple
+         *         Multiple data labels on a bar series
+         * @sample {highcharts} highcharts/css/series-datalabels
+         *         Styled mode example
+         * @sample {highmaps} maps/demo/color-axis
+         *         Choropleth map with data labels
+         * @sample {highmaps} maps/demo/mappoint-datalabels-mapmarker
+         *         Using data labels as map markers
+         */
         dataLabels?: (DataLabelOptions|Array<DataLabelOptions>);
     }
 }
 
-declare module '../../Core/Renderer/SVG/SVGElementLike' {
-    interface SVGElementLike {
+/** @internal */
+declare module '../../Core/Renderer/SVG/SVGElementBase' {
+    interface SVGElementBase {
         options?: DataLabelOptions;
     }
 }
@@ -148,6 +206,7 @@ namespace DataLabel {
      *
      * */
 
+    /** @internal */
     export interface PositionersObject {
         alignToConnectors(
             points: Array<Point>,
@@ -184,11 +243,14 @@ namespace DataLabel {
         (...args: Array<any>): SVGPath;
     }
 
+    /** @internal */
     export interface LabelConnectorPositionObject {
+        angle?: number;
         breakAt: CorePositionObject;
         touchingSliceAt: CorePositionObject;
     }
 
+    /** @internal */
     export interface LabelPositionObject {
         alignment: AlignValue;
         attribs?: SVGAttributes;
@@ -202,6 +264,7 @@ namespace DataLabel {
         top?: number;
     }
 
+    /** @internal */
     export interface PositionObject extends CorePositionObject {
         alignment: AlignValue;
     }
@@ -216,7 +279,7 @@ namespace DataLabel {
      * Check if this series has data labels, either a series-level setting, or
      * individual. In case of individual point labels, this method is overridden
      * to always return true.
-     * @private
+     * @internal
      */
     function hasDataLabels(this: Series): boolean {
         return mergedDataLabelOptions(this)
@@ -227,7 +290,7 @@ namespace DataLabel {
 
     /**
      * Align each individual data label.
-     * @private
+     * @internal
      */
     function alignDataLabel(
         this: Series,
@@ -238,11 +301,19 @@ namespace DataLabel {
         isNew?: boolean
     ): void {
         const series = this,
-            { chart, enabledDataSorting } = this,
+            { chart } = this,
             inverted = this.isCartesian && chart.inverted,
-            plotX = point.plotX,
-            plotY = point.plotY,
-            rotation = options.rotation || 0,
+            { condemned, origin, plotX, plotY } = point,
+            {
+                crop = true,
+                distance,
+                overflow = 'justify',
+                rotation = 0
+            } = options,
+            alignFactor = getAlignFactor(options.align),
+            verticalAlignFactor = getAlignFactor(options.verticalAlign),
+            justify = rotation === 0 && !condemned && overflow === 'justify',
+            pos = point.pos(),
             isInsidePlot = defined(plotX) &&
                 defined(plotY) &&
                 chart.isInsidePlot(
@@ -253,40 +324,24 @@ namespace DataLabel {
                         paneCoordinates: true,
                         series
                     }
-                ),
-            setStartPos = (alignOptions: AlignObject): void => {
-                if (enabledDataSorting && series.xAxis && !justify) {
-                    series.setDataLabelStartPos(
-                        point as ColumnPoint,
-                        dataLabel,
-                        isNew,
-                        isInsidePlot,
-                        alignOptions
-                    );
-                }
-            },
-            justify = rotation === 0 ? pick(
-                options.overflow,
-                (enabledDataSorting ? 'none' : 'justify'
-                )
-            ) === 'justify' : false;
+                );
 
         // Math.round for rounding errors (#2683), alignTo to allow column
         // labels (#2700)
         let visible =
             this.visible &&
-            point.visible !== false &&
+            point.visible &&
             defined(plotX) &&
             (
-                point.series.forceDL ||
-                (enabledDataSorting && !justify) ||
+                series.forceDL ||
+                condemned || // Allow it to fade out
                 isInsidePlot ||
                 (
                     // If the data label is inside the align box, it is enough
                     // that parts of the align box is inside the plot area
                     // (#12370). When stacking, it is always inside regardless
                     // of the option (#15148).
-                    pick(options.inside, !!this.options.stacking) &&
+                    (options.inside ?? !!this.options.stacking) &&
                     alignTo &&
                     chart.isInsidePlot(
                         plotX,
@@ -302,18 +357,9 @@ namespace DataLabel {
                 )
             );
 
-        const pos = point.pos();
-        if (visible && pos) {
+        if (pos) {
             const bBox = dataLabel.getBBox(),
-                unrotatedbBox = dataLabel.getBBox(void 0, 0),
-                alignFactor = ({
-                    'right': 1,
-                    'center': 0.5
-                } as Record<string, number>)[options.align || 0] || 0,
-                verticalAlignFactor = ({
-                    'bottom': 1,
-                    'middle': 0.5
-                } as Record<string, number>)[options.verticalAlign || 0] || 0;
+                unrotatedbBox = dataLabel.getBBox(void 0, 0);
 
             // The alignment box is a singular point
             alignTo = extend({
@@ -335,30 +381,80 @@ namespace DataLabel {
                 height: bBox.height
             });
 
-            setStartPos(alignTo); // Data sorting
+            // Apply the distance
+            let distX = 0,
+                distY = 0;
+            if (isNumber(distance) && !options.inside) {
+                distX = distance * (1 - 2 * alignFactor);
+                distY = distance * (1 - 2 * verticalAlignFactor);
+            }
 
             // Align the label to the adjusted box with for unrotated bBox due
             // to rotationOrigin, which is based on unrotated label
             dataLabel.align(merge(
                 options, {
+                    x: (options.x || 0) + distX,
+                    y: (options.y || 0) + distY,
                     width: unrotatedbBox.width,
                     height: unrotatedbBox.height
                 }
             ), false, alignTo, false);
 
+            // Record for later use in justifyDataLabel
+            dataLabel.distX = distX;
+            dataLabel.distY = distY;
+
+            // Modify for rotation
             dataLabel.alignAttr.x += alignFactor *
                 (unrotatedbBox.width - bBox.width);
             dataLabel.alignAttr.y += verticalAlignFactor *
                 (unrotatedbBox.height - bBox.height);
 
-            dataLabel[dataLabel.placed ? 'animate' : 'attr']({
-                x: dataLabel.alignAttr.x +
+            // The placement attributes before justifyDataLabel correction
+            const x = dataLabel.alignAttr.x +
                     (bBox.width - unrotatedbBox.width) / 2,
-                y: dataLabel.alignAttr.y +
-                    (bBox.height - unrotatedbBox.height) / 2,
+                y = dataLabel.alignAttr.y +
+                    (bBox.height - unrotatedbBox.height) / 2;
+
+            // Handle the data label position for entrance animation. Simply
+            // offset the computed position by the difference between current
+            // position and the origin.
+            if (origin) {
+                const originPos = point.pos(false, origin.x, origin.y);
+
+                if (originPos) {
+                    const offset = [
+                        originPos[0] - pos[0],
+                        originPos[1] - pos[1]
+                    ];
+
+                    if (series.is('column') || point.plotHigh) {
+                        offset[inverted ? 0 : 1] = 0;
+                    }
+                    dataLabel.attr({
+                        x: x + offset[0],
+                        y: y + offset[1],
+                        // Start at non-zero to avoid overlapping logic treating
+                        // it as hidden
+                        opacity: 0.01
+                    });
+                    dataLabel.placed = true;
+                    isNew = false;
+                }
+            }
+
+            // Set the position before potential justification
+            const placeAttribs: SVGAttributes = {
+                'text-align': dataLabel.alignAttr['text-align'] || 'center',
+                x,
+                y,
                 rotationOriginX: (dataLabel.width || 0) / 2,
                 rotationOriginY: (dataLabel.height || 0) / 2
-            });
+            };
+            if (condemned || !visible) {
+                placeAttribs.opacity = 0;
+            }
+            dataLabel[dataLabel.placed ? 'animate' : 'attr'](placeAttribs);
 
             // Uncomment this block to visualize the bounding boxes used for
             // determining visibility
@@ -373,15 +469,15 @@ namespace DataLabel {
             //     zIndex: 20
             // }).add();
             // chart.renderer.circle(
-            //     chart.plotLeft + pick(dataLabel.alignAttr.x, 0),
-            //     chart.plotTop + pick(dataLabel.alignAttr.y, 0),
+            //     chart.plotLeft + (dataLabel.alignAttr.x ?? 0),
+            //     chart.plotTop + (dataLabel.alignAttr.y ?? 0),
             //     2
             // ).attr({
             //     fill: 'red',
             //     zIndex: 20
             // }).add();
 
-            if (justify && alignTo.height >= 0) { // #8830
+            if (justify && visible && alignTo.height >= 0) { // #8830
                 this.justifyDataLabel(
                     dataLabel,
                     options,
@@ -390,7 +486,7 @@ namespace DataLabel {
                     alignTo,
                     isNew
                 );
-            } else if (pick(options.crop, true)) {
+            } else if (crop && !condemned) {
                 const { x, y } = dataLabel.alignAttr,
                     correction = 1;
 
@@ -423,23 +519,17 @@ namespace DataLabel {
                 });
             }
         }
-        // To use alignAttr property in hideOverlappingLabels
-        if (isNew && enabledDataSorting) {
-            dataLabel.placed = false;
-        }
+
         // Show or hide based on the final aligned position
-        if (!visible && (!enabledDataSorting || justify)) {
-            dataLabel.hide();
-            dataLabel.placed = false; // Don't animate back in
-        } else {
-            dataLabel.show();
-            dataLabel.placed = true; // Flag for overlapping logic
-        }
+        dataLabel[isNew ? 'attr' : 'animate']({
+            visibility: visible ? 'inherit' : 'hidden'
+        });
+        dataLabel.placed = visible;
     }
 
     /**
      * Handle the dataLabels.filter option.
-     * @private
+     * @internal
      */
     function applyFilter(
         point: Point,
@@ -468,8 +558,17 @@ namespace DataLabel {
         return true;
     }
 
+
     /**
-     * @private
+     * Compose the data label composition onto a series class.
+     *
+     * @internal
+     * @function compose
+     *
+     * @param {Highcharts.Series} SeriesClass
+     * The series class to compose onto.
+     *
+     * @return {void}
      */
     export function compose(
         SeriesClass: typeof Series
@@ -482,39 +581,89 @@ namespace DataLabel {
             seriesProto.alignDataLabel = alignDataLabel;
             seriesProto.drawDataLabels = drawDataLabels;
             seriesProto.justifyDataLabel = justifyDataLabel;
-            seriesProto.setDataLabelStartPos = setDataLabelStartPos;
+            seriesProto.mergeArrays = mergeArrays;
             seriesProto.hasDataLabels = hasDataLabels;
         }
 
     }
 
     /**
-     * Create the SVGElement group for dataLabels
-     * @private
+     * Create the SVGElement group for dataLabels.
+     *
+     * @internal
+     * @function initDataLabelsGroup
+     *
+     * @param {number} index
+     * The index of the data labels group.
+     * @param {Highcharts.DataLabelOptions} [dataLabelsOptions]
+     * Data label options for the group.
+     *
+     * @return {Highcharts.SVGElement}
+     * The SVGElement group.
      */
-    function initDataLabelsGroup(this: Series): SVGElement {
-        return this.plotGroup(
+    function initDataLabelsGroup(
+        this: Series,
+        index: number,
+        dataLabelsOptions?: DataLabelOptions
+    ): SVGElement {
+        fireEvent(
+            this,
+            'initDataLabelsGroup',
+            {
+                index,
+                zIndex: dataLabelsOptions?.zIndex
+            }
+        );
+
+        // Existing group or first time
+        this.dataLabelsGroup = this.dataLabelsGroups?.[index];
+
+        const group = this.plotGroup(
             'dataLabelsGroup',
             'data-labels',
             this.hasRendered ? 'inherit' : 'hidden', // #5133, #10220
-            (this.options.dataLabels as any).zIndex || 6
+            dataLabelsOptions?.zIndex ?? 6,
+            this.dataLabelsParentGroups?.[index]
         );
+
+        this.dataLabelsGroups ||= [];
+        this.dataLabelsGroups[index] = group;
+
+        // Keep reference to the 1st group
+        this.dataLabelsGroup = this.dataLabelsGroups[0];
+
+        return group;
     }
 
     /**
-     * Init the data labels with the correct animation
-     * @private
+     * Init the data labels with the correct animation.
+     *
+     * @internal
+     * @function initDataLabels
+     *
+     * @param {number} index
+     * The index of the data labels group.
+     * @param {Highcharts.AnimationOptions} animationConfig
+     * The animation options.
+     * @param {Highcharts.DataLabelOptions} [dataLabelsOptions]
+     * Data label options for the group.
+     *
+     * @return {Highcharts.SVGElement}
+     * The SVGElement group.
      */
     function initDataLabels(
         this: Series,
-        animationConfig: Partial<AnimationOptions>
+        index: number,
+        animationConfig: Partial<AnimationOptions>,
+        dataLabelsOptions?: DataLabelOptions
     ): SVGElement {
         const series = this,
-            hasRendered = series.hasRendered || 0;
+            hasRendered = !!series.hasRendered;
 
         // Create a separate group for the data labels to avoid rotation
-        const dataLabelsGroup = this.initDataLabelsGroup()
-            .attr({ opacity: +hasRendered }); // #3300
+        const dataLabelsGroup =
+            this.initDataLabelsGroup(index, dataLabelsOptions)
+                .attr({ opacity: +hasRendered }); // #3300
 
         if (!hasRendered && dataLabelsGroup) {
             if (series.visible) { // #2597, #3023, #3024
@@ -531,8 +680,8 @@ namespace DataLabel {
     }
 
     /**
-     * Draw the data labels
-     * @private
+     * Draw the data labels.
+     * @internal
      */
     function drawDataLabels(
         this: Series,
@@ -547,12 +696,10 @@ namespace DataLabel {
             contrastColor = renderer.getContrast(
                 (isString(plotBackgroundColor) && plotBackgroundColor) ||
                 (isString(backgroundColor) && backgroundColor) ||
-                Palette.neutralColor100
+                'var(--highcharts-background-color)'
             ),
+            groupByIndex: SVGElement[] = [],
             seriesDlOptions = mergedDataLabelOptions(series);
-
-        let pointOptions: Array<DataLabelOptions>,
-            dataLabelsGroup: SVGElement;
 
         // Resolve the animation
         const { animation, defer } = seriesDlOptions[0],
@@ -564,27 +711,27 @@ namespace DataLabel {
         fireEvent(this, 'drawDataLabels');
 
         if (series.hasDataLabels?.()) {
-            dataLabelsGroup = this.initDataLabels(animationConfig);
-
             // Make the labels for each point
-            points.forEach((point): void => {
+            points.concat(series.condemnedPoints).forEach((point): void => {
 
-                const dataLabels = point.dataLabels || [];
+                const dataLabels = point.dataLabels || [],
+                    pointColor = point.color || series.color,
 
-                // Merge in series options for the point.
-                // @note dataLabelAttribs (like pointAttribs) would eradicate
-                // the need for dlOptions, and simplify the section below.
-                pointOptions = splat(
-                    mergeArrays(
-                        seriesDlOptions,
-                        // The dlOptions prop is used in treemaps
-                        point.dlOptions || point.options?.dataLabels
-                    )
-                );
+                    // Merge in series options for the point.
+                    // @note
+                    // dataLabelAttribs (like pointAttribs) would eradicate the
+                    // need for dlOptions, and simplify the section below.
+                    pointOptions = splat(
+                        mergeArrays(
+                            seriesDlOptions,
+                            // The dlOptions prop is used in treemap
+                            point.dlOptions || point.options?.dataLabels
+                        )
+                    );
 
                 // Handle each individual data label for this point
                 pointOptions.forEach((labelOptions, i): void => {
-                    // Options for one datalabel
+                    // Options for one dataLabel
                     const labelEnabled = (
                             labelOptions.enabled &&
                             (point.visible || point.dataLabelOnHidden) &&
@@ -597,11 +744,13 @@ namespace DataLabel {
                             borderColor,
                             distance,
                             style = {}
-                        } = labelOptions;
+                        } = labelOptions,
+                        padding: Array<number> = splat(
+                            labelOptions.padding || 0
+                        );
 
-                    let labelConfig,
-                        formatString,
-                        labelText,
+                    let formatString: string|undefined,
+                        labelText: string|undefined,
                         rotation,
                         attr: SVGAttributes = {},
                         dataLabel: SVGElement|undefined =
@@ -612,33 +761,30 @@ namespace DataLabel {
                     if (labelEnabled) {
                         // Create individual options structure that can be
                         // extended without affecting others
-                        formatString = pick(
-                            (labelOptions as any)[
-                                point.formatPrefix + 'Format'
-                            ],
-                            labelOptions.format
-                        );
+                        formatString = ((labelOptions as any)[
+                            point.formatPrefix + 'Format'
+                        ] ?? labelOptions.format);
 
-                        labelConfig = point.getLabelConfig();
                         labelText = defined(formatString) ?
-                            format(formatString, labelConfig, chart) :
+                            format(formatString, point, chart) :
                             (
                                 (labelOptions as any)[
                                     point.formatPrefix + 'Formatter'
                                 ] ||
                                 labelOptions.formatter
-                            ).call(labelConfig, labelOptions);
+                            ).call(point, labelOptions, point);
 
                         rotation = labelOptions.rotation;
 
                         if (!chart.styledMode) {
                             // Determine the color
-                            style.color = pick(
-                                labelOptions.color,
-                                style.color,
-                                isString(series.color) ? series.color : void 0,
-                                Palette.neutralColor100
-                            );
+                            style.color = (
+                                isString(labelOptions.color) ?
+                                    labelOptions.color :
+                                    void 0
+                            ) ?? style.color ?? (
+                                isString(series.color) ? series.color : void 0
+                            ) ?? 'var(--highcharts-neutral-color-100)';
                             // Get automated contrast color
                             if (style.color === 'contrast') {
                                 if (backgroundColor !== 'none') {
@@ -646,16 +792,21 @@ namespace DataLabel {
                                 }
 
                                 point.contrastColor = renderer.getContrast(
-                                    labelBgColor !== 'auto' && labelBgColor ||
-                                    (point.color || series.color) as any
+                                    (
+                                        labelBgColor !== 'auto' &&
+                                        labelBgColor !== 'contrast' &&
+                                        isString(labelBgColor) &&
+                                        labelBgColor
+                                    ) ||
+                                    (isString(pointColor) ? pointColor : '')
                                 );
 
                                 style.color = (
-                                    labelBgColor || // #20007
                                     (
-                                        !defined(distance) &&
-                                        labelOptions.inside
-                                    ) ||
+                                        labelBgColor &&
+                                        labelBgColor !== 'contrast'
+                                    ) || // #20007
+                                    labelOptions.inside ||
                                     pInt(distance || 0) < 0 ||
                                     seriesOptions.stacking
                                 ) ?
@@ -670,9 +821,11 @@ namespace DataLabel {
                         }
 
                         attr = {
-                            r: labelOptions.borderRadius || 0,
+                            r: labelOptions.borderRadius ?? 3,
                             rotation,
-                            padding: labelOptions.padding,
+                            padding: padding[0],
+                            paddingLeft: padding[3 % padding.length],
+                            paddingRight: padding[1 % padding.length],
                             zIndex: 1
                         };
 
@@ -701,17 +854,11 @@ namespace DataLabel {
                         dataLabel && (
                             !labelEnabled ||
                             !defined(labelText) ||
-                            !!dataLabel.div !== !!labelOptions.useHTML ||
-                            (
-                                // Change from no rotation to rotation and
-                                // vice versa. Don't use defined() because
-                                // rotation = 0 means also rotation = undefined
-                                (
-                                    !dataLabel.rotation ||
-                                    !labelOptions.rotation
-                                ) &&
-                                dataLabel.rotation !== labelOptions.rotation
-                            )
+                            // Changed useHTML value
+                            !!(
+                                dataLabel.div ||
+                                dataLabel.text?.foreignObject
+                            ) !== !!labelOptions.useHTML
                         )
                     ) {
                         dataLabel = void 0;
@@ -721,8 +868,11 @@ namespace DataLabel {
                     // Individual labels are disabled if the are explicitly
                     // disabled in the point options, or if they fall outside
                     // the plot area.
-                    if (labelEnabled && defined(labelText)) {
-
+                    if (
+                        labelEnabled &&
+                        defined(labelText) &&
+                        labelText !== ''
+                    ) {
                         if (!dataLabel) {
                             // Create new label element
                             dataLabel = renderer.label(
@@ -763,30 +913,34 @@ namespace DataLabel {
                                 dataLabel.css(style).shadow(
                                     labelOptions.shadow
                                 );
+                            } else if (style.width) {
+                                // In styled mode with a width property set,
+                                // the width should be applied to the
+                                // dataLabel. (#20499). These properties affect
+                                // layout and must be applied also in styled
+                                // mode.
+                                dataLabel.css({
+                                    width: style.width,
+                                    textOverflow: style.textOverflow,
+                                    whiteSpace: style.whiteSpace
+                                });
                             }
 
-                            const textPathOptions =
-                                (labelOptions as any)[
-                                    point.formatPrefix + 'TextPath'
-                                ] || labelOptions.textPath;
+                            fireEvent(
+                                dataLabel,
+                                'beforeAddingDataLabel',
+                                { labelOptions, point }
+                            );
 
-                            if (textPathOptions && !labelOptions.useHTML) {
-                                dataLabel.setTextPath(
-                                    point.getDataLabelPath?.(dataLabel) ||
-                                        point.graphic,
-                                    textPathOptions
-                                );
-
-                                if (
-                                    point.dataLabelPath &&
-                                    !textPathOptions.enabled
-                                ) {
-                                    // Clean the DOM
-                                    point.dataLabelPath = (
-                                        point.dataLabelPath.destroy()
-                                    );
-                                }
-                            }
+                            // On the first occurrence, create a dataLabelsGroup
+                            // for each data labels config (#24626)
+                            const dataLabelsGroup = groupByIndex[i] = (
+                                groupByIndex[i] || this.initDataLabels(
+                                    i,
+                                    animationConfig,
+                                    labelOptions
+                                )
+                            );
 
                             if (!dataLabel.added) {
                                 dataLabel.add(dataLabelsGroup);
@@ -817,7 +971,7 @@ namespace DataLabel {
                 while (j--) {
                     // The item can be undefined if a disabled data label is
                     // succeeded by an enabled one (#19457)
-                    if (!dataLabels[j] || !dataLabels[j].isActive) {
+                    if (!dataLabels[j]?.isActive) {
                         dataLabels[j]?.destroy();
                         dataLabels.splice(j, 1);
                     } else {
@@ -837,11 +991,11 @@ namespace DataLabel {
     /**
      * If data labels fall partly outside the plot area, align them back in, in
      * a way that doesn't hide the point.
-     * @private
+     * @internal
      */
     function justifyDataLabel(
         this: Series,
-        dataLabel: SVGElement,
+        dataLabel: SVGLabel,
         options: DataLabelOptions,
         alignAttr: SVGAttributes,
         bBox: BBoxObject,
@@ -849,8 +1003,8 @@ namespace DataLabel {
         isNew?: boolean
     ): (boolean|undefined) {
         const chart = this.chart,
-            align = options.align,
-            verticalAlign = options.verticalAlign,
+            { align, verticalAlign } = options,
+            { distX = 0, distY = 0 } = dataLabel,
             padding = dataLabel.box ? 0 : (dataLabel.padding || 0),
             horizontalAxis = chart.inverted ? this.yAxis : this.xAxis,
             horizontalAxisShift = horizontalAxis ?
@@ -861,71 +1015,78 @@ namespace DataLabel {
 
         let { x = 0, y = 0 } = options,
             off,
-            justified;
+            justifiedX,
+            justifiedY;
 
         // Off left
-        off = (alignAttr.x || 0) + padding + horizontalAxisShift;
+        off = (alignAttr.x || 0) - distX + padding + horizontalAxisShift;
         if (off < 0) {
             if (align === 'right' && x >= 0) {
                 options.align = 'left';
                 options.inside = true;
+                x -= distX;
             } else {
                 x -= off;
             }
-            justified = true;
+            justifiedX = true;
         }
 
         // Off right
-        off = (alignAttr.x || 0) + bBox.width - padding + horizontalAxisShift;
+        off = (alignAttr.x || 0) + bBox.width - distX - padding +
+            horizontalAxisShift;
         if (off > chart.plotWidth) {
             if (align === 'left' && x <= 0) {
                 options.align = 'right';
                 options.inside = true;
+                x -= distX;
             } else {
                 x += chart.plotWidth - off;
             }
-            justified = true;
+            justifiedX = true;
         }
 
         // Off top
-        off = alignAttr.y + padding + verticalAxisShift;
+        off = (alignAttr.y || 0) - distY + padding + verticalAxisShift;
         if (off < 0) {
             if (verticalAlign === 'bottom' && y >= 0) {
                 options.verticalAlign = 'top';
                 options.inside = true;
+                y -= distY;
             } else {
                 y -= off;
             }
-            justified = true;
+            justifiedY = true;
         }
 
         // Off bottom
-        off = (alignAttr.y || 0) + bBox.height - padding + verticalAxisShift;
+        off = (alignAttr.y || 0) + bBox.height - distY - padding +
+            verticalAxisShift;
         if (off > chart.plotHeight) {
             if (verticalAlign === 'top' && y <= 0) {
                 options.verticalAlign = 'bottom';
                 options.inside = true;
+                y -= distY;
             } else {
                 y += chart.plotHeight - off;
             }
-            justified = true;
+            justifiedY = true;
         }
 
-        if (justified) {
-            options.x = x;
-            options.y = y;
+        if (justifiedX || justifiedY) {
+            options.x = justifiedX ? x : x + distX;
+            options.y = justifiedY ? y : y + distY;
             dataLabel.placed = !isNew;
             dataLabel.align(options, void 0, alignTo);
         }
 
-        return justified;
+        return justifiedX || justifiedY;
     }
 
     /**
      * Merge two objects that can be arrays. If one of them is an array, the
      * other is merged into each element. If both are arrays, each element is
      * merged by index. If neither are arrays, we use normal merge.
-     * @private
+     * @internal
      */
     function mergeArrays(
         one: (DataLabelOptions|Array<DataLabelOptions>|undefined),
@@ -960,7 +1121,7 @@ namespace DataLabel {
 
     /**
      * Merge plotOptions and series options for dataLabels.
-     * @private
+     * @internal
      */
     function mergedDataLabelOptions(
         series: Series
@@ -977,70 +1138,6 @@ namespace DataLabel {
             )
         );
     }
-
-    /**
-     * Set starting position for data label sorting animation.
-     * @private
-     */
-    function setDataLabelStartPos(
-        this: Series,
-        point: ColumnPoint,
-        dataLabel: SVGElement,
-        isNew: boolean,
-        isInside: boolean,
-        alignOptions: AlignObject
-    ): void {
-        const chart = this.chart,
-            inverted = chart.inverted,
-            xAxis = this.xAxis,
-            reversed = xAxis.reversed,
-            labelCenter = (
-                (inverted ? dataLabel.height : dataLabel.width) || 0
-            ) / 2,
-            pointWidth = point.pointWidth,
-            halfWidth = pointWidth ? pointWidth / 2 : 0;
-
-        dataLabel.startXPos = inverted ?
-            alignOptions.x :
-            (reversed ?
-                -labelCenter - halfWidth :
-                xAxis.width - labelCenter + halfWidth
-            );
-        dataLabel.startYPos = inverted ?
-            (reversed ?
-                this.yAxis.height - labelCenter + halfWidth :
-                -labelCenter - halfWidth
-            ) : alignOptions.y;
-
-        // We need to handle visibility in case of sorting point outside plot
-        // area
-        if (!isInside) {
-            dataLabel
-                .attr({ opacity: 1 })
-                .animate(
-                    { opacity: 0 },
-                    void 0,
-                    dataLabel.hide
-                );
-
-        } else if (dataLabel.visibility === 'hidden') {
-            dataLabel.show();
-            dataLabel
-                .attr({ opacity: 0 })
-                .animate({ opacity: 1 });
-        }
-        // Save start position on first render, but do not change position
-        if (!chart.hasRendered) {
-            return;
-        }
-        // Set start position
-        if (isNew) {
-            dataLabel.attr({ x: dataLabel.startXPos, y: dataLabel.startYPos });
-        }
-
-        dataLabel.placed = true;
-    }
-
 }
 
 /* *
@@ -1064,7 +1161,7 @@ export default DataLabel;
  *
  * @callback Highcharts.DataLabelsFormatterCallbackFunction
  *
- * @param {Highcharts.PointLabelObject} this
+ * @param {Highcharts.Point} this
  * Data label context to format
  *
  * @param {Highcharts.DataLabelsOptions} options

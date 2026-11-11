@@ -1,3 +1,10 @@
+---
+description: >-
+  Group Gantt subtasks under a parent with the data point parent ID, collapse
+  groups initially, or place tasks on horizontal tracks by assigning
+  categories to a vertical axis.
+---
+
 Grouping tasks in a hierarchy
 ===
 
@@ -17,9 +24,11 @@ For grouping tasks in a Gantt chart on horizontal tracks, use a vertical [`categ
 Code example for setting a category axis
 
 
-    yAxis: {
-        categories: ['Resource 1', 'Resource 2', 'Resource 3']
-      }
+```js
+yAxis: {
+    categories: ['Resource 1', 'Resource 2', 'Resource 3']
+}
+```
 
 _See example below for grouping tasks vertically in horizontal tracks_
 

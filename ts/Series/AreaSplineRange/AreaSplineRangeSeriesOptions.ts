@@ -1,0 +1,54 @@
+/* *
+ *
+ *  (c) 2010-2026 Highsoft AS
+ *  Author: Torstein Honsi
+ *
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
+ *
+ *
+ * */
+
+/* *
+ *
+ *  Imports
+ *
+ * */
+
+import type AreaRangeSeriesOptions from '../AreaRange/AreaRangeSeriesOptions';
+import type { SeriesStatesOptions } from '../../Core/Series/SeriesOptions';
+
+/* *
+ *
+ *  Declarations
+ *
+ * */
+
+/**
+ * The area spline range is a cartesian series type with higher and lower
+ * Y values along an X axis. The area inside the range is colored, and the
+ * graph outlining the area is a smoothed spline.
+ *
+ * A `areasplinerange` series. If the [type](#series.areasplinerange.type)
+ * option is not specified, it is inherited from [chart.type](#chart.type).
+ *
+ * @sample {highstock} stock/demo/areasplinerange/
+ *         Area spline range
+ *
+ * @excluding step, boostThreshold, boostBlending
+ * @since 2.3.0
+ * @product highcharts highstock
+ * @requires highcharts-more
+ */
+export interface AreaSplineRangeSeriesOptions extends AreaRangeSeriesOptions {
+    states?: SeriesStatesOptions<AreaSplineRangeSeriesOptions>;
+}
+
+/* *
+ *
+ *  Default Export
+ *
+ * */
+
+export default AreaSplineRangeSeriesOptions;

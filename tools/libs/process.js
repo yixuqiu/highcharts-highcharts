@@ -63,36 +63,94 @@ let onExitCallbacks;
  */
 function exec(command, options = {}) {
     const ChildProcess = require('node:child_process');
+    return runCommand(
+        callback => ChildProcess.exec(command, options, callback),
+        command,
+        options
+    );
+}
+
+/**
+ * Executes a file with literal arguments, without a shell.
+ *
+ * @param {string} file Executable file.
+ * @param {Array<string>} args Arguments to pass unchanged.
+ * @param {object} [options] Process and logging options.
+ * @return {Promise<string>} Captured stdout.
+ */
+function execFile(file, args, options = {}) {
+    const ChildProcess = require('node:child_process');
+    return runCommand(
+        callback => ChildProcess.execFile(
+            file, args, { ...options, shell: false }, callback
+        ),
+        [file, ...args].join(' '),
+        options
+    );
+}
+
+/**
+ * Shares output and error handling between process launch methods.
+ *
+ * @param {Function} start Starts the process with its completion callback.
+ * @param {string} command Command to display in logs.
+ * @param {object} options Process and logging options.
+ * @return {Promise<string>} Captured stdout.
+ */
+function runCommand(start, command, options) {
 
     const silent = options.silent;
 
+    function toStdOut(data) {
+        process.stdout.write(data);
+    }
+
     return new Promise((resolve, reject) => {
+        let cli;
 
-        const cli = ChildProcess.exec(command, options, (error, stdout) => {
+        try {
+            cli = start((error, stdout) => {
 
-            if (error) {
-                LogLib.failure(error);
-                reject(error);
-                return;
+                if (!silent) {
+                    cli.stdout.off('data', toStdOut);
+                }
+
+                if (error) {
+                    LogLib.failure(error);
+                    reject(error);
+                    return;
+                }
+
+                if (silent !== 2) {
+                    LogLib.success(
+                        (
+                            silent ?
+                                'Command finished (silent):' :
+                                'Command finished:'
+                        ),
+                        command
+                    );
+                }
+
+                resolve(stdout);
+            });
+
+            if (!silent) {
+                cli.stdout.on('data', toStdOut);
             }
 
-            if (silent !== 2) {
-                LogLib.success(
-                    (
-                        silent ?
-                            'Command finished (silent):' :
-                            'Command finished:'
-                    ),
-                    command
-                );
+        } catch (error) {
+
+            LogLib.failure(error);
+
+            if (cli && !silent) {
+                cli.stdout.off('data', toStdOut);
             }
 
-            resolve(stdout);
-        });
+            reject(error);
 
-        if (!silent) {
-            cli.stdout.on('data', data => process.stdout.write(data));
         }
+
     });
 }
 
@@ -112,7 +170,7 @@ function isRunning(name, runningFlag) {
 
     const config = readConfig();
     const dictionary = config.isRunning;
-    const key = name.replace(/[^-\w]+/g, '_');
+    const key = name.replace(/[^-\w]+/gu, '_');
 
     if (typeof runningFlag === 'undefined') {
         runningFlag = dictionary[key];
@@ -174,13 +232,19 @@ function onExit(name, callback) {
                     });
 
                 if (exit) {
+                    // Handle typeErrors
+                    if (typeof code !== 'number') {
+                        LogLib.failure(code);
+                        code = 1;
+                    }
+
                     process.exit(code); // eslint-disable-line node/no-process-exit
                 }
             })
         ));
     }
 
-    const key = name.replace(/[^-\w]+/g, '_');
+    const key = name.replace(/[^-\w]+/gu, '_');
 
     onExitCallbacks[key] = callback;
 }
@@ -256,6 +320,7 @@ module.exports = {
     CPD,
     CWD,
     exec,
+    execFile,
     isRunning,
     onExit,
     openAppFor

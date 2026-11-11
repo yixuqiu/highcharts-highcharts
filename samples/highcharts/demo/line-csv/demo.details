@@ -1,0 +1,10 @@
+---
+name: Data from CSV, clickable points
+authors:
+  - Torstein Hønsi
+js_wrap: b
+tags:
+  - Highcharts demo
+categories:
+  - Data
+...

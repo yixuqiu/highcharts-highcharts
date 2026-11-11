@@ -1,3 +1,10 @@
+---
+description: >-
+  Group scatter or map markers into clusters and configure their appearance.
+  Compare the built-in layout algorithms, set clustering thresholds, or supply
+  a custom algorithm that returns grouped point data.
+---
+
 Marker clusters
 ===
 
@@ -9,7 +16,7 @@ For more map related info, see the [marker-clusters in Highcharts Maps](https://
 
 **Scatter demo**
 
-<iframe style="width: 100%; height: 450px; border: none;" src=https://www.highcharts.com/samples/embed/highcharts/marker-clusters/basic allow="fullscreen"></iframe>
+<iframe style="width: 100%; height: 450px; border: none;" src="https://www.highcharts.com/samples/embed/highcharts/marker-clusters/basic" allow="fullscreen"></iframe>
 
 Installation
 ------------

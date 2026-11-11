@@ -1,10 +1,12 @@
 /* *
  *
- *  (c) 2010-2024 Torstein Honsi
+ *  (c) 2010-2026 Highsoft AS
+ *  Author: Torstein Hønsi
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  * */
 
@@ -18,20 +20,15 @@
 
 import type HeikinAshiSeries from './HeikinAshiSeries';
 
-import SeriesRegistry from '../../Core/Series/SeriesRegistry.js';
-const {
-    candlestick: {
-        prototype: {
-            pointClass: CandlestickPoint
-        }
-    },
-    hlc: {
-        prototype: {
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            pointClass: HLCPoint
-        }
-    }
-} = SeriesRegistry.seriesTypes;
+import CandlestickSeries from '../Candlestick/CandlestickSeries.js';
+
+/* *
+ *
+ *  Constants
+ *
+ * */
+
+const CandlestickPoint = CandlestickSeries.prototype.pointClass;
 
 /* *
  *

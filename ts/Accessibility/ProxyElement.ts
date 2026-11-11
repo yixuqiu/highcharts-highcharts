@@ -1,6 +1,7 @@
 /* *
  *
- *  (c) 2009-2024 Øystein Moseng
+ *  (c) 2009-2026 Highsoft AS
+ *  Author: Øystein Moseng
  *
  *  Proxy elements are used to shadow SVG elements in HTML for assistive
  *  technology, such as screen readers or voice input software.
@@ -8,9 +9,10 @@
  *  The ProxyElement class represents such an element, and deals with
  *  overlay positioning and mirroring events for the target.
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  * */
 
@@ -36,21 +38,17 @@ import type SVGElement from '../Core/Renderer/SVG/SVGElement';
 type Nullable<T> = {
     [P in keyof T]: T[P] | null;
 };
+/** @internal */
 export type NullableHTMLAttributes = Nullable<HTMLAttributes>;
 
 import H from '../Core/Globals.js';
-const { doc } = H;
-import U from '../Core/Utilities.js';
-const {
-    attr,
-    css,
-    merge
-} = U;
+const { doc, win } = H;
 
 import EventProvider from './Utils/EventProvider.js';
 import ChartUtilities from './Utils/ChartUtilities.js';
 const { fireEventOnWrappedOrUnwrappedElement } = ChartUtilities;
 import HTMLUtilities from './Utils/HTMLUtilities.js';
+import { attr, css, merge } from '../Shared/Utilities.js';
 const {
     cloneMouseEvent,
     cloneTouchEvent,
@@ -68,8 +66,9 @@ const {
  * Represents a proxy element that overlays a target and relays events
  * to its target.
  *
- * @private
  * @class
+ *
+ * @internal
  */
 class ProxyElement {
 
@@ -152,8 +151,8 @@ class ProxyElement {
     /**
      * Update the target to be proxied. The position and events are updated to
      * match the new target.
-     * @param target The new target definition
-     * @param attributes New HTML attributes to apply to the proxy. Set an
+     * @param {object} target The new target definition
+     * @param {object} attributes New HTML attributes to apply to the proxy. Set an
      * attribute to null to remove.
      */
     public updateTarget(
@@ -214,10 +213,8 @@ class ProxyElement {
         const stringHasNoTooltip = (s: string): boolean => (
             s.indexOf('highcharts-no-tooltip') > -1
         );
-        const legend = this.chart.legend;
-        const groupDiv = legend.group && legend.group.div;
         const noTooltipOnGroup = stringHasNoTooltip(
-            groupDiv && groupDiv.className || ''
+            this.chart.legend?.group?.div?.className || ''
         );
         const targetClassName = this.getTargetAttr(
             this.target.click,
@@ -290,6 +287,7 @@ class ProxyElement {
             margin: 0,
             display: 'block',
             position: 'absolute',
+            'pointer-events': 'none',
             '-ms-filter': 'progid:DXImageTransform.Microsoft.Alpha(Opacity=1)'
         });
     }
@@ -309,12 +307,16 @@ class ProxyElement {
             pointer = this.chart.pointer;
 
         if (chartDiv && posElement?.getBoundingClientRect && pointer) {
-            const rectEl = posElement.getBoundingClientRect(),
+            const scrollTop = win.scrollY ||
+                doc.documentElement.scrollTop,
+                rectEl = posElement.getBoundingClientRect(),
                 chartPos = pointer.getChartPosition();
 
             return {
                 x: (rectEl.left - chartPos.left) / chartPos.scaleX,
-                y: (rectEl.top - chartPos.top) / chartPos.scaleY,
+                // #21994, Add scroll position as "getBoundingClientRect"
+                // returns the position from the viewport, not the document top.
+                y: ((rectEl.top + scrollTop) - chartPos.top) / chartPos.scaleY,
                 width: rectEl.right / chartPos.scaleX -
                     rectEl.left / chartPos.scaleX,
                 height: rectEl.bottom / chartPos.scaleY -
@@ -347,6 +349,7 @@ class ProxyElement {
  *
  * */
 
+/** @internal */
 namespace ProxyElement {
 
     /* *
@@ -355,6 +358,7 @@ namespace ProxyElement {
      *
      * */
 
+    /** @internal */
     export interface Target {
         click: (DOMElementType|SVGElement|HTMLElement);
         visual?: DOMElementType;
@@ -368,4 +372,5 @@ namespace ProxyElement {
  *
  * */
 
+/** @internal */
 export default ProxyElement;

@@ -1,0 +1,46 @@
+<script src="https://code.highcharts.com/grid-pro/grid-pro.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@highcharts/controls@0.9.0" type="module"></script>
+
+<div class="demo">
+    <div class="demo-options">
+        <label for="no-data-toggle">
+            <input type="checkbox" id="no-data-toggle" name="no-data-toggle" />
+            Show no data state
+        </label>
+    </div>
+
+    <div id="container" class="hcg-theme-default"></div>
+
+    <p class="highcharts-description">
+        Update Grid credits with Highcharts Controls and switch to a no-data
+        state to verify that the layout still behaves correctly.
+    </p>
+</div>
+
+<div class="highcharts-controls-wrapper">
+    <highcharts-controls target="#container">
+        <highcharts-group header="Credits options">
+            <highcharts-control
+                type="boolean"
+                path="credits.enabled"
+                value="true"
+            ></highcharts-control>
+            <highcharts-control
+                type="text"
+                path="credits.text"
+                value=""
+            ></highcharts-control>
+            <highcharts-control
+                type="text"
+                path="credits.href"
+                value="https://www.highcharts.com"
+            ></highcharts-control>
+            <highcharts-control
+                type="select"
+                path="credits.position"
+                value="bottom"
+                options="top,bottom"
+            ></highcharts-control>
+        </highcharts-group>
+    </highcharts-controls>
+</div>

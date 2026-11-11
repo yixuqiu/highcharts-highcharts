@@ -64,9 +64,15 @@ QUnit.test(
         )[1];
         var x = text.getBBox().x;
 
+        assert.strictEqual(
+            chart.xAxis[0].type,
+            'datetime',
+            'xAxis type should be datetime'
+        );
+
         assert.ok(
-            /^[0-9]{1,2}:00$/.test(text.textContent),
-            'Initial time should be set - actual time varies with timezone'
+            /^[0-9]{1,2}(?::00)?(?: [AP]M)?$/.test(text.textContent),
+            'Initial time should be set (actual time varies with timezone)'
         );
 
         chart.update({
@@ -84,6 +90,96 @@ QUnit.test(
         assert.ok(
             text.getBBox().x < x,
             'The label should now have moved to the left'
+        );
+    }
+);
+
+QUnit.test(
+    'Hard series and axis update by data module update, datetime axis',
+    function (assert) {
+        const csv1 =
+                'Chart,Apples\n2018-03-13T13:00:00Z,4\n2018-03-13T14:00:00Z,' +
+                '2\n2018-03-13T15:00:00Z,1\n2018-03-13T16:00:00Z,' +
+                '4\n2018-03-13T17:00:00Z,2',
+            csv2 =
+                'Chart,Apples\n2018-03-13T14:00:00Z,2\n2018-03-13T15:00:00Z,' +
+                '1\n2018-03-13T16:00:00Z,4\n2018-03-13T17:00:00Z,' +
+                '2\n2018-03-13T18:00:00Z,5',
+            csvLinear = 'Chart,Apples\n1,2\n2,1\n3,4\n4,2\n7,5';
+
+        const chart = Highcharts.chart('container', {
+            chart: {
+                width: 600
+            },
+            series: [{
+                data: [
+                    [1, 2],
+                    [5, 5]
+                ]
+            }],
+            xAxis: {
+                type: 'category'
+            },
+            data: {}
+        });
+
+        chart.update({
+            data: {
+                csv: csv1
+            }
+        });
+        assert.ok(
+            chart.xAxis[0].options.type === 'category' &&
+            chart.series[0].points.length === 5,
+            'Explicit xAxis type should be respected by data module'
+        );
+
+        // Clear the type so that the data module can change it
+        chart.update({
+            xAxis: [{
+                type: void 0
+            }]
+        });
+
+        assert.strictEqual(
+            chart.xAxis[0].options.type,
+            undefined,
+            'xAxis.options.type should be undefined before data update'
+        );
+
+        chart.update({
+            data: {
+                csv: csv2
+            }
+        });
+
+        assert.strictEqual(
+            chart.xAxis[0].type,
+            'datetime',
+            'xAxis type=linear should be changed by data module to datetime'
+        );
+
+        assert.notEqual(
+            chart.xAxis[0].options.type,
+            'datetime',
+            'xAxis type should NOT be changed by data module in options'
+        );
+
+        chart.update({
+            data: {
+                csv: csvLinear
+            }
+        });
+
+        assert.strictEqual(
+            chart.xAxis[0].type,
+            'linear',
+            'xAxis type=datetime should be changed by data module to linear'
+        );
+        assert.notEqual(
+            chart.xAxis[0].options.type,
+            'linear',
+            'xAxis type should NOT be changed by data module in options'
         );
     }
 );

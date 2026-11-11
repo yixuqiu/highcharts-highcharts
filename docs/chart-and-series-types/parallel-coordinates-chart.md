@@ -1,3 +1,10 @@
+---
+description: >-
+  Compare many dimensions by drawing each series across multiple y-axes.
+  Enable parallel coordinates, configure generated axes and their category
+  labels, and apply shared axis options with per-axis overrides.
+---
+
 Parallel coordinates
 ===
 
@@ -5,7 +12,7 @@ In cartesian charting, it is easy to show the relations between two or three dim
 
 Visualizing relationships with more than four dimensions become challenging with conventional charts, as they support only three dimensions. However, parallel coordinates chart can include many dimensions thanks to its capability to add many axes on one chart. Each axis is a separate series in the parallel coordinates chart, that means “line” or “spline” series can easily be added in any series. Highcharts will create all necessary yAxes, when creating chart according to the points in series.
 
-<iframe style="width: 100%; border: none;" src=https://www.highcharts.com/samples/embed/highcharts/demo/parallel-coordinates allow="fullscreen"></iframe>
+<iframe style="width: 100%; border: none;" src="https://www.highcharts.com/samples/embed/highcharts/demo/parallel-coordinates" allow="fullscreen"></iframe>
 
 Click [here](https://jsfiddle.net/gh/get/library/pure/highcharts/highcharts/tree/master/samples/highcharts/demo/parallel-coordinates/) to check the code.
 
@@ -23,7 +30,7 @@ chart: {
   parallelCoordinates: true
 }
 ```
-    
+
 
 2. Highcharts generates all necessary yAxes according to the dataset, and `xAxis.categories` includes the yAxes’ titles:
 
@@ -52,7 +59,7 @@ yAxis: [{
 
 4. Use `chart.parallelAxes` to set general configurations to all yAxis such as `lineWidth`, `lineColor`, etc.
 
-    
+
 ```js
 chart: {
   parallelAxes: {

@@ -1,10 +1,12 @@
 /* *
  *
- *  (c) 2010-2024 Torstein Honsi
+ *  (c) 2010-2026 Highsoft AS
+ *  Author: Torstein Hønsi
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  * */
 
@@ -23,21 +25,20 @@ import type PointerEvent from './PointerEvent';
 import H from './Globals.js';
 const {
     charts,
-    composed,
     doc,
     noop,
     win
 } = H;
 import Pointer from './Pointer.js';
-import U from './Utilities.js';
-const {
+import DOMElementType from './Renderer/DOMElementType';
+import {
     addEvent,
+    attr,
     css,
+    defined,
     objectEach,
-    pick,
-    pushUnique,
     removeEvent
-} = U;
+} from '../Shared/Utilities.js';
 
 /* *
  *
@@ -45,13 +46,17 @@ const {
  *
  * */
 
+/** @internal */
 declare global {
     /** @deprecated */
     interface MSPointerEvent extends Partial<PointerEvent> {
         /** @deprecated */
         readonly MSPOINTER_TYPE_TOUCH: string;
+        /** @deprecated */
         readonly currentTarget?: EventTarget;
+        /** @deprecated */
         readonly pointerId: number;
+        /** @deprecated */
         readonly pointerType?: undefined;
         /** @deprecated */
         readonly toElement: Element;
@@ -78,9 +83,8 @@ const hasPointerEvent = !!win.PointerEvent;
  *
  * */
 
-/* eslint-disable valid-jsdoc */
 
-/** @private */
+/** @internal */
 function getWebkitTouches(): void {
     const fake = [] as any;
 
@@ -97,7 +101,7 @@ function getWebkitTouches(): void {
     return fake;
 }
 
-/** @private */
+/** @internal */
 function translateMSPointer(
     e: MSPointerEvent,
     method: string,
@@ -129,7 +133,7 @@ function translateMSPointer(
  *
  * */
 
-/** @private */
+/** @internal */
 class MSPointer extends Pointer {
 
     /* *
@@ -138,6 +142,15 @@ class MSPointer extends Pointer {
      *
      * */
 
+    /**
+     * The isRequired method is required for Highcharts to decide whether to use
+     * this module.
+     *
+     * @internal
+     *
+     * @return {boolean}
+     * Returns true if the module is required.
+     */
     public static isRequired(): boolean {
         return !!(!win.TouchEvent && (win.PointerEvent || win.MSPointerEvent));
     }
@@ -150,7 +163,7 @@ class MSPointer extends Pointer {
 
     /**
      * Add or remove the MS Pointer specific events
-     * @private
+     * @internal
      * @function Highcharts.Pointer#batchMSEvents
      */
     private batchMSEvents(fn: Function): void {
@@ -193,7 +206,57 @@ class MSPointer extends Pointer {
     }
 
     /**
-     * @private
+     * Utility to detect whether an element has, or has a parent with, a
+     * specific class name. Used on detection of tracker objects and on deciding
+     * whether hovering the tooltip should cause the active series to mouse out.
+     *
+     * @function Highcharts.Pointer#inClass
+     *
+     * @param {Highcharts.SVGDOMElement|Highcharts.HTMLDOMElement} element
+     * The element to investigate.
+     *
+     * @param {string} className
+     * The class name to look for.
+     *
+     * @return {boolean|undefined}
+     * True if either the element or one of its parents has the given class
+     * name.
+     */
+    public inClass(
+        element: DOMElementType,
+        className: string
+    ): (boolean|undefined) {
+        let elem: DOMElementType|null = element,
+            elemClassName;
+
+        while (elem) {
+            elemClassName = attr(elem, 'class');
+            if (elemClassName) {
+                if (elemClassName.indexOf(className) !== -1) {
+                    return true;
+                }
+                if (elemClassName.indexOf('highcharts-container') !== -1) {
+                    return false;
+                }
+            }
+            // #21098 IE11 compatibility
+            elem = elem.parentNode;
+            if (
+                elem && (
+                    // HTMLElement
+                    elem === document.documentElement ||
+                    // Document
+                    defined(elem.nodeType) &&
+                    elem.nodeType === document.nodeType
+                )
+            ) {
+                elem = null;
+            }
+        }
+    }
+
+    /**
+     * @internal
      * @function Highcharts.Pointer#onContainerPointerDown
      */
     private onContainerPointerDown(e: MSPointerEvent): void {
@@ -212,7 +275,7 @@ class MSPointer extends Pointer {
     }
 
     /**
-     * @private
+     * @internal
      * @function Highcharts.Pointer#onContainerPointerMove
      */
     private onContainerPointerMove(e: MSPointerEvent): void {
@@ -232,7 +295,7 @@ class MSPointer extends Pointer {
     }
 
     /**
-     * @private
+     * @internal
      * @function Highcharts.Pointer#onDocumentPointerUp
      */
     private onDocumentPointerUp(e: MSPointerEvent): void {
@@ -253,7 +316,7 @@ class MSPointer extends Pointer {
 
         if (
             this.hasZoom ||
-            pick((tooltip && tooltip.options.followTouchMove), true)
+            ((tooltip?.options.followTouchMove) ?? true)
         ) {
             this.batchMSEvents(addEvent);
         }
@@ -266,6 +329,7 @@ class MSPointer extends Pointer {
  *
  * */
 
+/** @internal */
 namespace MSPointer {
 
     /* *
@@ -274,19 +338,11 @@ namespace MSPointer {
      *
      * */
 
-    /**
-     * @private
-     */
+    /** @internal */
     export function compose(
         ChartClass: typeof Chart
     ): void {
-
-        if (pushUnique(composed, 'Core.MSPointer')) {
-            addEvent(ChartClass, 'beforeRender', function (): void {
-                this.pointer = new MSPointer(this, this.options);
-            });
-        }
-
+        Pointer.compose(ChartClass, MSPointer);
     }
 
 }
@@ -297,4 +353,5 @@ namespace MSPointer {
  *
  * */
 
+/** @internal */
 export default MSPointer;

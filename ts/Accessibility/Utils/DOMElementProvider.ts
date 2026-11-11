@@ -1,13 +1,15 @@
 /* *
  *
- *  (c) 2009-2024 Øystein Moseng
+ *  (c) 2009-2026 Highsoft AS
+ *  Author: Øystein Moseng
  *
  *  Class that can keep track of elements added to DOM and clean them up on
  *  destroy.
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  * */
 
@@ -33,7 +35,10 @@ const { removeElement } = HU;
  * */
 
 /**
- * @private
+ * Class that can keep track of elements added to DOM and clean them up on
+ * destroy.
+ *
+ * @internal
  */
 class DOMElementProvider {
 
@@ -61,7 +66,6 @@ class DOMElementProvider {
      *
      * */
 
-    /* eslint-disable valid-jsdoc */
 
     public createElement<K extends keyof HTMLElementTagNameMap>(
         tagName: K,
@@ -70,7 +74,8 @@ class DOMElementProvider {
     /**
      * Create an element and keep track of it for later removal.
      * Same args as document.createElement
-     * @private
+     *
+     * @internal
      */
     public createElement(): HTMLDOMElement {
         const el = doc.createElement.apply(doc, arguments);
@@ -80,7 +85,8 @@ class DOMElementProvider {
 
     /**
      * Destroy created element, removing it from the DOM.
-     * @private
+     *
+     * @internal
      */
     public removeElement(element: HTMLDOMElement): void {
         removeElement(element);
@@ -89,7 +95,8 @@ class DOMElementProvider {
 
     /**
      * Destroy all created elements, removing them from the DOM.
-     * @private
+     *
+     * @internal
      */
     public destroyCreatedElements(): void {
         this.elements.forEach(function (element: HTMLDOMElement): void {
@@ -106,4 +113,5 @@ class DOMElementProvider {
  *
  * */
 
+/** @internal */
 export default DOMElementProvider;

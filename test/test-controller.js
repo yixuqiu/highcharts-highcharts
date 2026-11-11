@@ -171,6 +171,21 @@ var TestController = /** @class */ (function () {
         Object.keys(extra).forEach(function (key) {
             evt[key] = extra[key];
         });
+        // Extend each touch with pageX and pageY after chart offset corrections
+        if (evt.touches) {
+            var twoFingers_1 = evt.touches.length === 2;
+            evt.touches.forEach(function (touch, i) {
+                if (twoFingers_1) {
+                    var sign = i ? 1 : -1;
+                    touch.pageX += 11 * sign;
+                    touch.pageY += 11 * sign;
+                }
+                else {
+                    touch.pageX = extra.pageX;
+                    touch.pageY = extra.pageY;
+                }
+            });
+        }
         return evt;
     };
     /**
@@ -629,11 +644,11 @@ var TestController = /** @class */ (function () {
                 ])
             };
             if (i === 0) {
-                this.touchStart(chartX, chartY, undefined, extra, debug);
+                this.touchStart(movePoint1[0], movePoint1[1], undefined, extra, debug);
             }
-            this.touchMove(chartX, chartY, undefined, extra, debug);
+            this.touchMove(movePoint1[0], movePoint1[1], undefined, extra, debug);
             if (i === ie) {
-                this.touchEnd(chartX, chartY, undefined, extra, debug);
+                this.touchEnd(movePoint1[0], movePoint1[1], undefined, extra, debug);
             }
         }
     };

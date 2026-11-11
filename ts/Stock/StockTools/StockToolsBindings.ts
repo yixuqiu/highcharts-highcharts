@@ -1,12 +1,14 @@
-/**
+/* *
  *
  *  Events generator for Stock tools
  *
- *  (c) 2009-2024 Paweł Fus
+ *  (c) 2009-2026 Highsoft AS
+ *  Author: Paweł Fus
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  * */
 
@@ -22,17 +24,17 @@ import type Annotation from '../../Extensions/Annotations/Annotation';
 import type {
     AnnotationOptions
 } from '../../Extensions/Annotations/AnnotationOptions';
-import type { YAxisOptions } from '../../Core/Axis/AxisOptions';
 import type AxisType from '../../Core/Axis/AxisType';
+import type { DeepPartial } from '../../Shared/Types';
+import type FibonacciTimeZones from '../../Extensions/Annotations/Types/FibonacciTimeZones';
 import type { HTMLDOMElement } from '../../Core/Renderer/DOMElementType';
 import type NavigationBindingsOptions from '../../Extensions/Annotations/NavigationBindingsOptions';
 import type PointerEvent from '../../Core/PointerEvent';
 import type { SeriesTypeOptions } from '../../Core/Series/SeriesType';
-import type Toolbar from './StockToolbar';
+import type { YAxisOptions } from '../../Core/Axis/AxisOptions';
 
 import H from '../../Core/Globals.js';
 import NavigationBindings from '../../Extensions/Annotations/NavigationBindings.js';
-import { Palette } from '../../Core/Color/Palettes.js';
 import STU from './StockToolsUtilities.js';
 const {
     addFlagFromForm,
@@ -44,12 +46,9 @@ const {
     updateNthPoint,
     updateRectSize
 } = STU;
-import U from '../../Core/Utilities.js';
-import FibonacciTimeZones from '../../Extensions/Annotations/Types/FibonacciTimeZones';
-const {
-    fireEvent,
-    merge
-} = U;
+import getIcon from '../../Shared/BaseFormUtils.js';
+import StockToolsIcons from './StockToolsIcons.js';
+import { fireEvent, merge } from '../../Shared/Utilities.js';
 
 /* *
  *
@@ -57,8 +56,9 @@ const {
  *
  * */
 
-declare module '../../Extensions/Annotations/NavigationBindingsLike' {
-    interface NavigationBindingsLike {
+/** @internal */
+declare module '../../Extensions/Annotations/NavigationBindingsBase' {
+    interface NavigationBindingsBase {
         toggledAnnotations?: boolean;
         verticalCounter?: number;
     }
@@ -71,6 +71,7 @@ declare module '../../Extensions/Annotations/NavigationBindingsLike' {
  * */
 
 /**
+ * @internal
  * @sample {highstock} stock/stocktools/custom-stock-tools-bindings
  *         Custom stock tools bindings
  *
@@ -92,6 +93,13 @@ const StockToolsBindings: Record<string, NavigationBindingsOptions> = {
     segment: {
         /** @ignore-option */
         className: 'highcharts-segment',
+        /**
+         * Options to customize the bindings' annotation shapes and labels.
+         * @type      {Highcharts.AnnotationsOptions}
+         * @extends   navigation.annotationsOptions
+         * @apioption navigation.bindings.segment.annotationsOptions
+         */
+
         // eslint-disable-next-line valid-jsdoc
         /** @ignore-option */
         start: function (
@@ -123,7 +131,7 @@ const StockToolsBindings: Record<string, NavigationBindingsOptions> = {
                         }
                     },
                     navigation.annotationsOptions,
-                    (navigation.bindings as any).segment.annotationsOptions
+                    navigation.bindings?.segment.annotationsOptions
                 );
 
             return this.chart.addAnnotation(options);
@@ -144,6 +152,13 @@ const StockToolsBindings: Record<string, NavigationBindingsOptions> = {
     arrowSegment: {
         /** @ignore-option */
         className: 'highcharts-arrow-segment',
+        /**
+         * Options to customize the bindings' annotation shapes and labels.
+         * @type      {Highcharts.AnnotationsOptions}
+         * @extends   navigation.annotationsOptions
+         * @apioption navigation.bindings.arrowSegment.annotationsOptions
+         */
+
         // eslint-disable-next-line valid-jsdoc
         /** @ignore-option */
         start: function (
@@ -178,7 +193,7 @@ const StockToolsBindings: Record<string, NavigationBindingsOptions> = {
                         }
                     },
                     navigation.annotationsOptions,
-                    (navigation.bindings as any).arrowSegment.annotationsOptions
+                    navigation.bindings?.arrowSegment.annotationsOptions
                 );
 
             return this.chart.addAnnotation(options);
@@ -199,6 +214,13 @@ const StockToolsBindings: Record<string, NavigationBindingsOptions> = {
     ray: {
         /** @ignore-option */
         className: 'highcharts-ray',
+        /**
+         * Options to customize the bindings' annotation shapes and labels.
+         * @type      {Highcharts.AnnotationsOptions}
+         * @extends   navigation.annotationsOptions
+         * @apioption navigation.bindings.ray.annotationsOptions
+         */
+
         // eslint-disable-next-line valid-jsdoc
         /** @ignore-option */
         start: function (
@@ -231,7 +253,7 @@ const StockToolsBindings: Record<string, NavigationBindingsOptions> = {
                         }
                     },
                     navigation.annotationsOptions,
-                    (navigation.bindings as any).ray.annotationsOptions
+                    navigation.bindings?.ray.annotationsOptions
                 );
 
             return this.chart.addAnnotation(options);
@@ -252,6 +274,13 @@ const StockToolsBindings: Record<string, NavigationBindingsOptions> = {
     arrowRay: {
         /** @ignore-option */
         className: 'highcharts-arrow-ray',
+        /**
+         * Options to customize the bindings' annotation shapes and labels.
+         * @type      {Highcharts.AnnotationsOptions}
+         * @extends   navigation.annotationsOptions
+         * @apioption navigation.bindings.arrowRay.annotationsOptions
+         */
+
         // eslint-disable-next-line valid-jsdoc
         /** @ignore-option */
         start: function (
@@ -287,7 +316,7 @@ const StockToolsBindings: Record<string, NavigationBindingsOptions> = {
                         }
                     },
                     navigation.annotationsOptions,
-                    (navigation.bindings as any).arrowRay.annotationsOptions
+                    navigation.bindings?.arrowRay.annotationsOptions
                 );
 
             return this.chart.addAnnotation(options);
@@ -307,6 +336,13 @@ const StockToolsBindings: Record<string, NavigationBindingsOptions> = {
     infinityLine: {
         /** @ignore-option */
         className: 'highcharts-infinity-line',
+        /**
+         * Options to customize the bindings' annotation shapes and labels.
+         * @type      {Highcharts.AnnotationsOptions}
+         * @extends   navigation.annotationsOptions
+         * @apioption navigation.bindings.infinityLine.annotationsOptions
+         */
+
         // eslint-disable-next-line valid-jsdoc
         /** @ignore-option */
         start: function (
@@ -339,7 +375,7 @@ const StockToolsBindings: Record<string, NavigationBindingsOptions> = {
                         }
                     },
                     navigation.annotationsOptions,
-                    (navigation.bindings as any).infinityLine.annotationsOptions
+                    navigation.bindings?.infinityLine.annotationsOptions
                 );
 
             return this.chart.addAnnotation(options);
@@ -360,6 +396,13 @@ const StockToolsBindings: Record<string, NavigationBindingsOptions> = {
     arrowInfinityLine: {
         /** @ignore-option */
         className: 'highcharts-arrow-infinity-line',
+        /**
+         * Options to customize the bindings' annotation shapes and labels.
+         * @type      {Highcharts.AnnotationsOptions}
+         * @extends   navigation.annotationsOptions
+         * @apioption navigation.bindings.arrowInfinityLine.annotationsOptions
+         */
+
         // eslint-disable-next-line valid-jsdoc
         /** @ignore-option */
         start: function (
@@ -395,7 +438,7 @@ const StockToolsBindings: Record<string, NavigationBindingsOptions> = {
                         }
                     },
                     navigation.annotationsOptions,
-                    (navigation.bindings as any).arrowInfinityLine
+                    navigation.bindings?.arrowInfinityLine
                         .annotationsOptions
                 );
 
@@ -416,6 +459,13 @@ const StockToolsBindings: Record<string, NavigationBindingsOptions> = {
     horizontalLine: {
         /** @ignore-option */
         className: 'highcharts-horizontal-line',
+        /**
+         * Options to customize the bindings' annotation shapes and labels.
+         * @type      {Highcharts.AnnotationsOptions}
+         * @extends   navigation.annotationsOptions
+         * @apioption navigation.bindings.horizontalLine.annotationsOptions
+         */
+
         // eslint-disable-next-line valid-jsdoc
         /** @ignore-option */
         start: function (this: NavigationBindings, e: PointerEvent): void {
@@ -443,8 +493,7 @@ const StockToolsBindings: Record<string, NavigationBindingsOptions> = {
                         }
                     },
                     navigation.annotationsOptions,
-                    (navigation.bindings as any)
-                        .horizontalLine.annotationsOptions
+                    navigation.bindings?.horizontalLine.annotationsOptions
                 );
 
             this.chart.addAnnotation(options);
@@ -460,6 +509,13 @@ const StockToolsBindings: Record<string, NavigationBindingsOptions> = {
     verticalLine: {
         /** @ignore-option */
         className: 'highcharts-vertical-line',
+        /**
+         * Options to customize the bindings' annotation shapes and labels.
+         * @type      {Highcharts.AnnotationsOptions}
+         * @extends   navigation.annotationsOptions
+         * @apioption navigation.bindings.verticalLine.annotationsOptions
+         */
+
         // eslint-disable-next-line valid-jsdoc
         /** @ignore-option */
         start: function (this: NavigationBindings, e: PointerEvent): void {
@@ -487,7 +543,7 @@ const StockToolsBindings: Record<string, NavigationBindingsOptions> = {
                         }
                     },
                     navigation.annotationsOptions,
-                    (navigation.bindings as any).verticalLine.annotationsOptions
+                    navigation.bindings?.verticalLine.annotationsOptions
                 );
 
             this.chart.addAnnotation(options);
@@ -505,6 +561,13 @@ const StockToolsBindings: Record<string, NavigationBindingsOptions> = {
     crooked3: {
         /** @ignore-option */
         className: 'highcharts-crooked3',
+        /**
+         * Options to customize the bindings' annotation shapes and labels.
+         * @type      {Highcharts.AnnotationsOptions}
+         * @extends   navigation.annotationsOptions
+         * @apioption navigation.bindings.crooked3.annotationsOptions
+         */
+
         // eslint-disable-next-line valid-jsdoc
         /** @ignore-option */
         start: function (
@@ -536,7 +599,7 @@ const StockToolsBindings: Record<string, NavigationBindingsOptions> = {
                         }
                     },
                     navigation.annotationsOptions,
-                    (navigation.bindings as any).crooked3.annotationsOptions
+                    navigation.bindings?.crooked3.annotationsOptions
                 );
 
             return this.chart.addAnnotation(options);
@@ -558,6 +621,13 @@ const StockToolsBindings: Record<string, NavigationBindingsOptions> = {
     crooked5: {
         /** @ignore-option */
         className: 'highcharts-crooked5',
+        /**
+         * Options to customize the bindings' annotation shapes and labels.
+         * @type      {Highcharts.AnnotationsOptions}
+         * @extends   navigation.annotationsOptions
+         * @apioption navigation.bindings.crooked5.annotationsOptions
+         */
+
         // eslint-disable-next-line valid-jsdoc
         /** @ignore-option */
         start: function (
@@ -591,7 +661,7 @@ const StockToolsBindings: Record<string, NavigationBindingsOptions> = {
                         }
                     },
                     navigation.annotationsOptions,
-                    (navigation.bindings as any).crooked5.annotationsOptions
+                    navigation.bindings?.crooked5.annotationsOptions
                 );
 
             return this.chart.addAnnotation(options);
@@ -615,6 +685,13 @@ const StockToolsBindings: Record<string, NavigationBindingsOptions> = {
     elliott3: {
         /** @ignore-option */
         className: 'highcharts-elliott3',
+        /**
+         * Options to customize the bindings' annotation shapes and labels.
+         * @type      {Highcharts.AnnotationsOptions}
+         * @extends   navigation.annotationsOptions
+         * @apioption navigation.bindings.elliott3.annotationsOptions
+         */
+
         // eslint-disable-next-line valid-jsdoc
         /** @ignore-option */
         start: function (
@@ -647,12 +724,12 @@ const StockToolsBindings: Record<string, NavigationBindingsOptions> = {
                         },
                         labelOptions: {
                             style: {
-                                color: Palette.neutralColor60
+                                color: 'var(--highcharts-neutral-color-60)'
                             }
                         }
                     },
                     navigation.annotationsOptions,
-                    (navigation.bindings as any).elliott3.annotationsOptions
+                    navigation.bindings?.elliott3.annotationsOptions
                 );
 
             return this.chart.addAnnotation(options);
@@ -675,6 +752,13 @@ const StockToolsBindings: Record<string, NavigationBindingsOptions> = {
     elliott5: {
         /** @ignore-option */
         className: 'highcharts-elliott5',
+        /**
+         * Options to customize the bindings' annotation shapes and labels.
+         * @type      {Highcharts.AnnotationsOptions}
+         * @extends   navigation.annotationsOptions
+         * @apioption navigation.bindings.elliott5.annotationsOptions
+         */
+
         // eslint-disable-next-line valid-jsdoc
         /** @ignore-option */
         start: function (
@@ -706,15 +790,10 @@ const StockToolsBindings: Record<string, NavigationBindingsOptions> = {
                                 { x, y },
                                 { x, y }
                             ]
-                        },
-                        labelOptions: {
-                            style: {
-                                color: Palette.neutralColor60
-                            }
                         }
                     },
                     navigation.annotationsOptions,
-                    (navigation.bindings as any).elliott5.annotationsOptions
+                    navigation.bindings?.elliott5.annotationsOptions
                 );
 
             return this.chart.addAnnotation(options);
@@ -739,6 +818,13 @@ const StockToolsBindings: Record<string, NavigationBindingsOptions> = {
     measureX: {
         /** @ignore-option */
         className: 'highcharts-measure-x',
+        /**
+         * Options to customize the bindings' annotation shapes and labels.
+         * @type      {Highcharts.AnnotationsOptions}
+         * @extends   navigation.annotationsOptions
+         * @apioption navigation.bindings.measureX.annotationsOptions
+         */
+
         // eslint-disable-next-line valid-jsdoc
         /** @ignore-option */
         start: function (
@@ -765,29 +851,20 @@ const StockToolsBindings: Record<string, NavigationBindingsOptions> = {
                             yAxis: coordsY.axis.index,
                             point: { x, y },
                             crosshairX: {
-                                strokeWidth: 1,
-                                stroke: Palette.neutralColor100
+                                strokeWidth: 1
                             },
                             crosshairY: {
                                 enabled: false,
-                                strokeWidth: 0,
-                                stroke: Palette.neutralColor100
+                                strokeWidth: 0
                             },
                             background: {
                                 width: 0,
-                                height: 0,
-                                strokeWidth: 0,
-                                stroke: Palette.backgroundColor
-                            }
-                        },
-                        labelOptions: {
-                            style: {
-                                color: Palette.neutralColor60
+                                height: 0
                             }
                         }
                     },
                     navigation.annotationsOptions,
-                    (navigation.bindings as any).measureX.annotationsOptions
+                    navigation.bindings?.measureX.annotationsOptions
                 );
 
             return this.chart.addAnnotation(options);
@@ -808,6 +885,13 @@ const StockToolsBindings: Record<string, NavigationBindingsOptions> = {
     measureY: {
         /** @ignore-option */
         className: 'highcharts-measure-y',
+        /**
+         * Options to customize the bindings' annotation shapes and labels.
+         * @type      {Highcharts.AnnotationsOptions}
+         * @extends   navigation.annotationsOptions
+         * @apioption navigation.bindings.measureY.annotationsOptions
+         */
+
         // eslint-disable-next-line valid-jsdoc
         /** @ignore-option */
         start: function (
@@ -835,28 +919,20 @@ const StockToolsBindings: Record<string, NavigationBindingsOptions> = {
                             point: { x, y },
                             crosshairX: {
                                 enabled: false,
-                                strokeWidth: 0,
-                                stroke: Palette.neutralColor100
+                                strokeWidth: 0
                             },
                             crosshairY: {
-                                strokeWidth: 1,
-                                stroke: Palette.neutralColor100
+                                strokeWidth: 1
                             },
                             background: {
                                 width: 0,
                                 height: 0,
-                                strokeWidth: 0,
-                                stroke: Palette.backgroundColor
-                            }
-                        },
-                        labelOptions: {
-                            style: {
-                                color: Palette.neutralColor60
+                                strokeWidth: 0
                             }
                         }
                     },
                     navigation.annotationsOptions,
-                    (navigation.bindings as any).measureY.annotationsOptions
+                    navigation.bindings?.measureY.annotationsOptions
                 );
 
             return this.chart.addAnnotation(options);
@@ -877,6 +953,13 @@ const StockToolsBindings: Record<string, NavigationBindingsOptions> = {
     measureXY: {
         /** @ignore-option */
         className: 'highcharts-measure-xy',
+        /**
+         * Options to customize the bindings' annotation shapes and labels.
+         * @type      {Highcharts.AnnotationsOptions}
+         * @extends   navigation.annotationsOptions
+         * @apioption navigation.bindings.measureXY.annotationsOptions
+         */
+
         // eslint-disable-next-line valid-jsdoc
         /** @ignore-option */
         start: function (
@@ -905,25 +988,18 @@ const StockToolsBindings: Record<string, NavigationBindingsOptions> = {
                             background: {
                                 width: 0,
                                 height: 0,
-                                strokeWidth: 10
+                                strokeWidth: 0
                             },
                             crosshairX: {
-                                strokeWidth: 1,
-                                stroke: Palette.neutralColor100
+                                strokeWidth: 1
                             },
                             crosshairY: {
-                                strokeWidth: 1,
-                                stroke: Palette.neutralColor100
-                            }
-                        },
-                        labelOptions: {
-                            style: {
-                                color: Palette.neutralColor60
+                                strokeWidth: 1
                             }
                         }
                     },
                     navigation.annotationsOptions,
-                    (navigation.bindings as any).measureXY.annotationsOptions
+                    navigation.bindings?.measureXY.annotationsOptions
                 );
 
             return this.chart.addAnnotation(options);
@@ -947,6 +1023,13 @@ const StockToolsBindings: Record<string, NavigationBindingsOptions> = {
      */
     fibonacci: {
         className: 'highcharts-fibonacci',
+        /**
+         * Options to customize the bindings' annotation shapes and labels.
+         * @type      {Highcharts.AnnotationsOptions}
+         * @extends   navigation.annotationsOptions
+         * @apioption navigation.bindings.fibonacci.annotationsOptions
+         */
+
         // eslint-disable-next-line valid-jsdoc
         /** @ignore-option */
         start: function (
@@ -974,15 +1057,10 @@ const StockToolsBindings: Record<string, NavigationBindingsOptions> = {
                                 { x, y },
                                 { x, y }
                             ]
-                        },
-                        labelOptions: {
-                            style: {
-                                color: Palette.neutralColor60
-                            }
                         }
                     },
                     navigation.annotationsOptions,
-                    (navigation.bindings as any).fibonacci.annotationsOptions
+                    navigation.bindings?.fibonacci.annotationsOptions
                 );
 
             return this.chart.addAnnotation(options);
@@ -1004,6 +1082,13 @@ const StockToolsBindings: Record<string, NavigationBindingsOptions> = {
     parallelChannel: {
         /** @ignore-option */
         className: 'highcharts-parallel-channel',
+        /**
+         * Options to customize the bindings' annotation shapes and labels.
+         * @type      {Highcharts.AnnotationsOptions}
+         * @extends   navigation.annotationsOptions
+         * @apioption navigation.bindings.parallelChannel.annotationsOptions
+         */
+
         // eslint-disable-next-line valid-jsdoc
         /** @ignore-option */
         start: function (
@@ -1034,7 +1119,7 @@ const StockToolsBindings: Record<string, NavigationBindingsOptions> = {
                         }
                     },
                     navigation.annotationsOptions,
-                    (navigation.bindings as any).parallelChannel
+                    navigation.bindings?.parallelChannel
                         .annotationsOptions
                 );
 
@@ -1057,6 +1142,13 @@ const StockToolsBindings: Record<string, NavigationBindingsOptions> = {
     pitchfork: {
         /** @ignore-option */
         className: 'highcharts-pitchfork',
+        /**
+         * Options to customize the bindings' annotation shapes and labels.
+         * @type      {Highcharts.AnnotationsOptions}
+         * @extends   navigation.annotationsOptions
+         * @apioption navigation.bindings.pitchfork.annotationsOptions
+         */
+
         // eslint-disable-next-line valid-jsdoc
         /** @ignore-option */
         start: function (
@@ -1085,23 +1177,17 @@ const StockToolsBindings: Record<string, NavigationBindingsOptions> = {
                                 y: coordsY.value,
                                 controlPoint: {
                                     style: {
-                                        fill: Palette.negativeColor
+                                        fill: 'var(--highcharts-negative-color)'
                                     }
                                 }
                             },
                             { x, y },
                             { x, y }
-                            ],
-                            innerBackground: {
-                                fill: 'rgba(100, 170, 255, 0.8)'
-                            }
-                        },
-                        shapeOptions: {
-                            strokeWidth: 2
+                            ]
                         }
                     },
                     navigation.annotationsOptions,
-                    (navigation.bindings as any).pitchfork.annotationsOptions
+                    navigation.bindings?.pitchfork.annotationsOptions
                 );
 
             return this.chart.addAnnotation(options);
@@ -1125,6 +1211,13 @@ const StockToolsBindings: Record<string, NavigationBindingsOptions> = {
     verticalCounter: {
         /** @ignore-option */
         className: 'highcharts-vertical-counter',
+        /**
+         * Options to customize the bindings' annotation shapes and labels.
+         * @type      {Highcharts.AnnotationsOptions}
+         * @extends   navigation.annotationsOptions
+         * @apioption navigation.bindings.verticalCounter.annotationsOptions
+         */
+
         // eslint-disable-next-line valid-jsdoc
         /** @ignore-option */
         start: function (
@@ -1156,27 +1249,16 @@ const StockToolsBindings: Record<string, NavigationBindingsOptions> = {
                                 offset: closestPoint.below ? 40 : -40,
                                 text: this.verticalCounter.toString()
                             }
-                        },
-                        labelOptions: {
-                            style: {
-                                color: Palette.neutralColor60,
-                                fontSize: '0.7em'
-                            }
-                        },
-                        shapeOptions: {
-                            stroke: 'rgba(0, 0, 0, 0.75)',
-                            strokeWidth: 1
                         }
                     },
                     navigation.annotationsOptions,
-                    (navigation.bindings as any)
-                        .verticalCounter.annotationsOptions
+                    navigation.bindings?.verticalCounter.annotationsOptions
                 ),
                 annotation = this.chart.addAnnotation(options);
 
             this.verticalCounter++;
 
-            (annotation.options.events.click as any).call(annotation, {});
+            annotation.options.events?.click?.call(annotation, {});
         }
     },
     /**
@@ -1190,6 +1272,13 @@ const StockToolsBindings: Record<string, NavigationBindingsOptions> = {
      */
     timeCycles: {
         className: 'highcharts-time-cycles',
+        /**
+         * Options to customize the bindings' annotation shapes and labels.
+         * @type      {Highcharts.AnnotationsOptions}
+         * @extends   navigation.annotationsOptions
+         * @apioption navigation.bindings.timeCycles.annotationsOptions
+         */
+
         start: function (
             this: NavigationBindings,
             e: PointerEvent
@@ -1213,20 +1302,15 @@ const StockToolsBindings: Record<string, NavigationBindingsOptions> = {
                                 x: closestPoint.x
                             }, {
                                 x: closestPoint.x
-                            }],
-                            line: {
-                                stroke: 'rgba(0, 0, 0, 0.75)',
-                                fill: 'transparent',
-                                strokeWidth: 2
-                            }
+                            }]
                         }
                     },
                     navigation.annotationsOptions,
-                    (navigation.bindings as any).timeCycles.annotationsOptions
+                    navigation.bindings?.timeCycles.annotationsOptions
                 ),
                 annotation = this.chart.addAnnotation(options);
 
-            (annotation.options.events.click as any).call(annotation, {});
+            annotation.options.events?.click?.call(annotation, {});
 
             return annotation;
         },
@@ -1238,6 +1322,13 @@ const StockToolsBindings: Record<string, NavigationBindingsOptions> = {
     verticalLabel: {
         /** @ignore-option */
         className: 'highcharts-vertical-label',
+        /**
+         * Options to customize the bindings' annotation shapes and labels.
+         * @type      {Highcharts.AnnotationsOptions}
+         * @extends   navigation.annotationsOptions
+         * @apioption navigation.bindings.verticalLabel.annotationsOptions
+         */
+
         // eslint-disable-next-line valid-jsdoc
         /** @ignore-option */
         start: function (
@@ -1266,32 +1357,21 @@ const StockToolsBindings: Record<string, NavigationBindingsOptions> = {
                             label: {
                                 offset: closestPoint.below ? 40 : -40
                             }
-                        },
-                        labelOptions: {
-                            style: {
-                                color: Palette.neutralColor60,
-                                fontSize: '0.7em'
-                            }
-                        },
-                        shapeOptions: {
-                            stroke: 'rgba(0, 0, 0, 0.75)',
-                            strokeWidth: 1
                         }
                     },
                     navigation.annotationsOptions,
-                    (navigation.bindings as any)
-                        .verticalLabel.annotationsOptions
+                    navigation.bindings?.verticalLabel.annotationsOptions
                 ),
                 annotation = this.chart.addAnnotation(options);
 
-            (annotation.options.events.click as any).call(annotation, {});
+            annotation.options.events?.click?.call(annotation, {});
         }
     },
     /**
      * A vertical arrow annotation bindings. Includes `start` event. On click,
      * finds the closest point and marks it with an arrow.
-     * `${palette.positiveColor}` is the color of the arrow when
-     * pointing from above and `${palette.negativeColor}`
+     * `var(--highcharts-positive-color)` is the color of the arrow when
+     * pointing from above and `var(--highcharts-negative-color)`
      * when pointing from below the point.
      *
      * @type    {Highcharts.NavigationBindingsOptionsObject}
@@ -1301,6 +1381,13 @@ const StockToolsBindings: Record<string, NavigationBindingsOptions> = {
     verticalArrow: {
         /** @ignore-option */
         className: 'highcharts-vertical-arrow',
+        /**
+         * Options to customize the bindings' annotation shapes and labels.
+         * @type      {Highcharts.AnnotationsOptions}
+         * @extends   navigation.annotationsOptions
+         * @apioption navigation.bindings.verticalArrow.annotationsOptions
+         */
+
         // eslint-disable-next-line valid-jsdoc
         /** @ignore-option */
         start: function (
@@ -1333,22 +1420,17 @@ const StockToolsBindings: Record<string, NavigationBindingsOptions> = {
                             connector: {
                                 fill: 'none',
                                 stroke: closestPoint.below ?
-                                    Palette.negativeColor :
-                                    Palette.positiveColor
+                                    'var(--highcharts-negative-color)' :
+                                    'var(--highcharts-positive-color)'
                             }
-                        },
-                        shapeOptions: {
-                            stroke: 'rgba(0, 0, 0, 0.75)',
-                            strokeWidth: 1
                         }
                     },
                     navigation.annotationsOptions,
-                    (navigation.bindings as any)
-                        .verticalArrow.annotationsOptions
+                    navigation.bindings?.verticalArrow.annotationsOptions
                 ),
                 annotation = this.chart.addAnnotation(options);
 
-            (annotation.options.events.click as any).call(annotation, {});
+            annotation.options.events?.click?.call(annotation, {});
         }
     },
     /**
@@ -1362,6 +1444,13 @@ const StockToolsBindings: Record<string, NavigationBindingsOptions> = {
     fibonacciTimeZones: {
         /** @ignore-option */
         className: 'highcharts-fibonacci-time-zones',
+        /**
+         * Options to customize the bindings' annotation shapes and labels.
+         * @type      {Highcharts.AnnotationsOptions}
+         * @extends   navigation.annotationsOptions
+         * @apioption navigation.bindings.fibonacciTimeZones.annotationsOptions
+         */
+
         // eslint-disable-next-line valid-jsdoc
         /** @ignore-option */
         start: function (
@@ -1389,7 +1478,7 @@ const StockToolsBindings: Record<string, NavigationBindingsOptions> = {
                         }
                     },
                     navigation.annotationsOptions,
-                    (navigation.bindings as any).fibonacciTimeZones
+                    navigation.bindings?.fibonacciTimeZones
                         .annotationsOptions
                 );
 
@@ -1403,8 +1492,8 @@ const StockToolsBindings: Record<string, NavigationBindingsOptions> = {
                 e: PointerEvent,
                 annotation: FibonacciTimeZones
             ): void {
-                const mockPointOpts = annotation.options.typeOptions.points,
-                    x = mockPointOpts && mockPointOpts[0].x,
+                const mockPointOpts = annotation.options.typeOptions?.points,
+                    x = (mockPointOpts?.[0] as any).x,
                     [coordsX, coordsY] = this.getCoords(e);
 
                 if (coordsX && coordsY) {
@@ -1597,7 +1686,7 @@ const StockToolsBindings: Record<string, NavigationBindingsOptions> = {
             this.chart.series[0].update({
                 type: 'line',
                 useOhlcData: true
-            } as any);
+            });
 
             fireEvent(
                 this,
@@ -1861,8 +1950,7 @@ const StockToolsBindings: Record<string, NavigationBindingsOptions> = {
             button: HTMLDOMElement
         ): void {
             const chart = this.chart,
-                gui: Toolbar = chart.stockTools as any,
-                iconsURL = gui.getIconsURL();
+                gui = chart.stockTools;
 
             this.toggledAnnotations = !this.toggledAnnotations;
 
@@ -1873,15 +1961,21 @@ const StockToolsBindings: Record<string, NavigationBindingsOptions> = {
                 annotation.setVisibility(!this.toggledAnnotations);
             }, this);
 
-            if (gui && gui.guiEnabled) {
+            if (gui?.guiEnabled) {
                 if (this.toggledAnnotations) {
                     (button.firstChild as any).style['background-image'] =
-                        'url("' + iconsURL +
-                            'annotations-hidden.svg")';
+                        getIcon(
+                            'annotations-hidden.svg',
+                            gui.iconsURL,
+                            StockToolsIcons
+                        );
                 } else {
                     (button.firstChild as any).style['background-image'] =
-                        'url("' + iconsURL +
-                            'annotations-visible.svg")';
+                        getIcon(
+                            'annotations-visible.svg',
+                            gui.iconsURL,
+                            StockToolsIcons
+                        );
                 }
             }
 
@@ -1966,4 +2060,5 @@ const StockToolsBindings: Record<string, NavigationBindingsOptions> = {
  *
  * */
 
+/** @internal */
 export default StockToolsBindings;

@@ -1,0 +1,6 @@
+@import url("https://code.highcharts.com/grid-lite/css/grid-lite.css");
+
+#container {
+    padding: 8px;
+    height: 600px;
+}

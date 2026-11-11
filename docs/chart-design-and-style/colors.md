@@ -1,32 +1,53 @@
+---
+description: >-
+  Set chart colors using browser-supported values, palettes, and CSS
+  variables. Learn how to define linear and radial gradients with color stops,
+  choose gradient coordinates, and enable pattern fills.
+---
+
 Colors
 ======
 
-Highcharts supports solid and semi-transparent colors as well as linear and radial gradients. Unless specified below, this applies to all color options in the Highcharts API, whether it is called color, backgroundColor, borderColor, lineColor etc.
+Highcharts supports solid and semi-transparent colors as well as linear and
+radial gradients. Unless specified below, this applies to all color options in
+the Highcharts API, whether it is called `color`, `backgroundColor`,
+`borderColor`, `lineColor`, `fill`, `stroke` etc.
+
+Palette and CSS variables
+-------------------------
+Although all color options can be set as literal colors, the default design
+system in Highcharts relies on the _palette_ options and CSS variables (since
+v13). The recommended way of styling Highcharts is to define a base palette,
+then optionally deviate from it with more targeted chart options. Read more
+under the [palette API](https://api.highcharts.com/highcharts/palette) and the
+[branding docs
+article](https://www.highcharts.com/docs/chart-design-and-style/branding).
+
 
 Solid colors
 ------------
 
-Primarily, Highcharts supports solid colors given in hex format _#00FF00_ and rgb format _rgb(0,255,0)_.
+Highcharts supports any color that the browser recognizes, including CSS
+variables since v12.2, for example hex and rgb formats. See the [CSS
+variables](https://jsfiddle.net/gh/get/library/pure/highcharts/highcharts/tree/master/samples/highcharts/chart/colors-css-variables/)
+demo to see how this can be applied to a themed heatmap with color theming.
 
-Secondary, any color format that is recognized by the browser, like short Hex _#0F0_ or color names (_red, brown, blue_) is supported. However, in some cases Highcharts alters the brightness of the color, like when hovering a column chart. When using the secondary color formats, this operation isn't performed. By plugging in to the Highcharts.Color object, we can make named colors work with external libraries or color definitions, like [this example with RGBColor](https://jsfiddle.net/gh/get/library/pure/highcharts/highcharts/tree/master/samples/highcharts/chart/colors-parsers/).
-
-### Semi-transparent colors - opacity
-
-Semi-transparent colors in Highcharts are given in the rgba format _rgba(255,255,255,1)_. The last parameter is the alpha or opacity that ranges from 0, fully transparent, to 1, fully opaque. Because of this, there are no separate opacity options in the Highcharts API.
+See here for more information about using [color indices in styled mode](https://www.highcharts.com/docs/chart-design-and-style/style-by-css).
 
 Linear gradients
 ----------------
 
 Linear gradients in Highcharts have a similar syntax to that of SVG:
 
-    
-    color: {
-        linearGradient: { x1: 0, x2: 0, y1: 0, y2: 1 },
-        stops: [
-            [0, '#003399'],
-            [1, '#3366AA']
-        ]
-    }
+```js
+color: {
+    linearGradient: { x1: 0, x2: 0, y1: 0, y2: 1 },
+    stops: [
+        [0, '#003399'],
+        [1, '#3366AA']
+    ]
+}
+```
 
 The color is given as an object literal containing two properties:
 
@@ -38,24 +59,27 @@ The linear gradients can be applied to both fills (backgrounds) and strokes (lin
 Note that linear gradients can be differently defined (as an array or an object). Also, start/end positions might be calculated differently depending on the `gradientUnits` property (this property can only be set in linear gradient declared as object).
 
 `gradientUnits` values:
-*   **`userSpaceOnUse`** Default when gradient declared as an array. Start and end positions have to be declared as pixels on the chart.
+*   **`userSpaceOnUse`** Start and end positions are defined as percentage strings.
 *   **`objectBoundingBox`** Default when gradient declared as an object. Start and end positions are in the range of 0 to 1 as described above. Using this might sometimes result in the disappearance of the coloured element.
 
-See the online example of a [linear gradient chart background](https://jsfiddle.net/highcharts/4rTBY/).
+See the online example of a [linear gradient chart
+background](https://jsfiddle.net/gh/get/library/pure/highcharts/highcharts/tree/master/samples/highcharts/chart/backgroundcolor-gradient)
+and a [column series with different gradient units](https://jsfiddle.net/gh/get/library/pure/highcharts/highcharts/tree/master/samples/highcharts/plotoptions/column-color-gradient).
 
 Radial gradients
 ----------------
 
-Since Highcharts 2.3 radial gradients have been supported. They have a similar syntax to that of SVG:
+Radial gradients also have a similar syntax to that of SVG:
 
-    
-    color: {
-        radialGradient: { cx: 0.5, cy: 0.5, r: 0.5 },
-        stops: [
-           [0, '#003399'],
-           [1, '#3366AA']
-        ]
-    }
+```js
+color: {
+    radialGradient: { cx: 0.5, cy: 0.5, r: 0.5 },
+    stops: [
+       [0, '#003399'],
+       [1, '#3366AA']
+    ]
+}
+```
 
 The color is given as an object literal containing two properties:
 
@@ -69,19 +93,21 @@ See the demo of [radial gradients in a pie chart](https://highcharts.com/demo/pi
 Pattern fills
 -------------
 
-Since Highcharts v6.1, pattern fills are supported natively.
+Pattern fills are supported through options. To enable this functionality, load the `pattern-fill.js` module. Example loading the latest version from our CDN:
 
-To enable this new functionality, load the pattern-fill.js module. Example loading the latest version from our CDN:
-    
-    <script src="https://code.highcharts.com/modules/pattern-fill.js"></script>
+```html
+<script src="https://code.highcharts.com/modules/pattern-fill.js"></script>
+```
 
 Then, to define a color as a pattern, we can do as follows with any color option:
 
-    color: {
-        pattern: {
-            // Pattern options here
-        }
+```js
+color: {
+    pattern: {
+        // Pattern options here
     }
+}
+```
 
 Further reading:
 

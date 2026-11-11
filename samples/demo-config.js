@@ -7,6 +7,11 @@
  * title
  */
 module.exports = {
+    'Highcharts Overview': {
+        categories: ['Basics'],
+        filter: { tags: ['Highcharts overview'] },
+        path: '/'
+    },
     Highcharts: {
         categories: [
             'Line charts',
@@ -23,6 +28,7 @@ module.exports = {
             'Gauges',
             'Heat and tree maps',
             'Trees and networks',
+            'Data',
             'More chart types'
         ],
         filter: { tags: ['Highcharts demo'] },
@@ -48,5 +54,15 @@ module.exports = {
         categories: ['Highcharts Gantt'],
         filter: { tags: ['Highcharts Gantt demo'] },
         path: '/gantt/'
+    },
+    'Highcharts Dashboards': {
+        categories: ['Basic', 'Advanced'],
+        filter: { tags: ['Highcharts Dashboards demo'] },
+        path: '/dashboards/'
+    },
+    'Highcharts Grid': {
+        categories: ['General'],
+        filter: { tags: ['Highcharts Grid demo'] },
+        path: '/grid/'
     }
 };

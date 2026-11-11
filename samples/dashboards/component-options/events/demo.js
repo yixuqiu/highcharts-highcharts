@@ -5,17 +5,19 @@ Dashboards.board('container', {
         connectors: [{
             id: 'Vitamin',
             type: 'CSV',
-            options: {
-                csv: csvData,
-                firstRowAsNames: true
-            }
+            csv: csvData,
+            firstRowAsNames: true
         }]
     },
     editMode: {
         enabled: true,
         contextMenu: {
-            enabled: true,
-            items: ['editMode']
+            enabled: true
+        }
+    },
+    events: {
+        mounted: function () {
+            console.log('Mounted all components');
         }
     },
     gui: {
@@ -117,9 +119,14 @@ Dashboards.board('container', {
         connector: {
             id: 'Vitamin'
         },
-        type: 'DataGrid',
+        type: 'Grid',
         sync: {
             highlight: true
+        },
+        gridOptions: {
+            credits: {
+                enabled: false
+            }
         }
     }]
 }, true);

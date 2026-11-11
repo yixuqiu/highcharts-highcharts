@@ -1,3 +1,10 @@
+---
+description: >-
+  Create a standalone navigator, bind or unbind charts and axes, control
+  shared ranges with setRange and getRange, and configure its own chart size
+  and navigator height.
+---
+
 Standalone Navigator
 ====================
 
@@ -14,9 +21,7 @@ Highcharts.navigator('container', {
 ```
 The configuration options for the Standalone Navigator are the same as those for a chart navigator, and can be found in the [API documentation](https://api.highcharts.com/highstock/navigator).
 
-<iframe style="width: 100%; height: 650px; border: none;" src=https://www.highcharts.com/samples/embed/stock/standalone-navigator/styled-standalone-navigator allow="fullscreen"></iframe>
-
-Click [here](https://jsfiddle.net/gh/get/library/pure/highcharts/highcharts/tree/master/samples/stock/standalone-navigator/styled-standalone-navigator) to check the code.
+<iframe style="width: 100%; height: 650px; border: none;" src="https://www.highcharts.com/samples/embed/stock/standalone-navigator/styled-standalone-navigator" allow="fullscreen"></iframe>
 
 ## Including the Standalone Navigator in a Project
 The Standalone Navigator can be included in a project in two ways:
@@ -33,9 +38,42 @@ The Standalone Navigator can be included in a project in two ways:
 
 ## Binding Charts to the Navigator
 
-The `bind` method binds a chart or an axis to the Standalone Navigator. Once a chart is bound, any range adjustments made using the navigator are automatically reflected in the bound chart. See the [bind method documentation](https://api.highcharts.com/class-reference/Highcharts.StandaloneNavigator.bind) for more details.
+The `bind` method binds a chart or an axis to the Standalone Navigator. Once a chart is bound, any range adjustments made using the navigator are automatically reflected in the bound chart. See the [bind method documentation](https://api.highcharts.com/class-reference/Highcharts.StandaloneNavigator#bind) for more details.
 
-The `unbind` method is used to detach a chart or axis from the Standalone Navigator. This method can unbind either a single chart or all charts bound to the navigator simultaneously. Detaching charts from the navigator stops it from influencing their range. See the [unbind method documentation](https://api.highcharts.com/class-reference/Highcharts.StandaloneNavigator.unbind) for additional information.
+The `unbind` method is used to detach a chart or axis from the Standalone Navigator. This method can unbind either a single chart or all charts bound to the navigator simultaneously. Detaching charts from the navigator stops it from influencing their range. See the [unbind method documentation](https://api.highcharts.com/class-reference/Highcharts.StandaloneNavigator#unbind) for additional information.
+
+## Chart options
+
+The standalone navigator renders into its own chart container. General chart options,
+like `chart.height` or `chart.inverted`, are set through the`chartOptions`
+option, while the `height` option controls the height of the navigator itself:
+```javascript
+Highcharts.navigator('container', {
+    height: 50,
+    chartOptions: {
+        chart: {
+            height: 300
+        }
+    }
+});
+```
+
+The `chartOptions` option replaces the deprecated `chart` option, which is still
+supported but logs [error #32](https://www.highcharts.com/errors/32/). If both
+are set, `chartOptions` takes precedence.
+
+The `height` option applies to the navigator series area only. The scrollbar is
+a separate component with its own `scrollbar.height`, and it is rendered below
+the navigator, so the chart height must leave room for both. When the navigator
+is inverted, the strip runs vertically with the scrollbar to its left, so
+`height` is measured horizontally and it is the chart width that must leave
+room for both.
+
+If you are planning to switch the navigator orientation via `update`,
+remember to set a CSS height on the navigator container. A chart without an
+explicit height takes it from its container, and the container keeps the
+height it was first rendered at, so an inverted navigator would otherwise
+stay as short as the horizontal one it replaced after the update.
 
 ## Managing Navigator Range
 
@@ -43,7 +81,7 @@ The `setRange` method allows programmatic control of the navigator's range. This
 
 The `getRange` method retrieves the current range of the Standalone Navigator, enabling users to view or use the navigator's existing range settings.
 
-See the [setRange](https://api.highcharts.com/class-reference/Highcharts.StandaloneNavigator.setRange) and [getRange](https://api.highcharts.com/class-reference/Highcharts.StandaloneNavigator.getRange) methods documentation for more details.
+See the [setRange](https://api.highcharts.com/class-reference/Highcharts.StandaloneNavigator#setRange) and [getRange](https://api.highcharts.com/class-reference/Highcharts.StandaloneNavigator#getRange) methods documentation for more details.
 
 ## API
 

@@ -1,10 +1,12 @@
 /* *
  *
- *  (c) 2010-2024 Kacper Madej
+ *  (c) 2010-2026 Highsoft AS
+ *  Author: Kacper Madej
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  * */
 
@@ -23,14 +25,12 @@ import BulletPoint from './BulletPoint.js';
 import BulletSeriesDefaults from './BulletSeriesDefaults.js';
 import ColumnSeries from '../Column/ColumnSeries.js';
 import SeriesRegistry from '../../Core/Series/SeriesRegistry.js';
-import U from '../../Core/Utilities.js';
-const {
+import {
     extend,
     isNumber,
     merge,
-    pick,
     relativeLength
-} = U;
+} from '../../Shared/Utilities.js';
 
 /* *
  *
@@ -41,7 +41,6 @@ const {
 /**
  * The bullet series type.
  *
- * @private
  * @class
  * @name Highcharts.seriesTypes.bullet
  *
@@ -55,6 +54,7 @@ class BulletSeries extends ColumnSeries {
      *
      * */
 
+    /** @internal */
     public static defaultOptions: BulletSeriesOptions = merge(
         ColumnSeries.defaultOptions,
         BulletSeriesDefaults
@@ -72,6 +72,7 @@ class BulletSeries extends ColumnSeries {
 
     public points!: Array<BulletPoint>;
 
+    /** @internal */
     public targetData!: Array<number>;
 
     /* *
@@ -175,23 +176,29 @@ class BulletSeries extends ColumnSeries {
                 // Presentational
                 if (!chart.styledMode) {
                     targetGraphic.attr({
-                        fill: pick(
-                            targetOptions.color,
-                            pointOptions.color,
-                            (series.zones.length && (point.getZone.call({
-                                series: series,
-                                x: point.x,
-                                y: targetVal,
-                                options: {}
-                            }).color || series.color)) || void 0,
-                            point.color,
+                        fill: (
+                            targetOptions.color ??
+                            pointOptions.color ??
+                            (
+                                (
+                                    series.zones.length &&
+                                    (
+                                        point.getZone?.call({
+                                            series: series,
+                                            x: point.x,
+                                            y: targetVal,
+                                            options: {}
+                                        })?.color || series.color
+                                    )
+                                ) || void 0
+                            ) ??
+                            point.color ??
                             series.color
                         ),
-                        stroke: pick(
-                            targetOptions.borderColor,
-                            point.borderColor,
-                            series.options.borderColor
-                        ),
+                        stroke:
+                            targetOptions.borderColor ??
+                            point.borderColor ??
+                            series.options.borderColor,
                         'stroke-width': targetOptions.borderWidth,
                         r: targetOptions.borderRadius
                     });
@@ -219,6 +226,7 @@ class BulletSeries extends ColumnSeries {
      *
      * @ignore
      * @function Highcharts.Series#getExtremes
+     * @internal
      */
     public getExtremes(yData?: Array<number>): DataExtremesObject {
         const dataExtremes = super.getExtremes.call(this, yData),
@@ -231,13 +239,15 @@ class BulletSeries extends ColumnSeries {
             );
             if (isNumber(targetExtremes.dataMin)) {
                 dataExtremes.dataMin = Math.min(
-                    pick(dataExtremes.dataMin, Infinity),
+                    (
+                        dataExtremes.dataMin ?? Infinity),
                     targetExtremes.dataMin
                 );
             }
             if (isNumber(targetExtremes.dataMax)) {
                 dataExtremes.dataMax = Math.max(
-                    pick(dataExtremes.dataMax, -Infinity),
+                    (
+                        dataExtremes.dataMax ?? -Infinity),
                     targetExtremes.dataMax
                 );
             }
@@ -245,7 +255,6 @@ class BulletSeries extends ColumnSeries {
         return dataExtremes;
     }
 
-    /* eslint-enable valid-jsdoc */
 
 }
 

@@ -1,12 +1,14 @@
 /* *
  *
- *  (c) 2009-2024 Øystein Moseng
+ *  (c) 2009-2026 Highsoft AS
+ *  Author: Øystein Moseng
  *
  *  Default options for accessibility.
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  * */
 
@@ -19,85 +21,13 @@
  * */
 
 import type A11yOptions from './A11yOptions';
-
-import { Palette } from '../../Core/Color/Palettes.js';
+import type { DeepPartial } from '../../Shared/Types';
 
 /* *
  *
  *  API Options
  *
  * */
-
-/**
- * Formatter callback for the accessibility announcement.
- *
- * @callback Highcharts.AccessibilityAnnouncementFormatter
- *
- * @param {Array<Highcharts.Series>} updatedSeries
- * Array of all series that received updates. If an announcement is already
- * queued, the series that received updates for that announcement are also
- * included in this array.
- *
- * @param {Highcharts.Series} [addedSeries]
- * This is provided if {@link Highcharts.Chart#addSeries} was called, and there
- * is a new series. In that case, this argument is a reference to the new
- * series.
- *
- * @param {Highcharts.Point} [addedPoint]
- * This is provided if {@link Highcharts.Series#addPoint} was called, and there
- * is a new point. In that case, this argument is a reference to the new point.
- *
- * @return {false|string}
- * The function should return a string with the text to announce to the user.
- * Return empty string to not announce anything. Return `false` to use the
- * default announcement format.
- */
-
-/**
- * @interface Highcharts.PointAccessibilityOptionsObject
- *//**
- * Provide a description of the data point, announced to screen readers.
- * @name Highcharts.PointAccessibilityOptionsObject#description
- * @type {string|undefined}
- * @requires modules/accessibility
- * @since 7.1.0
- *//**
- * Enable or disable exposing the point to assistive technology
- * @name Highcharts.PointAccessibilityOptionsObject#enabled
- * @type {boolean|undefined}
- * @requires modules/accessibility
- * @since 9.0.1
- */
-
-/* *
- * @interface Highcharts.PointOptionsObject in parts/Point.ts
- *//**
- * @name Highcharts.PointOptionsObject#accessibility
- * @type {Highcharts.PointAccessibilityOptionsObject|undefined}
- * @requires modules/accessibility
- * @since 7.1.0
- */
-
-/**
- * @callback Highcharts.ScreenReaderClickCallbackFunction
- *
- * @param {global.MouseEvent} evt
- *        Mouse click event
- *
- * @return {void}
- */
-
-/**
- * Creates a formatted string for the screen reader module.
- *
- * @callback Highcharts.ScreenReaderFormatterCallbackFunction<T>
- *
- * @param {T} context
- *        Context to format
- *
- * @return {string}
- *         Formatted string for the screen reader module.
- */
 
 const Options: DeepPartial<A11yOptions> = {
 
@@ -187,6 +117,9 @@ const Options: DeepPartial<A11yOptions> = {
              * the DOM.
              *
              * Set to empty string to remove the region altogether.
+             *
+             * @sample highcharts/accessibility/before-chart-format
+             *         beforeChartFormat
              *
              * @since 8.0.0
              */
@@ -298,8 +231,13 @@ const Options: DeepPartial<A11yOptions> = {
             /**
              * When a series contains more points than this, we no longer expose
              * information about individual points to screen readers.
+             * Note that the keyboard navigation remains functional, but points
+             * won't have accessible descriptions unless handled separately.
              *
              * Set to `false` to disable.
+             *
+             * @sample highcharts/accessibility/point-description-enabled-threshold
+             *         pointDescriptionEnabledThreshold
              *
              * @type  {boolean|number}
              * @since 8.0.0
@@ -480,8 +418,11 @@ const Options: DeepPartial<A11yOptions> = {
          * Alternatively, the HTML element to link can be passed in directly as
          * an HTML node.
          *
-         * If you need the description to be part of the exported image,
-         * consider using the [caption](#caption) feature.
+         * When the Exporting module is also loaded, the description
+         * is embedded in the exported SVG as a Dublin Core
+         * RDF `<metadata>` block, so it is preserved in downloaded images
+         * for indexers and machine readers. If you need a visible caption
+         * in the exported image, use the [caption](#caption) feature.
          *
          * If you need the description to be hidden visually, use the
          * [accessibility.description](#accessibility.description) option.
@@ -531,6 +472,9 @@ const Options: DeepPartial<A11yOptions> = {
          * The default option is `auto`, which applies the high contrast theme
          * the user's system has a high contrast theme active.
          *
+         * @sample highcharts/accessibility/high-contrast-mode
+         *         High contrast mode enabled
+         *
          * @since 11.4.0
          */
         highContrastMode: 'auto',
@@ -543,7 +487,13 @@ const Options: DeepPartial<A11yOptions> = {
          *
          * If the Accessibility module is loaded, this option is included by
          * default as a long description of the chart in the hidden screen
-         * reader information region.
+         * reader information region. When the Exporting module is also loaded,
+         * it is embedded into exported SVGs as a Dublin Core RDF `<metadata>`
+         * block, so the description is preserved in downloaded images
+         * for indexers and machine readers. The embedded value falls back
+         * through [linkedDescription](#accessibility.linkedDescription),
+         * [caption.text](#caption.text), and finally the generated
+         * chart-type description.
          *
          * Note: Since Highcharts now supports captions and linked descriptions,
          * it is preferred to define the description using those methods, as a
@@ -629,11 +579,11 @@ const Options: DeepPartial<A11yOptions> = {
                  * @since   6.0.3
                  */
                 style: {
-                    /** @internal */
-                    color: Palette.highlightColor80,
-                    /** @internal */
+                    /**
+                     * @type {Highcharts.ColorType}
+                     */
+                    color: 'var(--highcharts-highlight-color-80)',
                     lineWidth: 2,
-                    /** @internal */
                     borderRadius: 3
                 },
 
@@ -654,6 +604,9 @@ const Options: DeepPartial<A11yOptions> = {
              * `container` first in order will make the keyboard focus stop on
              * the chart container first, requiring the user to tab again to
              * enter the chart.
+             *
+             * @sample highcharts/accessibility/custom-component
+             *         Custom order is set
              *
              * @type  {Array<string>}
              * @since 7.1.0
@@ -700,11 +653,12 @@ const Options: DeepPartial<A11yOptions> = {
 
                 /**
                  * Skip null points when navigating through points with the
-                 * keyboard.
+                 * keyboard. By default this is the opposite of
+                 * [series.nullInteraction](https://api.highcharts.com/highcharts/plotOptions.series.nullInteraction).
                  *
                  * @since 8.0.0
                  */
-                skipNullPoints: true,
+                skipNullPoints: void 0,
 
                 /**
                  * When a series contains more points than this, we no longer
@@ -1042,5 +996,89 @@ const Options: DeepPartial<A11yOptions> = {
         }
     }
 };
+
+/**
+ * Formatter callback for the accessibility announcement.
+ *
+ * @callback Highcharts.AccessibilityAnnouncementFormatter
+ *
+ * @param {Array<Highcharts.Series>} updatedSeries
+ * Array of all series that received updates. If an announcement is already
+ * queued, the series that received updates for that announcement are also
+ * included in this array.
+ *
+ * @param {Highcharts.Series} [addedSeries]
+ * This is provided if {@link Highcharts.Chart#addSeries} was called, and there
+ * is a new series. In that case, this argument is a reference to the new
+ * series.
+ *
+ * @param {Highcharts.Point} [addedPoint]
+ * This is provided if {@link Highcharts.Series#addPoint} was called, and there
+ * is a new point. In that case, this argument is a reference to the new point.
+ *
+ * @return {false|string}
+ * The function should return a string with the text to announce to the user.
+ * Return empty string to not announce anything. Return `false` to use the
+ * default announcement format.
+ */
+
+/**
+ * @interface Highcharts.PointAccessibilityOptionsObject
+ *//**
+ * Provide a description of the data point, announced to screen readers.
+ * @name Highcharts.PointAccessibilityOptionsObject#description
+ * @type {string|undefined}
+ * @requires modules/accessibility
+ * @since 7.1.0
+ *//**
+ * Enable or disable exposing the point to assistive technology
+ * @name Highcharts.PointAccessibilityOptionsObject#enabled
+ * @type {boolean|undefined}
+ * @requires modules/accessibility
+ * @since 9.0.1
+ */
+
+/* *
+ * @interface Highcharts.PointOptionsObject in parts/Point.ts
+ *//**
+ * @name Highcharts.PointOptionsObject#accessibility
+ * @type {Highcharts.PointAccessibilityOptionsObject|undefined}
+ * @requires modules/accessibility
+ * @since 7.1.0
+ */
+
+/**
+ * @callback Highcharts.ScreenReaderClickCallbackFunction
+ *
+ * @param {global.MouseEvent} evt
+ *        Mouse click event
+ *
+ * @param {Highcharts.Chart} [chart]
+ *        Chart context.
+ *
+ * @param {global.GlobalEventHandlers} [ctx]
+ *        Since v12.6.0, the global event handlers context passed as an extra
+ *        argument for arrow functions.
+ *
+ * @return {void}
+ */
+
+/**
+ * Creates a formatted string for the screen reader module.
+ *
+ * @callback Highcharts.ScreenReaderFormatterCallbackFunction<T>
+ *
+ * @param {T} context
+ *        Context to format
+ *
+ * @param {*} [outerContext]
+ *        Since v12.6.0, the outer context passed as an extra argument for
+ *        arrow functions.
+ *
+ * @return {string}
+ *         Formatted string for the screen reader module.
+ */
+
+(''); // Detach doclets above
 
 export default Options;

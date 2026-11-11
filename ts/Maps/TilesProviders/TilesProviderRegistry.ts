@@ -1,6 +1,5 @@
 /* *
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  * */
 
@@ -25,6 +24,7 @@ import USGS from './USGS.js';
  *
  * */
 
+/** @internal */
 export interface TilesProviderRegistry {
     Esri: typeof Esri;
     LimaLabs: typeof LimaLabs;
@@ -34,7 +34,9 @@ export interface TilesProviderRegistry {
     USGS: typeof USGS;
 }
 
-export type TilesProviderRegistryName = keyof TilesProviderRegistry;
+export type TilesProviderRegistryName = (
+    'Esri'|'LimaLabs'|'OpenStreetMap'|'Stamen'|'Thunderforest'|'USGS'
+);
 
 /* *
  *
@@ -42,6 +44,7 @@ export type TilesProviderRegistryName = keyof TilesProviderRegistry;
  *
  * */
 
+/** @internal */
 const tilesProviderRegistry: TilesProviderRegistry = {
     Esri,
     LimaLabs,
@@ -57,4 +60,5 @@ const tilesProviderRegistry: TilesProviderRegistry = {
  *
  * */
 
+/** @internal */
 export default tilesProviderRegistry;

@@ -1,12 +1,13 @@
 /* *
  *
- *  (c) 2010-2024 Highsoft AS
+ *  (c) 2010-2026 Highsoft AS
  *
  *  Authors: Magdalena Gut, Piotr Madej
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  * */
 
@@ -21,20 +22,16 @@
 import GeoHeatmapPointOptions from '../GeoHeatmap/GeoHeatmapPointOptions.js';
 import GeoHeatmapSeries from '../GeoHeatmap/GeoHeatmapSeries.js';
 import { PointShortOptions } from '../../Core/Series/PointOptions.js';
-import U from '../../Core/Utilities.js';
-import SeriesRegistry from '../../Core/Series/SeriesRegistry.js';
+import MapSeries from '../Map/MapSeries.js';
+import { isNumber } from '../../Shared/Utilities.js';
 
-const {
-    map: {
-        prototype: {
-            pointClass: MapPoint
-        }
-    }
-} = SeriesRegistry.seriesTypes;
+/* *
+ *
+ *  Constants
+ *
+ * */
 
-const {
-    isNumber
-} = U;
+const MapPoint = MapSeries.prototype.pointClass;
 
 /* *
  *
@@ -42,15 +39,17 @@ const {
  *
  * */
 
-declare module '../../Core/Series/KDPointSearchObjectLike' {
-    interface KDPointSearchObjectLike {
+/** @internal */
+declare module '../../Core/Series/KDPointSearchObjectBase' {
+    interface KDPointSearchObjectBase {
         lat?: number;
         lon?: number;
     }
 }
 
-declare module '../../Core/Series/PointLike' {
-    interface PointLike {
+/** @internal */
+declare module '../../Core/Series/PointBase' {
+    interface PointBase {
         lat?: number;
         lon?: number;
     }
@@ -70,12 +69,15 @@ class GeoHeatmapPoint extends MapPoint {
      *
      * */
 
+    /** @internal */
     public lat!: number;
 
+    /** @internal */
     public lon!: number;
 
     public options!: GeoHeatmapPointOptions;
 
+    /** @internal */
     public series!: GeoHeatmapSeries;
 
     /* *
@@ -84,10 +86,9 @@ class GeoHeatmapPoint extends MapPoint {
      *
      * */
 
-    /* eslint-disable valid-jsdoc */
 
     /**
-     * @private
+     * @internal
      */
     public applyOptions(
         options: (GeoHeatmapPointOptions | PointShortOptions),
@@ -121,7 +122,6 @@ class GeoHeatmapPoint extends MapPoint {
 
         return point;
 
-        /* eslint-enable valid-jsdoc */
 
     }
 }

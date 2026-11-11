@@ -1,9 +1,24 @@
+body {
+    font-family:
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        Roboto,
+        Helvetica,
+        Arial,
+        "Apple Color Emoji",
+        "Segoe UI Emoji",
+        "Segoe UI Symbol",
+        sans-serif;
+    background: var(--highcharts-background-color);
+    color: var(--highcharts-neutral-color-100);
+}
+
 figure {
     max-width: 1300px;
     min-width: 320px;
     margin: 0 auto;
     position: relative;
-    font-family: sans-serif;
 }
 
 #container {
@@ -16,7 +31,7 @@ figure {
 
 #legend {
     max-width: 1300px;
-    margin: 5px auto 40px;
+    margin: 5px 10px 40px;
     display: flex;
     gap: 15px;
     flex-direction: column;
@@ -56,6 +71,7 @@ figure {
     text-align: center;
     border-radius: 4px;
     box-sizing: content-box;
+    color: #333;
 }
 
 #focus label:hover,
@@ -68,8 +84,8 @@ figure {
 }
 
 #focus input[type="radio"]:checked + label {
-    background-color: #353a47;
-    border-color: #353a47;
+    background-color: #5a6175;
+    border-color: #5a6175;
     color: #fff;
     font-weight: bold;
 }
@@ -114,4 +130,14 @@ figure {
 
 pre {
     display: none;
+}
+
+.highcharts-description {
+    background: light-dark(#f2f6f2, #323232);
+    border-radius: 0 4px 4px 0;
+    border-left: 2px solid light-dark(#1d6aff, #fff);
+    font-size: 0.8rem;
+    font-style: italic;
+    padding: 8px 16px;
+    margin: 2em 10px 1em;
 }

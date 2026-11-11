@@ -1,10 +1,12 @@
 /* *
  *
- *  (c) 2010-2024 Torstein Honsi
+ *  (c) 2010-2026 Highsoft AS
+ *  Author: Torstein Hønsi
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  * */
 
@@ -24,16 +26,21 @@ import H from '../../Core/Globals.js';
 const { composed } = H;
 import HeikinAshiPoint from './HeikinAshiPoint.js';
 import HeikinAshiSeriesDefaults from './HeikinAshiSeriesDefaults.js';
+import CandlestickSeries from '../Candlestick/CandlestickSeries.js';
 import SeriesRegistry from '../../Core/Series/SeriesRegistry.js';
-const {
-    candlestick: CandlestickSeries
-} = SeriesRegistry.seriesTypes;
-import U from '../../Core/Utilities.js';
-const {
-    addEvent,
-    merge,
-    pushUnique
-} = U;
+import { addEvent, merge, pushUnique } from '../../Shared/Utilities.js';
+
+/* *
+ *
+ *  Declarations
+ *
+ * */
+type OHLCObject = {
+    open: number;
+    high: number;
+    low: number;
+    close: number;
+};
 
 /* *
  *
@@ -42,9 +49,9 @@ const {
  * */
 
 /**
- * After processing and grouping the data, calculate how the heikeinashi data
+ * After processing and grouping the data, calculate how the heikinashi data
  * set should look like.
- * @private
+ * @internal
  */
 function onAxisPostProcessData(
     this: Axis
@@ -54,7 +61,7 @@ function onAxisPostProcessData(
     series.forEach((series): void => {
         if (series.is('heikinashi')) {
             const heikinashiSeries = series as HeikinAshiSeries;
-            heikinashiSeries.heikiashiData.length = 0;
+            heikinashiSeries.heikinashiData.length = 0;
             heikinashiSeries.getHeikinashiData();
         }
     });
@@ -62,7 +69,7 @@ function onAxisPostProcessData(
 
 /**
  * Assign heikinashi data into the points.
- * @private
+ * @internal
  * @todo move to HeikinAshiPoint class
  */
 function onHeikinAshiSeriesAfterTranslate(
@@ -70,37 +77,31 @@ function onHeikinAshiSeriesAfterTranslate(
 ): void {
     const series = this,
         points = series.points,
-        heikiashiData = series.heikiashiData,
+        heikinashiData = series.heikinashiData,
         cropStart = series.cropStart || 0;
-
-    // Reset the processed data.
-    series.processedYData.length = 0;
 
     // Modify points.
     for (let i = 0; i < points.length; i++) {
         const point = points[i],
-            heikiashiDataPoint = heikiashiData[i + cropStart];
+            heikinashiDataPoint = heikinashiData[i + cropStart];
 
-        point.open = heikiashiDataPoint[0];
-        point.high = heikiashiDataPoint[1];
-        point.low = heikiashiDataPoint[2];
-        point.close = heikiashiDataPoint[3];
-
-        series.processedYData.push(
-            [point.open, point.high, point.low, point.close]
-        );
+        point.open = heikinashiDataPoint[0];
+        point.high = heikinashiDataPoint[1];
+        point.low = heikinashiDataPoint[2];
+        point.close = heikinashiDataPoint[3];
     }
+
 }
 
 /**
  * Force to recalculate the heikinashi data set after updating data.
- * @private
+ * @internal
  */
 function onHeikinAshiSeriesUpdatedData(
     this: HeikinAshiSeries
 ): void {
-    if (this.heikiashiData.length) {
-        this.heikiashiData.length = 0;
+    if (this.heikinashiData.length) {
+        this.heikinashiData.length = 0;
     }
 }
 /* *
@@ -112,11 +113,8 @@ function onHeikinAshiSeriesUpdatedData(
 /**
  * The Heikin Ashi series.
  *
- * @private
  * @class
  * @name Highcharts.seriesTypes.heikinashi
- *
- * @augments Highcharts.Series
  */
 class HeikinAshiSeries extends CandlestickSeries {
 
@@ -126,6 +124,7 @@ class HeikinAshiSeries extends CandlestickSeries {
      *
      * */
 
+    /** @internal */
     public static defaultOptions: HeikinAshiSeriesOptions = merge(
         CandlestickSeries.defaultOptions,
         HeikinAshiSeriesDefaults
@@ -137,6 +136,7 @@ class HeikinAshiSeries extends CandlestickSeries {
      *
      * */
 
+    /** @internal */
     public static compose(
         SeriesClass: typeof Series,
         AxisClass: typeof Axis
@@ -168,14 +168,17 @@ class HeikinAshiSeries extends CandlestickSeries {
 
     public data!: Array<HeikinAshiPoint>;
 
-    public heikiashiData: Array<Array<number>> = [];
+    /** @internal */
+    public heikinashiData: Array<Array<number>> = [];
 
     public options!: HeikinAshiSeriesOptions;
 
     public points!: Array<HeikinAshiPoint>;
 
+    /** @internal */
     public yData!: Array<Array<number>>;
 
+    /** @internal */
     public processedYData!: Array<Array<(number|null)>>;
 
     /* *
@@ -186,83 +189,81 @@ class HeikinAshiSeries extends CandlestickSeries {
 
     /**
      * Calculate data set for the heikinashi series before creating the points.
-     * @private
+     * @internal
      */
     public getHeikinashiData(): void {
         const series = this,
-            processedYData = series.allGroupedData || series.yData,
-            heikiashiData = series.heikiashiData;
+            table = series.allGroupedTable || series.dataTable,
+            dataLength = table.rowCount,
+            heikinashiData = series.heikinashiData;
 
-        if (!heikiashiData.length && processedYData && processedYData.length) {
-            // Cast to `any` in order to avoid checks before calculation.
-            // Adding null doesn't change anything.
-            const firstPoint: any = processedYData[0];
+        if (!heikinashiData.length && dataLength) {
 
             // Modify the first point.
-            this.modifyFirstPointValue(firstPoint);
+            this.modifyFirstPointValue(
+                table.getRowObject(0, this.pointArrayMap) as OHLCObject
+            );
 
             // Modify other points.
-            for (let i = 1; i < processedYData.length; i++) {
-                const dataPoint: any = processedYData[i],
-                    previousDataPoint: any = heikiashiData[i - 1];
-
-                this.modifyDataPoint(dataPoint, previousDataPoint);
+            for (let i = 1; i < dataLength; i++) {
+                this.modifyDataPoint(
+                    table.getRowObject(i, this.pointArrayMap) as OHLCObject,
+                    heikinashiData[i - 1]
+                );
             }
         }
-        series.heikiashiData = heikiashiData;
+        series.heikinashiData = heikinashiData;
     }
 
-    /**
-     * @private
-     */
+    /** @internal */
     public init(): void {
         super.init.apply(this, arguments as any);
 
-        this.heikiashiData = [];
+        this.heikinashiData = [];
     }
 
     /**
      * Calculate and modify the first data point value.
-     * @private
-     * @param {Array<(number)>} dataPoint
+     * @internal
+     * @param {Object} dataPoint
      *        Current data point.
      */
-    public modifyFirstPointValue(dataPoint: Array<(number)>): void {
-        const open = (
-                dataPoint[0] +
-                dataPoint[1] +
-                dataPoint[2] +
-                dataPoint[3]
+    public modifyFirstPointValue(dataPoint: OHLCObject): void {
+        const avg = (
+                dataPoint.open +
+                dataPoint.high +
+                dataPoint.low +
+                dataPoint.close
             ) / 4,
-            close = (dataPoint[0] + dataPoint[3]) / 2;
+            close = (dataPoint.open + dataPoint.close) / 2;
 
-        this.heikiashiData.push([open, dataPoint[1], dataPoint[2], close]);
+        this.heikinashiData.push([avg, dataPoint.high, dataPoint.low, close]);
     }
 
     /**
      * Calculate and modify the data point's value.
-     * @private
-     * @param {Array<(number)>} dataPoint
+     * @internal
+     * @param {Object} dataPoint
      *        Current data point.
      * @param {Array<(number)>} previousDataPoint
      *        Previous data point.
      */
     public modifyDataPoint(
-        dataPoint: Array<(number)>,
+        dataPoint: OHLCObject,
         previousDataPoint: Array<(number)>
     ): void {
         const newOpen = (previousDataPoint[0] + previousDataPoint[3]) / 2,
             newClose = (
-                dataPoint[0] +
-                dataPoint[1] +
-                dataPoint[2] +
-                dataPoint[3]
+                dataPoint.open +
+                dataPoint.high +
+                dataPoint.low +
+                dataPoint.close
             ) / 4,
-            newHigh = Math.max(dataPoint[1], newClose, newOpen),
-            newLow = Math.min(dataPoint[2], newClose, newOpen);
+            newHigh = Math.max(dataPoint.high, newClose, newOpen),
+            newLow = Math.min(dataPoint.low, newClose, newOpen);
 
         // Add new points to the array in order to properly calculate extremes.
-        this.heikiashiData.push([newOpen, newHigh, newLow, newClose]);
+        this.heikinashiData.push([newOpen, newHigh, newLow, newClose]);
     }
 
 }

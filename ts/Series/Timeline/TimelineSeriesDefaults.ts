@@ -2,13 +2,14 @@
  *
  *  Timeline Series.
  *
- *  (c) 2010-2024 Highsoft AS
+ *  (c) 2010-2026 Highsoft AS
  *
  *  Author: Daniel Studencki
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  * */
 
@@ -20,12 +21,9 @@
  *
  * */
 
-import type { TimelineDataLabelContextObject } from
-    './TimelineDataLabelOptions';
 import type Point from '../../Core/Series/Point';
+import type TimelinePoint from './TimelinePoint';
 import type TimelineSeriesOptions from './TimelineSeriesOptions';
-
-import { Palette } from '../../Core/Color/Palettes.js';
 
 /* *
  *
@@ -103,15 +101,15 @@ const TimelineSeriesDefaults: TimelineSeriesOptions = {
          */
         alternate: true,
 
-        backgroundColor: Palette.backgroundColor,
+        backgroundColor: 'var(--highcharts-background-color)',
 
         borderWidth: 1,
 
-        borderColor: Palette.neutralColor40,
+        borderColor: 'var(--highcharts-neutral-color-40)',
 
         borderRadius: 3,
 
-        color: Palette.neutralColor80,
+        color: 'var(--highcharts-neutral-color-80)',
 
         /**
          * The color of the line connecting the data label to the point.
@@ -123,7 +121,7 @@ const TimelineSeriesDefaults: TimelineSeriesOptions = {
          * @sample {highcharts} highcharts/series-timeline/connector-styles
          *         Custom connector width and color
          *
-         * @type      {Highcharts.ColorString|Highcharts.GradientColorObject|Highcharts.PatternObject}
+         * @type      {Highcharts.ColorType}
          * @apioption plotOptions.timeline.dataLabels.connectorColor
          */
 
@@ -148,7 +146,6 @@ const TimelineSeriesDefaults: TimelineSeriesOptions = {
 
         // eslint-disable-next-line jsdoc/require-description
         /**
-         * @type    {Highcharts.TimelineDataLabelsFormatterCallbackFunction}
          * @default function () {
          *   let format;
          *
@@ -165,7 +162,7 @@ const TimelineSeriesDefaults: TimelineSeriesOptions = {
          * }
          */
         formatter: function (
-            this: (Point.PointLabelObject|TimelineDataLabelContextObject)
+            this: (Point|TimelinePoint)
         ): string {
             let format;
 
@@ -177,18 +174,18 @@ const TimelineSeriesDefaults: TimelineSeriesOptions = {
                     this.point.colorIndex + '">● </span>';
             }
             format += '<span class="highcharts-strong">' +
-                ((this as any).key || '') + '</span><br/>' +
-                ((this.point as any).label || '');
+                (this.key || '') + '</span><br/>' +
+                ((this as TimelinePoint).label || '');
             return format;
         },
 
+        padding: 5,
+
         style: {
-            /** @internal */
             textOutline: 'none',
-            /** @internal */
             fontWeight: 'normal',
-            /** @internal */
-            fontSize: '0.8em'
+            fontSize: '0.8em',
+            textAlign: 'left'
         },
 
         /**
@@ -224,7 +221,7 @@ const TimelineSeriesDefaults: TimelineSeriesOptions = {
  *
  * @extends   series,plotOptions.timeline
  * @excluding animationLimit, boostThreshold, connectEnds, connectNulls,
- *            cropThreshold, dashStyle, dataParser, dataURL, findNearestPointBy,
+ *            cropThreshold, dashStyle, findNearestPointBy,
  *            getExtremesFromAll, negativeColor, pointInterval,
  *            pointIntervalUnit, pointPlacement, pointStart, softThreshold,
  *            stacking, stack, step, threshold, turboThreshold, zoneAxis, zones,
@@ -260,6 +257,7 @@ const TimelineSeriesDefaults: TimelineSeriesOptions = {
  * @sample {highcharts} highcharts/series-timeline/datetime-axis
  *         Real time intervals
  *
+ * @basic
  * @type      {Array<*>}
  * @extends   series.line.data
  * @excluding marker, y

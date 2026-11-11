@@ -1,13 +1,14 @@
 /* *
  *
- *  (c) 2009-2024 Highsoft AS
+ *  (c) 2009-2026 Highsoft AS
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  *  Authors:
- *  - Pawel Lysy
+ *  - Paweł Lysy
  *  - Sebastian Bochan
  *
  * */
@@ -20,18 +21,17 @@
  *
  * */
 
+import type { AnyRecord, DeepPartial } from '../../Shared/Types';
 import type Component from '../Components/Component';
-import type EditableOptions from '../Components/EditableOptions';
-import type Globals from '../Globals';
+import type { Options as ComponentOptions } from '../Components/Component';
+import type { Options as EditableOption } from '../Components/EditableOptions';
+import type { Options as HTMLOptions } from '../Components/HTMLComponent/HTMLComponentOptions';
 
 import EditRenderer from './EditRenderer.js';
-import U from '../../Core/Utilities.js';
 import EditGlobals from './EditGlobals.js';
-const {
-    createElement,
-    merge,
-    error
-} = U;
+import ConfirmationPopup from './ConfirmationPopup.js';
+import { createElement, fireEvent, merge } from '../../Shared/Utilities.js';
+import { error } from '../../Core/Utilities.js';
 
 /* *
  *
@@ -63,8 +63,12 @@ class AccordionMenu {
 
     private iconsURLPrefix: string;
     private closeSidebar: Function;
-    private changedOptions: DeepPartial<Component.Options> = {};
+    private changedOptions: DeepPartial<ComponentOptions> = {};
     private chartOptionsJSON = {};
+    private component?: Component;
+    private oldOptionsBuffer: DeepPartial<ComponentOptions> = {};
+    private confirmationPopup?: ConfirmationPopup;
+    public waitingForConfirmation = false;
 
     /* *
      *
@@ -77,13 +81,36 @@ class AccordionMenu {
      *
      * @param container
      * The HTML Element to render the menu in.
+     *
      * @param component
      * The component to render the menu for.
+
+     * @param sidebarMainContainer
+     * The main container of the sidebar.
      */
-    public renderContent(container: HTMLElement, component: Component): void {
+    public renderContent(
+        container: HTMLElement,
+        component: Component,
+        sidebarMainContainer: HTMLElement
+    ): void {
+        const { editMode } = component.board;
         const menu = this;
         const editableOptions = component.editableOptions.getOptions();
-        let option, content;
+        let options: EditableOption;
+        let content: HTMLElement;
+
+        this.component = component;
+
+        this.oldOptionsBuffer = component.getEditableOptions();
+
+        if (editMode) {
+            this.confirmationPopup = new ConfirmationPopup(
+                component.board.container,
+                editMode.iconsURLPrefix,
+                editMode,
+                { close: { icon: '' } }
+            );
+        }
 
         const accordionContainer = createElement(
             'div',
@@ -95,17 +122,18 @@ class AccordionMenu {
         );
 
         for (let i = 0, end = editableOptions.length; i < end; i++) {
-            option = editableOptions[i];
+            options = editableOptions[i];
             content = EditRenderer.renderCollapseHeader(
                 accordionContainer,
-                {
-                    name: option.name,
-                    iconsURLPrefix: menu.iconsURLPrefix,
-                    lang: (component.board?.editMode || EditGlobals).lang
-                }
+                merge(
+                    {
+                        iconsURLPrefix: menu.iconsURLPrefix,
+                        lang: (component.board?.editMode || EditGlobals).lang
+                    },
+                    options
+                )
             ).content;
-
-            this.renderAccordion(option, content, component);
+            this.renderAccordion(options, content, component);
         }
 
         const buttonContainer = createElement(
@@ -114,7 +142,7 @@ class AccordionMenu {
                 className: EditGlobals.classNames.accordionMenuButtonsContainer
             },
             {},
-            accordionContainer
+            sidebarMainContainer
         );
 
         EditRenderer.renderButton(
@@ -124,18 +152,8 @@ class AccordionMenu {
                     .lang.confirmButton,
                 className: EditGlobals.classNames.popupConfirmBtn,
                 callback: async (): Promise<void> => {
-                    const changedOptions = this
-                        .changedOptions as Partial<Component.Options>;
-
-                    await component.update(
-                        merge(changedOptions, {
-                            chartOptions: this.chartOptionsJSON
-                        })
-                    );
-
-                    menu.changedOptions = {};
-                    menu.chartOptionsJSON = {};
-                    menu.closeSidebar();
+                    await this.confirmChanges();
+                    fireEvent(editMode, 'confirmEditing');
                 }
             }
         );
@@ -147,12 +165,12 @@ class AccordionMenu {
                     .lang.cancelButton,
                 className: EditGlobals.classNames.popupCancelBtn,
                 callback: (): void => {
-                    menu.changedOptions = {};
-                    menu.chartOptionsJSON = {};
-                    menu.closeSidebar();
+                    this.cancelChanges();
+                    fireEvent(editMode, 'cancelEditing');
                 }
             }
         );
+        sidebarMainContainer.appendChild(buttonContainer);
     }
 
     /**
@@ -163,6 +181,7 @@ class AccordionMenu {
      * @param propertyPath
      * Path of the property for which the value should be updated.
      * Example: ```['chartOptions', 'chart', 'type']```
+     *
      * @param value
      * New value of the property.
      */
@@ -170,9 +189,20 @@ class AccordionMenu {
         propertyPath: Array<string>,
         value: boolean | string | number
     ): void {
+        // Reject paths that would allow prototype pollution
+        if (propertyPath.some((key): boolean => (
+            key === '__proto__' || key === 'constructor' || key === 'prototype'
+        ))) {
+            return;
+        }
+
         const pathLength = propertyPath.length - 1;
 
-        let currentLevel = this.changedOptions as Globals.AnyRecord;
+        let currentLevel = this.changedOptions as AnyRecord;
+        let currentChartOptionsLevel;
+        let currentOldChartOptionsBufferLevel;
+        let currentGridOptionsLevel;
+        let currentOldGridOptionsBufferLevel;
 
         if (pathLength === 0 && propertyPath[0] === 'chartOptions') {
             try {
@@ -181,12 +211,13 @@ class AccordionMenu {
             } catch (e) {
                 // TODO: Handle the wrong config passed from the user.
                 error(
-                    'Dashboards Error: Wrong JSON config structure passed as' +
-                        ' a chart options.'
+                    'Dashboards Error: Wrong JSON config structure passed ' +
+                    'as chart options. \n____________\n' +
+                    String(e)
                 );
             }
-
         }
+
         for (let i = 0; i < pathLength; i++) {
             const key = propertyPath[i];
 
@@ -195,24 +226,94 @@ class AccordionMenu {
             }
 
             currentLevel = currentLevel[key];
+
+            if (key === 'gridOptions') {
+                const realGridOptions =
+                    (this.component as any).grid?.options;
+
+                if (realGridOptions) {
+                    const oldOptionsBuffer =
+                        this.oldOptionsBuffer as AnyRecord;
+                    if (!oldOptionsBuffer.gridOptions) {
+                        oldOptionsBuffer.gridOptions = {};
+                    }
+                    currentOldGridOptionsBufferLevel =
+                        oldOptionsBuffer.gridOptions as AnyRecord;
+                    currentGridOptionsLevel = realGridOptions;
+                }
+            } else if (
+                currentGridOptionsLevel &&
+                currentOldGridOptionsBufferLevel
+            ) {
+                currentGridOptionsLevel = currentGridOptionsLevel[key];
+
+                if (currentOldGridOptionsBufferLevel[key] === void 0) {
+                    currentOldGridOptionsBufferLevel[key] = {};
+                }
+
+                currentOldGridOptionsBufferLevel =
+                    currentOldGridOptionsBufferLevel[key];
+            }
+
+            if (key === 'chartOptions') {
+                const realChartOptions = (this.component as any).chart?.options;
+
+                if (realChartOptions) {
+                    const oldOptionsBuffer =
+                        this.oldOptionsBuffer as AnyRecord;
+                    if (!oldOptionsBuffer.chartOptions) {
+                        oldOptionsBuffer.chartOptions = {};
+                    }
+                    currentOldChartOptionsBufferLevel =
+                        oldOptionsBuffer.chartOptions as AnyRecord;
+                    currentChartOptionsLevel = realChartOptions;
+                }
+            } else if (
+                currentChartOptionsLevel &&
+                currentOldChartOptionsBufferLevel
+            ) {
+                currentChartOptionsLevel = currentChartOptionsLevel[key];
+
+                if (currentOldChartOptionsBufferLevel[key] === void 0) {
+                    currentOldChartOptionsBufferLevel[key] = {};
+                }
+
+                currentOldChartOptionsBufferLevel =
+                    currentOldChartOptionsBufferLevel[key];
+            }
         }
 
-        currentLevel[propertyPath[pathLength]] = value;
+        const lastKey = propertyPath[pathLength];
+        currentLevel[lastKey] = value;
+
+        if (currentOldChartOptionsBufferLevel && currentChartOptionsLevel) {
+            currentOldChartOptionsBufferLevel[lastKey] = (
+                currentOldChartOptionsBufferLevel[lastKey] ??
+                currentChartOptionsLevel[lastKey]
+            );
+        }
+
+        // eslint-disable-next-line @typescript-eslint/no-floating-promises
+        this.component?.update(
+            this.changedOptions as Partial<ComponentOptions>
+        );
     }
 
     /**
-     * Renders either a basic or nested element. This function can be recursivly
-     * called, if there are multiple nested options.
+     * Renders either a basic or nested element. This function can be
+     * recursively called, if there are multiple nested options.
      *
      * @param options
      * Configuration object of the Component options.
+     *
      * @param parentNode
      * A container where the accordion is rendered.
+     *
      * @param component
      * the component for which the menu should be rendered.
      */
     public renderAccordion(
-        options: EditableOptions.Options,
+        options: EditableOption,
         parentNode: HTMLElement,
         component: Component
     ): void {
@@ -222,6 +323,7 @@ class AccordionMenu {
         }
 
         const renderFunction = EditRenderer.getRendererFunction(options.type);
+        const lang = (component.board?.editMode || EditGlobals).lang;
 
         if (!renderFunction) {
             return;
@@ -231,6 +333,8 @@ class AccordionMenu {
             ...options,
             iconsURLPrefix: this.iconsURLPrefix,
             value: component.getEditableOptionValue(options.propertyPath),
+            enabledOnOffLabels: options.type === 'toggle',
+            lang,
             onchange: (
                 value: boolean | string | number
             ): void => this.updateOptions(options.propertyPath || [], value)
@@ -243,14 +347,16 @@ class AccordionMenu {
      *
      * @param parentElement
      * HTML element to which the nested structure should be rendered to
+     *
      * @param options
      * configuration object for the options
+     *
      * @param component
      * The component instance for the options should be rendered
      */
     public renderNested(
         parentElement: HTMLElement,
-        options: EditableOptions.Options,
+        options: EditableOption,
         component: Component
     ): void {
         if (!parentElement || !options.nestedOptions) {
@@ -264,6 +370,8 @@ class AccordionMenu {
             const accordionOptions = nestedOptions[i].options;
             const showToggle = !!nestedOptions[i].showToggle;
             const propertyPath = nestedOptions[i].propertyPath || [];
+            const lang = (component.board?.editMode || EditGlobals).lang;
+
             const collapsedHeader = EditRenderer.renderCollapseHeader(
                 parentElement, {
                     name,
@@ -272,14 +380,18 @@ class AccordionMenu {
                     showToggle: showToggle,
                     onchange: (value: boolean | string | number): void =>
                         this.updateOptions(propertyPath, value),
-                    isNested: true,
-                    lang: (component.board?.editMode || EditGlobals).lang
+                    isNested: !!accordionOptions,
+                    isStandalone: !accordionOptions,
+                    lang
                 }
             );
 
-            for (let j = 0, jEnd = accordionOptions.length; j < jEnd; ++j) {
+            for (let j = 0, jEnd = accordionOptions?.length; j < jEnd; ++j) {
                 this.renderAccordion(
-                    accordionOptions[j] as EditableOptions.Options,
+                    merge(
+                        accordionOptions[j] as EditableOption,
+                        { lang, isNested: true }
+                    ),
                     collapsedHeader.content,
                     component
                 );
@@ -287,6 +399,122 @@ class AccordionMenu {
 
         }
         return;
+    }
+
+    /**
+     * Closes the sidebar discarding changes. If there are any changes, it will
+     * show a confirmation popup. If no changes, it will close the sidebar.
+     */
+    public cancelChanges(): void {
+        if (Object.keys(this.changedOptions).length < 1) {
+            this.closeSidebar();
+        } else {
+            this.showCancelConfirmationPopup();
+        }
+    }
+
+    /**
+     * Confirms changes made in the component.
+     *
+     * @fires EditMode#componentChanged
+     */
+    private async confirmChanges(): Promise<void> {
+        const component = this.component;
+        if (!component) {
+            return;
+        }
+
+        if (
+            component.type === 'Highcharts' &&
+            Object.keys(this.chartOptionsJSON).length
+        ) {
+            await component.update({
+                chartOptions: this.chartOptionsJSON
+            } as any);
+        } else if (component.type === 'HTML') {
+            const options = this.changedOptions as HTMLOptions;
+
+            await component.update(options, true);
+        }
+
+        fireEvent(
+            component.board.editMode,
+            'componentChanged',
+            {
+                target: component,
+                changedOptions: merge({}, this.changedOptions),
+                oldOptions: merge({}, this.oldOptionsBuffer)
+            }
+        );
+
+        this.changedOptions = {};
+        this.chartOptionsJSON = {};
+        this.closeSidebar();
+    }
+
+    /**
+     * Discards changes made in the component.
+     *
+     * @fires EditMode#componentChangesDiscarded
+     */
+    private async discardChanges(): Promise<void> {
+        const component = this.component;
+        if (!component) {
+            return;
+        }
+
+        await component.update(
+            this.oldOptionsBuffer as Partial<ComponentOptions>
+        );
+
+        fireEvent(
+            component.board.editMode,
+            'componentChangesDiscarded',
+            {
+                target: component,
+                changedOptions: merge({}, this.changedOptions),
+                oldOptions: merge({}, this.oldOptionsBuffer)
+            }
+        );
+
+        this.changedOptions = {};
+        this.chartOptionsJSON = {};
+    }
+
+    /**
+     * Shows a confirmation popup when the user tries to discard changes.
+     */
+    private showCancelConfirmationPopup(): void {
+        const popup = this.confirmationPopup;
+        const editMode = this.component?.board?.editMode;
+        if (!popup || !editMode || this.waitingForConfirmation) {
+            return;
+        }
+
+        this.waitingForConfirmation = true;
+        popup.show({
+            text: editMode.lang.confirmDiscardChanges,
+            confirmButton: {
+                value: editMode.lang.confirmButton,
+                callback: async (): Promise<void> => {
+                    await this.discardChanges();
+                    this.waitingForConfirmation = false;
+                    this.closeSidebar();
+                },
+                context: this as any
+            },
+            cancelButton: {
+                value: editMode.lang.cancelButton,
+                callback: (): void => {
+                    popup.closePopup();
+                    editMode.setEditOverlay();
+
+                    setTimeout((): void => {
+                        this.waitingForConfirmation = false;
+                    }, 100);
+                }
+            }
+        });
     }
 }
 

@@ -1,12 +1,28 @@
 @import url("https://code.highcharts.com/css/highcharts.css");
-@import url("https://code.highcharts.com/dashboards/css/datagrid.css");
+@import url("https://code.highcharts.com/grid-pro/css/grid-pro.css");
 @import url("https://code.highcharts.com/dashboards/css/dashboards.css");
 
-/* *
+body {
+    font-family:
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        Roboto,
+        Helvetica,
+        Arial,
+        "Apple Color Emoji",
+        "Segoe UI Emoji",
+        "Segoe UI Symbol",
+        sans-serif;
+    background: var(--highcharts-background-color);
+    color: var(--highcharts-neutral-color-100);
+}
+
+/**
  *
  *  Colors
  *
- * */
+ **/
 
 #city-chart {
     --color-axis: #f7f7f7;
@@ -130,11 +146,11 @@
     }
 }
 
-/* *
+/**
  *
  *  City Chart
  *
- * */
+ **/
 
 #city-chart .highcharts-dashboards-component-content {
     background: var(--color-background);
@@ -193,14 +209,14 @@
     fill: #cc0;
 }
 
-/* *
+/**
  *
  *  KPI
  *
- * */
+ **/
 
 #kpi-layout .highcharts-dashboards-component {
-    background-color: var(--highcharts-neutral-color-0);
+    background-color: var(--highcharts-background-color);
     color: var(--highcharts-neutral-color-100);
 }
 
@@ -235,9 +251,13 @@
     stroke: var(--highcharts-neutral-color-20);
 }
 
-#kpi-layout .highcharts-dashboards-component-kpi-chart-container .highcharts-series .highcharts-color-0 {
+#kpi-layout .highcharts-dashboards-component-kpi-chart-container .highcharts-color-0 .highcharts-point {
     fill: var(--color-gauge);
     stroke: none;
+}
+
+#kpi-layout .highcharts-data-label text {
+    font-size: 1em;
 }
 
 #kpi-layout .highcharts-title {
@@ -268,35 +288,31 @@
     display: none;
 }
 
-/* *
+/**
  *
  *  Selection Grid
  *
- * */
+ **/
 
-#selection-grid .highcharts-dashboards-component {
-    background-color: var(--color-background);
+.hcg-theme-default {
+    --hcg-font-size: 0.95em;
+    --hcg-padding: 8px 10px;
+    --hcg-header-padding: 15px;
+    --hcg-cell-hovered-row-background: var(--color-hover-background);
 }
 
-#selection-grid .highcharts-datagrid-column-header,
-.highcharts-datagrid-cell {
-    font-size: 12px;
+.highcharts-grid-container {
+    min-height: 260px;
 }
 
-#selection-grid .highcharts-datagrid-row.hovered {
-    background-color: var(--color-hover-background);
-    border-color: var(--color-hover-border);
-    color: var(--color-hover-text);
-}
-
-/* *
+/**
  *
  *  Time Range Selector
  *
- * */
+ **/
 
 #time-range-selector .highcharts-background {
-    fill: var(--highcharts-neutral-color-0);
+    fill: var(--highcharts-background-color);
 }
 
 #time-range-selector .highcharts-grid-line {
@@ -357,11 +373,11 @@
     fill: var(--color-axis-labels);
 }
 
-/* *
+/**
  *
  *  World Map
  *
- * */
+ **/
 
 #world-map .highcharts-dashboards-component-content {
     background: var(--color-background);
@@ -462,11 +478,11 @@
     stroke-width: 2px;
 }
 
-/* *
+/**
  *
  *  Edit mode
  *
- * */
+ **/
 
 /* stylelint-disable-next-line max-line-length */
 .highcharts-dashboards-edit-toolbar-cell > .highcharts-dashboards-edit-menu-item.highcharts-dashboards-edit-toolbar-item {
@@ -512,7 +528,13 @@ input:checked + .highcharts-dashboards-edit-toggle-slider {
 }
 
 .highcharts-description {
-    padding: 0 20px;
+    background: light-dark(#f2f6f2, #323232);
+    border-radius: 0 4px 4px 0;
+    border-left: 2px solid light-dark(#1d6aff, #fff);
+    font-size: 0.8rem;
+    font-style: italic;
+    padding: 8px 16px;
+    margin: 2em 10px 1em;
 }
 
 #kpi-layout {

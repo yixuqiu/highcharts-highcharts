@@ -1,3 +1,11 @@
+---
+description: >-
+  Enable zooming and panning with map-navigation buttons, touch gestures,
+  mousewheel, and double-click behavior. The article shows programmatic view
+  control through MapView and notes how input handling can affect page
+  navigation.
+---
+
 Map navigation
 ===
 
@@ -15,7 +23,7 @@ On touch devices, zooming and panning may be performed by pinch and touch-drag g
 
 ### Mousewheel
 
-Mousewheeling zooms in and out the map around the point under the mouse.
+The mouse wheel zooms in and out the map around the point under the mouse.
 
 ### Doubleclick
 

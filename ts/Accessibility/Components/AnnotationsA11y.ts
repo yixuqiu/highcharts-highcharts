@@ -1,12 +1,14 @@
 /* *
  *
- *  (c) 2009-2024 Øystein Moseng
+ *  (c) 2009-2026 Highsoft AS
+ *  Author: Øystein Moseng
  *
  *  Annotations accessibility code.
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  * */
 
@@ -46,9 +48,10 @@ const {
 /**
  * Get list of all annotation labels in the chart.
  *
- * @private
  * @param {Highcharts.Chart} chart The chart to get annotation info on.
  * @return {Array<object>} The labels, or empty array if none.
+ *
+ * @internal
  */
 function getChartAnnotationLabels(
     chart: AnnotationChart
@@ -73,9 +76,10 @@ function getChartAnnotationLabels(
 /**
  * Get the text of an annotation label.
  *
- * @private
  * @param {Object} label The annotation label object
  * @return {string} The text in the label.
+ *
+ * @internal
  */
 function getLabelText(label: ControllableLabelType): string {
     return (
@@ -97,9 +101,10 @@ function getLabelText(label: ControllableLabelType): string {
 /**
  * Describe an annotation label.
  *
- * @private
  * @param {Object} label The annotation label object to describe
  * @return {string} The description for the label.
+ *
+ * @internal
  */
 function getAnnotationLabelDescription(
     label: ControllableLabelType
@@ -164,9 +169,10 @@ function getAnnotationLabelDescription(
 /**
  * Return array of HTML strings for each annotation label in the chart.
  *
- * @private
  * @param {Highcharts.Chart} chart The chart to get annotation info on.
  * @return {Array<string>} Array of strings with HTML content for each annotation label.
+ *
+ * @internal
  */
 function getAnnotationListItems(chart: AnnotationChart): string[] {
     const labels = getChartAnnotationLabels(chart);
@@ -186,9 +192,10 @@ function getAnnotationListItems(chart: AnnotationChart): string[] {
 /**
  * Return the annotation info for a chart as string.
  *
- * @private
  * @param {Highcharts.Chart} chart The chart to get annotation info on.
  * @return {string} String with HTML content or empty string if no annotations.
+ *
+ * @internal
  */
 function getAnnotationsInfoHTML(chart: AnnotationChart): string {
     const annotations = chart.annotations;
@@ -206,9 +213,10 @@ function getAnnotationsInfoHTML(chart: AnnotationChart): string {
  * Return the texts for the annotation(s) connected to a point, or empty array
  * if none.
  *
- * @private
  * @param {Highcharts.Point} point The data point to get the annotation info from.
  * @return {Array<string>} Annotation texts
+ *
+ * @internal
  */
 function getPointAnnotationTexts(point: AnnotationPoint): Array<string> {
     const labels = getChartAnnotationLabels(point.series.chart);
@@ -230,6 +238,7 @@ function getPointAnnotationTexts(point: AnnotationPoint): Array<string> {
  * */
 
 
+/** @internal */
 const AnnotationsA11y = {
     getAnnotationsInfoHTML,
     getAnnotationLabelDescription,
@@ -237,4 +246,5 @@ const AnnotationsA11y = {
     getPointAnnotationTexts
 };
 
+/** @internal */
 export default AnnotationsA11y;

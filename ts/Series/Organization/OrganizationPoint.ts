@@ -2,11 +2,13 @@
  *
  *  Organization chart module
  *
- *  (c) 2018-2024 Torstein Honsi
+ *  (c) 2018-2026 Highsoft AS
+ *  Author: Torstein Hønsi
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  * */
 
@@ -23,16 +25,16 @@ import type OrganizationSeries from './OrganizationSeries';
 import type { OrganizationSeriesNodeOptions } from './OrganizationSeriesOptions';
 import type SankeyPoint from './../Sankey/SankeyPoint';
 
-import SeriesRegistry from '../../Core/Series/SeriesRegistry.js';
-const {
-    sankey: { prototype: { pointClass: SankeyPointClass } }
-} = SeriesRegistry.seriesTypes;
-import U from '../../Core/Utilities.js';
-const {
-    defined,
-    find,
-    pick
-} = U;
+import SankeySeries from '../Sankey/SankeySeries.js';
+import { defined, find } from '../../Shared/Utilities.js';
+
+/* *
+ *
+ *  Constants
+ *
+ * */
+
+const SankeyPointClass = SankeySeries.prototype.pointClass;
 
 /* *
  *
@@ -42,7 +44,7 @@ const {
 
 /**
  * Get columns offset including all sibling and cousins etc.
- * @private
+ * @internal
  */
 function getOffset(node: SankeyPoint): number {
     let offset = node.linksFrom.length;
@@ -75,24 +77,32 @@ class OrganizationPoint extends SankeyPointClass {
      *
      * */
 
+    /** @internal */
     public description?: string;
 
+    /** @internal */
     public fromNode!: OrganizationPoint;
 
+    /** @internal */
     public image?: OrganizationSeriesNodeOptions['image'];
 
+    /** @internal */
     public linksFrom!: Array<OrganizationPoint>;
 
+    /** @internal */
     public linksTo!: Array<OrganizationPoint>;
 
+    /** @internal */
     public nodeHeight?: number;
 
     public options!: OrganizationPointOptions;
 
     public series!: OrganizationSeries;
 
+    /** @internal */
     public title?: string;
 
+    /** @internal */
     public toNode!: OrganizationPoint;
 
     /* *
@@ -101,6 +111,7 @@ class OrganizationPoint extends SankeyPointClass {
      *
      * */
 
+    /** @internal */
     public constructor(
         series: OrganizationSeries,
         options: OrganizationPointOptions,
@@ -116,7 +127,7 @@ class OrganizationPoint extends SankeyPointClass {
 
     /**
      * All nodes in an org chart are equal width.
-     * @private
+     * @internal
      */
     public getSum(): number {
         return 1;
@@ -124,7 +135,7 @@ class OrganizationPoint extends SankeyPointClass {
 
     /**
      * Set node.column for hanging layout
-     * @private
+     * @internal
      */
     public setNodeColumn(): void {
         super.setNodeColumn();
@@ -147,10 +158,8 @@ class OrganizationPoint extends SankeyPointClass {
 
             // Default all children of the hanging node
             // to have hanging layout
-            (node.options as any).layout = pick(
-                (node.options as any).layout,
-                'hanging'
-            );
+            (node.options as any).layout =
+                (node.options as any).layout ?? 'hanging';
             node.hangsFrom = fromNode;
 
             find(

@@ -12,10 +12,11 @@ Highcharts.chart('container', {
             dataLabels: {
                 enabled: true,
                 borderRadius: 5,
-                backgroundColor: 'rgba(252, 255, 197, 0.7)',
+                backgroundColor: '#bada5555',
                 borderWidth: 1,
                 borderColor: '#AAA',
-                format: '{point.series.name}'
+                format: '{point.series.name}',
+                padding: 5
             },
             grouping: false
         }
@@ -30,27 +31,27 @@ Highcharts.chart('container', {
         pointValKey: 'high',
         data: [{
             x: 1,
-            low: 0,
-            open: 30,
-            close: 50
+            high: 50,
+            low: 10,
+            close: 30
         }]
     }, {
         name: 'low',
         pointValKey: 'low',
         data: [{
             x: 2,
-            low: 0,
-            open: 30,
-            close: 50
+            high: 50,
+            low: 10,
+            close: 30
         }]
     }, {
         name: 'close',
         pointValKey: 'close', // default
         data: [{
             x: 3,
-            low: 0,
-            open: 30,
-            close: 50
+            high: 50,
+            low: 10,
+            close: 30
         }]
     }]
 });

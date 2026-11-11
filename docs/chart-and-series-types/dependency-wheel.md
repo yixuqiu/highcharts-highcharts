@@ -1,3 +1,11 @@
+---
+description: >-
+  Model multidirectional flows with nodes arranged around a circle and links
+  sized by their weights. The article relates its data structure to Sankey
+  diagrams and distinguishes it from layouts with directed, multiple
+  columns.
+---
+
 Dependency wheel
 ===
 
@@ -7,6 +15,6 @@ The dependency wheel's use areas are similar to the [Sankey diagram](https://www
 
 For more detailed samples and documentation, check the [API](https://api.highcharts.com/highcharts/plotOptions.dependencywheel).
 
-<iframe style="width: 100%; height: 600px; border: none;" src=https://www.highcharts.com/samples/embed/highcharts/demo/dependency-wheel allow="fullscreen"></iframe>
+<iframe style="width: 100%; height: 600px; border: none;" src="https://www.highcharts.com/samples/embed/highcharts/demo/dependency-wheel" allow="fullscreen"></iframe>
 
 The data structure, as well as the concept of nodes and links, is identical to those of the [Sankey diagram](https://www.highcharts.com/docs/chart-and-series-types/sankey-diagram).

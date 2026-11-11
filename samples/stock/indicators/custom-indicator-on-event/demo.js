@@ -27,8 +27,8 @@ function getSum(xData, yData) {
 Highcharts.seriesType('customIndicator', 'sma', {}, {
     getValues: function (series) {
         return this.getSum(
-            series.processedXData || series.xData,
-            series.processedYData || series.yData
+            series.getColumn('x', true) || series.xData,
+            series.getColumn('y', true) || series.yData
         );
     },
     calculateOn: {
@@ -39,6 +39,12 @@ Highcharts.seriesType('customIndicator', 'sma', {}, {
 });
 
 Highcharts.stockChart('container', {
+    plotOptions: {
+        series: {
+            pointStart: '2025-01-01',
+            pointInterval: 24 * 36e5
+        }
+    },
     series: [{
         id: 'main',
         data: [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2]

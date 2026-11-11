@@ -1,8 +1,12 @@
 /* *
  *
- *  Author: Rafal Sebestjanski
+ *  (c) 2009-2026 Highsoft AS
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
+ *
+ *  Author: Rafał Sebestjański
  *
  * */
 
@@ -15,16 +19,127 @@
  * */
 
 import type { AnnotationEventObject } from '../EventEmitter';
+import type Controllable from '../Controllables/Controllable';
+import type {
+    AnnotationOptions,
+    AnnotationTypeOptions
+} from '../AnnotationOptions';
 import type { ControlPointOptionsObject } from '../ControlPointOptions';
 import type PositionObject from '../../../Core/Renderer/PositionObject';
 
 import Annotation from '../Annotation.js';
 import ControlPoint from '../ControlPoint.js';
 import CrookedLine from './CrookedLine.js';
+import D from '../../../Core/Defaults.js';
+const { defaultOptions } = D;
 import InfinityLine from './InfinityLine.js';
 import MockPoint from '../MockPoint.js';
-import U from '../../../Core/Utilities.js';
-const { merge } = U;
+import { AnnotationMockPointFunction } from '../AnnotationOptions';
+import { merge } from '../../../Shared/Utilities.js';
+
+if (defaultOptions.annotations?.types) {
+    defaultOptions.annotations.types.fibonacciTimeZones = merge(
+        defaultOptions.annotations.types.crookedLine,
+        /**
+         * Options for the fibonacci time zones annotation type.
+         *
+         * @sample highcharts/annotations-advanced/fibonacci-time-zones/
+         *         Fibonacci Time Zones
+         *
+         * @extends      annotations.types.crookedLine
+         * @since        9.3.0
+         * @product      highstock
+         * @requires     modules/annotations-advanced
+         * @optionparent annotations.types.fibonacciTimeZones
+         */
+        {
+            typeOptions: {
+                /**
+                 * @exclude   y
+                 * @since     9.3.0
+                 * @product   highstock
+                 * @apioption annotations.types.fibonacciTimeZones.typeOptions.points
+                 */
+
+                // Options for showing in popup edit
+                line: {
+                    /**
+                     * The color of the lines.
+                     *
+                     * @type      {string}
+                     * @since     9.3.0
+                     * @apioption annotations.types.fibonacciTimeZones.typeOptions.line.stroke
+                     */
+                    stroke: 'var(--highcharts-neutral-color-80)',
+                    /**
+                     * The width of the lines.
+                     *
+                     * @type      {number}
+                     * @since     9.3.0
+                     * @default   1
+                     * @apioption annotations.types.fibonacciTimeZones.typeOptions.line.strokeWidth
+                     */
+                    strokeWidth: 1,
+                    // Don't inherit fill (don't display in popup edit)
+                    fill: void 0
+                },
+                controlPointOptions: {
+                    positioner: function (
+                        this: ControlPoint
+                    ): PositionObject {
+                        // The control point is in the middle of the second line
+                        const target = this.target as FibonacciTimeZones,
+                            graphic = this.graphic,
+                            edgePoints = target.secondLineEdgePoints,
+                            args = { annotation: target },
+                            firstEdgePointY: number = edgePoints[0](args).y,
+                            secondEdgePointY: number = edgePoints[1](args).y,
+                            plotLeft = this.chart.plotLeft,
+                            plotTop = this.chart.plotTop;
+
+                        let x: number = edgePoints[0](args).x,
+                            y: number = (
+                                firstEdgePointY + secondEdgePointY
+                            ) / 2;
+
+                        if (this.chart.inverted) {
+                            [x, y] = [y, x];
+                        }
+
+                        return {
+                            x: plotLeft + x - (graphic.width || 0) / 2,
+                            y: plotTop + y - (graphic.height || 0) / 2
+                        };
+                    },
+                    events: {
+                        drag: function (
+                            this: FibonacciTimeZones,
+                            e: AnnotationEventObject,
+                            target: FibonacciTimeZones
+                        ): void {
+                            const isInsidePlot = target.chart.isInsidePlot(
+                                e.chartX - target.chart.plotLeft,
+                                e.chartY - target.chart.plotTop,
+                                {
+                                    visiblePlotOnly: true
+                                }
+                            );
+
+                            if (isInsidePlot) {
+                                const translation =
+                                    this.mouseMoveToTranslation(e);
+
+                                target.translatePoint(translation.x, 0, 1);
+
+                                target.redraw(false);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    );
+}
 
 /* *
  *
@@ -58,48 +173,49 @@ This is being done for each fibonacci time zone line.
     |---------*--------------------------------------------------------|
         and this point here is found (intersection with the plot area edge)
 
-* @private
+* @internal
 */
 function edgePoint(
     startIndex: number,
     endIndex: number,
     fibonacciIndex: number
-): Function {
-    return function (target: any): PositionObject {
+): AnnotationMockPointFunction {
+    return function (target: Controllable): PositionObject {
         const chart = target.annotation.chart,
             plotLeftOrTop = chart.inverted ? chart.plotTop : chart.plotLeft;
 
-        let points = target.annotation.points;
+        let points = target.annotation.points as Array<MockPoint>;
 
-        const xAxis = points[0].series.xAxis,
+        const firstPoint = points[0],
+            { xAxis, yAxis } = firstPoint.getOptions(),
             // Distance between the two first lines in pixels
             deltaX = points.length > 1 ?
-                points[1].plotX - points[0].plotX : 0,
+                points[1].plotX - firstPoint.plotX : 0,
             // `firstLine.x + fibb * offset`
-            x = xAxis.toValue(
-                points[0].plotX + plotLeftOrTop + fibonacciIndex * deltaX
+            x = firstPoint.series.xAxis?.toValue(
+                firstPoint.plotX + plotLeftOrTop + fibonacciIndex * deltaX
             );
 
         // We need 2 mock points with the same x coordinate, different y
         points = [
             new MockPoint(
                 chart,
-                points[0].target,
+                firstPoint.target,
                 {
-                    x: x,
+                    x,
                     y: 0,
-                    xAxis: points[0].options.xAxis,
-                    yAxis: points[0].options.yAxis
+                    xAxis,
+                    yAxis
                 }
             ),
             new MockPoint(
                 chart,
-                points[0].target,
+                firstPoint.target,
                 {
-                    x: x,
+                    x,
                     y: 1,
-                    xAxis: points[0].options.xAxis,
-                    yAxis: points[0].options.yAxis
+                    xAxis,
+                    yAxis
                 }
             )
         ];
@@ -117,6 +233,7 @@ function edgePoint(
  *
  * */
 
+/** @internal */
 class FibonacciTimeZones extends CrookedLine {
 
     /* *
@@ -150,11 +267,11 @@ class FibonacciTimeZones extends CrookedLine {
 
             this.initShape(
                 merge(
-                    this.options.typeOptions.line,
+                    this.options.typeOptions?.line,
                     {
                         type: 'path',
-                        points: points,
-                        className: 'highcharts-fibonacci-timezones-lines'
+                        className: 'highcharts-fibonacci-timezones-lines',
+                        points
                     }
                 ),
                 i // Shape's index. Can be found in annotation.shapes[i].index
@@ -187,109 +304,11 @@ class FibonacciTimeZones extends CrookedLine {
  *
  * */
 
+/** @internal */
 interface FibonacciTimeZones {
     defaultOptions: CrookedLine['defaultOptions'];
     secondLineEdgePoints: [Function, Function];
 }
-
-FibonacciTimeZones.prototype.defaultOptions = merge(
-    CrookedLine.prototype.defaultOptions,
-    /**
-     * The Fibonacci Time Zones annotation.
-     *
-     * @sample highcharts/annotations-advanced/fibonacci-time-zones/
-     *         Fibonacci Time Zones
-     *
-     * @extends      annotations.crookedLine
-     * @since        9.3.0
-     * @product      highstock
-     * @optionparent annotations.fibonacciTimeZones
-     */
-    {
-        typeOptions: {
-            /**
-             * @exclude   y
-             * @since     9.3.0
-             * @product   highstock
-             * @apioption annotations.fibonacciTimeZones.typeOptions.points
-             */
-
-            // Options for showing in popup edit
-            line: {
-                /**
-                 * The color of the lines.
-                 *
-                 * @type      {string}
-                 * @since     9.3.0
-                 * @default   'rgba(0, 0, 0, 0.75)'
-                 * @apioption annotations.fibonacciTimeZones.typeOptions.line.stroke
-                 */
-                stroke: 'rgba(0, 0, 0, 0.75)',
-                /**
-                 * The width of the lines.
-                 *
-                 * @type      {number}
-                 * @since     9.3.0
-                 * @default   1
-                 * @apioption annotations.fibonacciTimeZones.typeOptions.line.strokeWidth
-                 */
-                strokeWidth: 1,
-                // Don't inherit fill (don't display in popup edit)
-                fill: void 0
-            },
-            controlPointOptions: {
-                positioner: function (
-                    this: ControlPoint
-                ): PositionObject {
-                    // The control point is in the middle of the second line
-                    const target = this.target as FibonacciTimeZones,
-                        graphic = this.graphic,
-                        edgePoints = target.secondLineEdgePoints,
-                        args = { annotation: target },
-                        firstEdgePointY: number = edgePoints[0](args).y,
-                        secondEdgePointY: number = edgePoints[1](args).y,
-                        plotLeft = this.chart.plotLeft,
-                        plotTop = this.chart.plotTop;
-
-                    let x: number = edgePoints[0](args).x,
-                        y: number = (firstEdgePointY + secondEdgePointY) / 2;
-
-                    if (this.chart.inverted) {
-                        [x, y] = [y, x];
-                    }
-
-                    return {
-                        x: plotLeft + x - (graphic.width || 0) / 2,
-                        y: plotTop + y - (graphic.height || 0) / 2
-                    };
-                },
-                events: {
-                    drag: function (
-                        this: FibonacciTimeZones,
-                        e: AnnotationEventObject,
-                        target: FibonacciTimeZones
-                    ): void {
-                        const isInsidePlot = target.chart.isInsidePlot(
-                            e.chartX - target.chart.plotLeft,
-                            e.chartY - target.chart.plotTop,
-                            {
-                                visiblePlotOnly: true
-                            }
-                        );
-
-                        if (isInsidePlot) {
-                            const translation = this.mouseMoveToTranslation(e);
-
-                            target.translatePoint(translation.x, 0, 1);
-
-                            target.redraw(false);
-                        }
-                    }
-                }
-            }
-        }
-    }
-);
 
 /* *
  *
@@ -298,10 +317,21 @@ FibonacciTimeZones.prototype.defaultOptions = merge(
  * */
 
 namespace FibonacciTimeZones {
-    export interface Options extends CrookedLine.Options{
+    /**
+     * Options for the fibonacci time zones annotation type.
+     *
+     * @sample highcharts/annotations-advanced/fibonacci-time-zones/
+     *         Fibonacci Time Zones
+     *
+     * @extends      annotations.types.crookedLine
+     * @since        9.3.0
+     * @product      highstock
+     * @optionparent annotations.types.fibonacciTimeZones
+     */
+    export interface Options extends AnnotationOptions {
         typeOptions: TypeOptions;
     }
-    export interface TypeOptions extends CrookedLine.TypeOptions {
+    export interface TypeOptions extends AnnotationTypeOptions {
         type: string;
         controlPointOptions: ControlPointOptionsObject;
     }
@@ -313,6 +343,7 @@ namespace FibonacciTimeZones {
  *
  * */
 
+/** @internal */
 declare module './AnnotationType'{
     interface AnnotationTypeRegistry {
         fibonacciTimeZones: typeof FibonacciTimeZones;

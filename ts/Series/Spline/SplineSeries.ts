@@ -1,10 +1,12 @@
 /* *
  *
- *  (c) 2010-2024 Torstein Honsi
+ *  (c) 2010-2026 Highsoft AS
+ *  Author: Torstein Hønsi
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  * */
 
@@ -20,15 +22,10 @@ import type SplinePoint from './SplinePoint';
 import type SplineSeriesOptions from './SplineSeriesOptions';
 import type SVGPath from '../../Core/Renderer/SVG/SVGPath';
 
+import LineSeries from '../Line/LineSeries.js';
 import SeriesRegistry from '../../Core/Series/SeriesRegistry.js';
-const {
-    line: LineSeries
-} = SeriesRegistry.seriesTypes;
-import U from '../../Core/Utilities.js';
-const {
-    merge,
-    pick
-} = U;
+import SplineSeriesDefaults from './SplineSeriesDefaults.js';
+import { merge } from '../../Shared/Utilities.js';
 
 /* *
  *
@@ -38,8 +35,6 @@ const {
 
 /**
  * Spline series type.
- *
- * @private
  */
 class SplineSeries extends LineSeries {
 
@@ -49,21 +44,11 @@ class SplineSeries extends LineSeries {
      *
      * */
 
-    /**
-     * A spline series is a special type of line series, where the segments
-     * between the data points are smoothed.
-     *
-     * @sample {highcharts} highcharts/demo/spline-irregular-time/
-     *         Spline chart
-     * @sample {highstock} stock/demo/spline/
-     *         Spline chart
-     *
-     * @extends      plotOptions.series
-     * @excluding    step, boostThreshold, boostBlending
-     * @product      highcharts highstock
-     * @optionparent plotOptions.spline
-     */
-    public static defaultOptions: SplineSeriesOptions = merge(LineSeries.defaultOptions);
+    /** @internal */
+    public static defaultOptions: SplineSeriesOptions = merge(
+        LineSeries.defaultOptions,
+        SplineSeriesDefaults
+    );
 
     /* *
      *
@@ -83,13 +68,12 @@ class SplineSeries extends LineSeries {
      *
      * */
 
-    /* eslint-disable valid-jsdoc */
 
     /**
-     * Get the spline segment from a given point's previous neighbour to the
+     * Get the spline segment from a given point's previous neighbor to the
      * given point.
      *
-     * @private
+     * @internal
      * @function Highcharts.seriesTypes.spline#getPointSpline
      */
     public getPointSpline(
@@ -113,7 +97,7 @@ class SplineSeries extends LineSeries {
             rightContY: number;
 
         /**
-         * @private
+         * @internal
          */
         function doCurve(otherPoint: SplinePoint): boolean {
             return otherPoint &&
@@ -151,7 +135,7 @@ class SplineSeries extends LineSeries {
             rightContY += correction;
 
             // To prevent false extremes, check that control points are
-            // between neighbouring points' y values
+            // between neighboring points' y values
             if (leftContY > lastY && leftContY > plotY) {
                 leftContY = Math.max(lastY, plotY);
                 // Mirror of left control point
@@ -243,10 +227,10 @@ class SplineSeries extends LineSeries {
 
         const ret: SVGPath.CurveTo = [
             'C',
-            pick(lastPoint.rightContX, lastPoint.plotX, 0),
-            pick(lastPoint.rightContY, lastPoint.plotY, 0),
-            pick(leftContX, plotX, 0),
-            pick(leftContY, plotY, 0),
+            (lastPoint.rightContX ?? lastPoint.plotX ?? 0),
+            (lastPoint.rightContY ?? lastPoint.plotY ?? 0),
+            (leftContX ?? plotX ?? 0),
+            (leftContY ?? plotY ?? 0),
             plotX,
             plotY
         ];
@@ -257,7 +241,6 @@ class SplineSeries extends LineSeries {
         return ret;
     }
 
-    /* eslint-enable valid-jsdoc */
 
 }
 
@@ -268,6 +251,7 @@ class SplineSeries extends LineSeries {
  * */
 
 interface SplineSeries {
+    /** @internal */
     pointClass: typeof SplinePoint;
 }
 
@@ -291,81 +275,3 @@ SeriesRegistry.registerSeriesType('spline', SplineSeries);
  * */
 
 export default SplineSeries;
-
-/* *
- *
- *  API Options
- *
- * */
-
-/**
- * A `spline` series. If the [type](#series.spline.type) option is
- * not specified, it is inherited from [chart.type](#chart.type).
- *
- * @extends   series,plotOptions.spline
- * @excluding dataParser, dataURL, step, boostThreshold, boostBlending
- * @product   highcharts highstock
- * @apioption series.spline
- */
-
-/**
- * An array of data points for the series. For the `spline` series type,
- * points can be given in the following ways:
- *
- * 1. An array of numerical values. In this case, the numerical values will be
- *    interpreted as `y` options. The `x` values will be automatically
- *    calculated, either starting at 0 and incremented by 1, or from
- *    `pointStart` and `pointInterval` given in the series options. If the axis
- *    has categories, these will be used. Example:
- *    ```js
- *    data: [0, 5, 3, 5]
- *    ```
- *
- * 2. An array of arrays with 2 values. In this case, the values correspond to
- *    `x,y`. If the first value is a string, it is applied as the name of the
- *    point, and the `x` value is inferred.
- *    ```js
- *    data: [
- *        [0, 9],
- *        [1, 2],
- *        [2, 8]
- *    ]
- *    ```
- *
- * 3. An array of objects with named values. The following snippet shows only a
- *    few settings, see the complete options set below. If the total number of
- *    data points exceeds the series'
- *    [turboThreshold](#series.spline.turboThreshold),
- *    this option is not available.
- *    ```js
- *    data: [{
- *        x: 1,
- *        y: 9,
- *        name: "Point2",
- *        color: "#00FF00"
- *    }, {
- *        x: 1,
- *        y: 0,
- *        name: "Point1",
- *        color: "#FF00FF"
- *    }]
- *    ```
- *
- * @sample {highcharts} highcharts/chart/reflow-true/
- *         Numerical values
- * @sample {highcharts} highcharts/series/data-array-of-arrays/
- *         Arrays of numeric x and y
- * @sample {highcharts} highcharts/series/data-array-of-arrays-datetime/
- *         Arrays of datetime x and y
- * @sample {highcharts} highcharts/series/data-array-of-name-value/
- *         Arrays of point.name and y
- * @sample {highcharts} highcharts/series/data-array-of-objects/
- *         Config objects
- *
- * @type      {Array<number|Array<(number|string),(number|null)>|null|*>}
- * @extends   series.line.data
- * @product   highcharts highstock
- * @apioption series.spline.data
- */
-
-''; // Adds doclets above intro transpiled

@@ -1,10 +1,12 @@
 /* *
  *
- *  (c) 2010-2024 Torstein Honsi
+ *  (c) 2010-2026 Highsoft AS
+ *  Author: Torstein Hønsi
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  * */
 
@@ -16,8 +18,7 @@
  *
  * */
 
-import type { PlotOptionsOf } from '../../Core/Series/SeriesOptions';
-import type ScatterSeries from './ScatterSeries';
+import type ScatterSeriesOptions from './ScatterSeriesOptions';
 
 /* *
  *
@@ -33,11 +34,12 @@ import type ScatterSeries from './ScatterSeries';
  *         Scatter plot
  *
  * @extends      plotOptions.line
- * @excluding    cropThreshold, pointPlacement, shadow, useOhlcData
+ * @excluding    cropThreshold, legendSymbolColor, pointPlacement, shadow,
+ *               useOhlcData
  * @product      highcharts highstock
  * @optionparent plotOptions.scatter
  */
-const ScatterSeriesDefaults: PlotOptionsOf<ScatterSeries> = {
+const ScatterSeriesDefaults: ScatterSeriesOptions = {
 
     /**
      * The width of the line connecting the data points.
@@ -139,7 +141,7 @@ const ScatterSeriesDefaults: PlotOptionsOf<ScatterSeries> = {
  * not specified, it is inherited from [chart.type](#chart.type).
  *
  * @extends   series,plotOptions.scatter
- * @excluding cropThreshold, dataParser, dataURL, useOhlcData
+ * @excluding cropThreshold, useOhlcData
  * @product   highcharts highstock
  * @apioption series.scatter
  */
@@ -195,9 +197,12 @@ const ScatterSeriesDefaults: PlotOptionsOf<ScatterSeries> = {
  *         Arrays of datetime x and y
  * @sample {highcharts} highcharts/series/data-array-of-name-value/
  *         Arrays of point.name and y
+ * @sample {highcharts} highcharts/series-scatter/scatter-cluster/
+ *         Computed clusters
  * @sample {highcharts} highcharts/series/data-array-of-objects/
  *         Config objects
  *
+ * @basic
  * @type      {Array<number|Array<(number|string),(number|null)>|null|*>}
  * @extends   series.line.data
  * @product   highcharts highstock

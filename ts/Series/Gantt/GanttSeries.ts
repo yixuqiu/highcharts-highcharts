@@ -1,12 +1,13 @@
 /* *
  *
- *  (c) 2016-2024 Highsoft AS
+ *  (c) 2016-2026 Highsoft AS
  *
  *  Author: Lars A. V. Cabrera
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  * */
 
@@ -28,21 +29,12 @@ import type Tick from '../../Core/Axis/Tick';
 import GanttPoint from './GanttPoint.js';
 import GanttSeriesDefaults from './GanttSeriesDefaults.js';
 import Pathfinder from '../../Gantt/Pathfinder.js';
+import Series from '../../Core/Series/Series.js';
+import XRangeSeries from '../XRange/XRangeSeries.js';
 import SeriesRegistry from '../../Core/Series/SeriesRegistry.js';
-const {
-    series: Series,
-    seriesTypes: {
-        xrange: XRangeSeries
-    }
-} = SeriesRegistry;
-import StaticScale from '../../Extensions/StaticScale.js';
+import { composeStaticScale } from '../../Extensions/StaticScale.js';
 import TreeGridAxis from '../../Core/Axis/TreeGrid/TreeGridAxis.js';
-import U from '../../Core/Utilities.js';
-const {
-    extend,
-    isNumber,
-    merge
-} = U;
+import { extend, isNumber, merge } from '../../Shared/Utilities.js';
 
 /* *
  *
@@ -51,7 +43,6 @@ const {
  * */
 
 /**
- * @private
  * @class
  * @name Highcharts.seriesTypes.gantt
  *
@@ -65,6 +56,7 @@ class GanttSeries extends XRangeSeries {
      *
      * */
 
+    /** @internal */
     public static defaultOptions: GanttSeriesOptions = merge(
         XRangeSeries.defaultOptions,
         GanttSeriesDefaults
@@ -76,6 +68,7 @@ class GanttSeries extends XRangeSeries {
      *
      * */
 
+    /** @internal */
     public static compose(
         AxisClass: typeof Axis,
         ChartClass?: typeof Chart,
@@ -89,7 +82,7 @@ class GanttSeries extends XRangeSeries {
             return;
         }
 
-        StaticScale.compose(AxisClass, ChartClass);
+        composeStaticScale(AxisClass, ChartClass);
 
         if (!SeriesClass) {
             return;
@@ -123,6 +116,20 @@ class GanttSeries extends XRangeSeries {
      *
      * */
 
+    /** @internal */
+    public getColumn(columnName: string): Array<number> {
+        const time = this.chart.time;
+        if (columnName === 'x') {
+            const startColumn = super.getColumn('start');
+            if (startColumn.length) {
+                return startColumn.map((val: number|string): number =>
+                    time.parse(val) ?? NaN // #24849
+                );
+            }
+        }
+        return super.getColumn.apply(this, arguments);
+    }
+
     /**
      * Draws a single point in the series.
      *
@@ -131,7 +138,7 @@ class GanttSeries extends XRangeSeries {
      *
      * @requires highcharts-gantt
      *
-     * @private
+     * @internal
      * @function Highcharts.seriesTypes.gantt#drawPoint
      *
      * @param {Highcharts.Point} point
@@ -142,7 +149,7 @@ class GanttSeries extends XRangeSeries {
      */
     public drawPoint(
         point: GanttPoint,
-        verb: string
+        verb: ('animate'|'attr')
     ): void {
         const series = this,
             seriesOpts = series.options,
@@ -194,7 +201,7 @@ class GanttSeries extends XRangeSeries {
 
     /**
      * Handle milestones, as they have no x2.
-     * @private
+     * @internal
      */
     public translatePoint(point: GanttPoint): void {
         let shapeArgs: SVGAttributes,
@@ -223,7 +230,9 @@ class GanttSeries extends XRangeSeries {
  * */
 
 interface GanttSeries{
+    /** @internal */
     keyboardMoveVertical: boolean;
+    /** @internal */
     pointClass: typeof GanttPoint;
 }
 

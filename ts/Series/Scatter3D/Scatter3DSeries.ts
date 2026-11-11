@@ -1,12 +1,14 @@
 /* *
  *
- *  (c) 2010-2024 Torstein Honsi
+ *  (c) 2010-2026 Highsoft AS
+ *  Author: Torstein Hønsi
  *
  *  Scatter 3D series.
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  * */
 
@@ -21,17 +23,12 @@
 import type Scatter3DSeriesOptions from './Scatter3DSeriesOptions';
 import type SVGAttributes from '../../Core/Renderer/SVG/SVGAttributes';
 
-import Math3D from '../../Core/Math3D.js';
-const { pointCameraDistance } = Math3D;
+import { pointCameraDistance } from '../../Core/Math3D.js';
 import Scatter3DPoint from './Scatter3DPoint.js';
 import Scatter3DSeriesDefaults from './Scatter3DSeriesDefaults.js';
 import ScatterSeries from '../Scatter/ScatterSeries.js';
 import SeriesRegistry from '../../Core/Series/SeriesRegistry.js';
-import U from '../../Core/Utilities.js';
-const {
-    extend,
-    merge
-} = U;
+import { extend, merge } from '../../Shared/Utilities.js';
 
 /* *
  *
@@ -40,7 +37,6 @@ const {
  * */
 
 /**
- * @private
  * @class
  * @name Highcharts.seriesTypes.scatter3d
  *
@@ -54,6 +50,7 @@ class Scatter3DSeries extends ScatterSeries {
      *
      * */
 
+    /** @internal */
     public static defaultOptions: Scatter3DSeriesOptions = merge(
         ScatterSeries.defaultOptions,
         Scatter3DSeriesDefaults
@@ -77,6 +74,7 @@ class Scatter3DSeries extends ScatterSeries {
      *
      * */
 
+    /** @internal */
     public pointAttribs(point: Scatter3DPoint): SVGAttributes {
         const attribs = super.pointAttribs.apply(this, arguments);
 
@@ -97,6 +95,7 @@ class Scatter3DSeries extends ScatterSeries {
  * */
 
 interface Scatter3DSeries {
+    /** @internal */
     pointClass: typeof Scatter3DPoint;
 }
 

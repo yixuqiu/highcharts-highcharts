@@ -1,7 +1,13 @@
+---
+description: >-
+  Adjust chart layout, spacing, element positions, borders, backgrounds, and
+  fonts. Learn which options control these features and how initial series
+  animation differs from animation during chart updates.
+---
+
 Design and style
 ================
-
-All Highcharts elements are customizable through options. 
+All Highcharts elements are customizable, either through options or via CSS using [styled mode](https://www.highcharts.com/docs/chart-design-and-style/style-by-css). 
 
 Layout and positioning
 ----------------------
@@ -16,32 +22,34 @@ The _plot area_ is the square area within the axes, where the series are drawn. 
 
 ![Illustration of margins, spacings, the plot area, and the plot border of a bar chart](chartPosition.png)
 
-    
-    chart: {
-            // Edit chart spacing
-            spacingBottom: 15,
-            spacingTop: 10,
-            spacingLeft: 10,
-            spacingRight: 10,
-    
-            // Explicitly tell the width and height of a chart
-            width: null,
-            height: null
-    }
+```js
+chart: {
+        // Edit chart spacing
+        spacingBottom: 15,
+        spacingTop: 10,
+        spacingLeft: 10,
+        spacingRight: 10,
+
+        // Explicitly tell the width and height of a chart
+        width: null,
+        height: null
+}
+```
 
 ### Credits
 
 Credits can be moved around using the "position" option:
 
-    
-    credits: {
-        position: {
-            align: 'left',
-            verticalAlign: 'bottom',
-            x: 10,
-            y: -10
-        }
+```js
+credits: {
+    position: {
+        align: 'left',
+        verticalAlign: 'bottom',
+        x: 10,
+        y: -10
     }
+}
+```
 
 See [api.highcharts.com#credits](https://api.highcharts.com/highcharts/credits) for full option set.
 
@@ -49,13 +57,14 @@ See [api.highcharts.com#credits](https://api.highcharts.com/highcharts/credits)�
 
 Axis labels can be placed relative to the plot area using the "align" option, "x" and "y" options.
 
-    
-    labels: {
-        align: 'right',
-        x: -10,
-        y: 0
-    }
-    
+```js
+labels: {
+    align: 'right',
+    x: -10,
+    y: 0
+}
+```
+
 
 They can also be rotated using the "rotate" option. Font styling for the axis labels are given through the xAxis.labels.style options. See [xAxis.labels](https://api.highcharts.com/highcharts/xAxis.labels) for full option set.
 
@@ -63,13 +72,14 @@ They can also be rotated using the "rotate" option. Font styling for the axis la
 
 The legend is by default placed at the bottom of the chart in the center. This can be changed by the "align" and "verticalAlign" options. The legend can also be positioned anywhere in the chart area using the "floating" option. This will cause the legend to float freely over the plot area.
 
-    
-    legend:{
-         align: 'left',
-         verticalAlign: 'top',
-         floating: true        
-    }
-    
+```js
+legend:{
+     align: 'left',
+     verticalAlign: 'top',
+     floating: true
+}
+```
+
 
 The legend can also be positioned using the "x" and "y" options.
 
@@ -81,15 +91,15 @@ The title and subtitle can be positioned using the "align", "verticalAlign", "x"
 
 General text styling is set in the _style_ option. The text can also be styled inline using spans and CSS.
 
-    
-    title: {
-        text: 'Example with **bold** text',
-        floating: true,
-        align: 'right',
-        x: -30,
-        y: 30
-    }
-    
+```js
+title: {
+    text: 'Example with **bold** text',
+    floating: true,
+    align: 'right',
+    x: -30,
+    y: 30
+}
+```
 
 ### Export
 
@@ -118,14 +128,15 @@ Fonts
 
 A global font family can be set using the [chart.style](https://api.highcharts.com/highcharts/chart.style) option:
 
-    
-    Highcharts.setOptions({
-        chart: {
-            style: {
-                fontFamily: 'serif'
-            }
+```js
+Highcharts.setOptions({
+    chart: {
+        style: {
+            fontFamily: 'serif'
         }
-    });
+    }
+});
+```
 
 All layout elements of the chart that include text, have a style option that allow setting text related CSS properties. There are options like [xAxis.labels.style](https://api.highcharts.com/highcharts/xAxis.labels.style), [title.style](https://api.highcharts.com/highcharts/title.style), [legend.itemStyle](https://api.highcharts.com/highcharts/legend.itemStyle) to mention a few. If you go to [api.highcharts.com](https://api.highcharts.com) and search for "style" you'll get the full list.
 
@@ -138,13 +149,14 @@ Shadows
 
 Many layout elements including series types in Highcharts have shadow options. Go to [api.highcharts.com](https://api.highcharts.com) and search for "shadow" to see the full list. The shadow can be false, or true to display the shadow. In addition to that, the shadow can be an object configuration containing color, offsetX, offsetY, opacity and width. For instance, the options can be used to add a glow to the graphs: 
 
-    
-    shadow: {
-        color: 'yellow',
-        width: 10,
-        offsetX: 0,
-        offsetY: 0
-    }
+```js
+shadow: {
+    color: 'yellow',
+    width: 10,
+    offsetX: 0,
+    offsetY: 0
+}
+```
 
 See [live demo of using shadow options](https://jsfiddle.net/gh/get/library/pure/highcharts/highcharts/tree/master/samples/highcharts/plotoptions/series-shadow).
 
@@ -176,4 +188,4 @@ In Highcharts, animation is enabled or disabled in two separate places.
 The animation can either be set as a boolean or a configuration object. If true, it will use the "swing" jQuery easing and a duration of 500 ms. If used as a configuration object, the following properties are supported:
 
 *   duration - The duration of the animation in milliseconds.
-*   easing - When using jQuery as the general framework, the easing can be set to linear or swing. More easing functions are available with the use of jQuery plug-ins, most notably the jQuery UI suite. See the [jQuery docs](https://api.jquery.com/animate/). When using MooTools as the general framework, use the property name transition instead of easing.
+*   easing - Custom easing can be applied to all animation. See [Easing Functions](https://easings.net/) for a nice overview over some possible functions. Easing functions can either be passed directly, or registered on the `Math` object and referenced by name. See [chart/animation-easing](https://jsfiddle.net/gh/get/library/pure/highcharts/highcharts/tree/master/samples/highcharts/chart/animation-easing) for a live demo. The default easing is `easeInOutSine`.

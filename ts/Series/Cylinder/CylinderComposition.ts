@@ -2,13 +2,14 @@
  *
  *  Highcharts cylinder - a 3D series
  *
- *  (c) 2010-2024 Highsoft AS
+ *  (c) 2010-2026 Highsoft AS
  *
  *  Author: Kacper Madej
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  * */
 
@@ -35,14 +36,9 @@ const {
     charts,
     deg2rad
 } = H;
-import Math3D from '../../Core/Math3D.js';
-const { perspective } = Math3D;
+import { perspective } from '../../Core/Math3D.js';
 import SVGElement3DCylinder from './SVGElement3DCylinder.js';
-import U from '../../Core/Utilities.js';
-const {
-    extend,
-    pick
-} = U;
+import { extend } from '../../Shared/Utilities.js';
 
 /* *
  *
@@ -50,26 +46,45 @@ const {
  *
  * */
 
-declare module '../../Core/Renderer/SVG/SVGRendererLike' {
-    interface SVGRendererLike {
-        /** @requires CylinderComposition */
+/** @internal */
+declare module '../../Core/Renderer/SVG/SVGRendererBase' {
+    interface SVGRendererBase {
+        /**
+         * @internal
+         * @requires CylinderComposition
+         */
         cylinder(shapeArgs: SVGAttributes): SVGElement;
-        /** @requires CylinderComposition */
+        /**
+         * @internal
+         * @requires CylinderComposition
+         */
         cylinderPath(shapeArgs: SVGAttributes): CylinderPathsObject;
-        /** @requires CylinderComposition */
+        /**
+         * @internal
+         * @requires CylinderComposition
+         */
         getCurvedPath(points: Array<PositionObject>): SVGPath;
-        /** @requires CylinderComposition */
+        /**
+         * @internal
+         * @requires CylinderComposition
+         */
         getCylinderBack(
             topPath: SVGPath,
             bottomPath: SVGPath
         ): SVGPath;
-        /** @requires CylinderComposition */
+        /**
+         * @internal
+         * @requires CylinderComposition
+         */
         getCylinderEnd(
             chart: Chart,
             shapeArgs: SVGAttributes,
             isBottom?: boolean
         ): SVGPath;
-        /** @requires CylinderComposition */
+        /**
+         * @internal
+         * @requires CylinderComposition
+         */
         getCylinderFront(
             topPath: SVGPath,
             bottomPath: SVGPath
@@ -77,6 +92,7 @@ declare module '../../Core/Renderer/SVG/SVGRendererLike' {
     }
 }
 
+/** @internal */
 interface CylinderPathsObject extends SVGPath3D {
     back: SVGPath;
     bottom: SVGPath;
@@ -91,9 +107,7 @@ interface CylinderPathsObject extends SVGPath3D {
  *
  * */
 
-/**
- *
- */
+/** @internal */
 function compose(
     SVGRendererClass: typeof SVGRenderer
 ): void {
@@ -119,13 +133,13 @@ function compose(
 /**
  * Check if a path is simplified. The simplified path contains only lineTo
  * segments, whereas non-simplified contain curves.
- * @private
+ * @internal
  */
 function isSimplified(path: SVGPath): boolean {
     return !path.some((seg): boolean => seg[0] === 'C');
 }
 
-/** @private */
+/** @internal */
 function rendererCylinder(
     this: SVGRenderer3D.Composition,
     shapeArgs: SVGAttributes
@@ -135,7 +149,7 @@ function rendererCylinder(
 
 /**
  * Generates paths and zIndexes.
- * @private
+ * @internal
  */
 function rendererCylinderPath(
     this: SVGRenderer3D.Composition,
@@ -147,7 +161,7 @@ function rendererCylinderPath(
         // Decide zIndexes of parts based on cuboid logic, for consistency.
         cuboidData = this.cuboidPath(shapeArgs),
         isTopFirst = !cuboidData.isTop,
-        isFronFirst = !cuboidData.isFront,
+        isFrontFirst = !cuboidData.isFront,
 
         top = renderer.getCylinderEnd(chart as any, shapeArgs),
         bottom = renderer.getCylinderEnd(chart as any, shapeArgs, true);
@@ -161,8 +175,8 @@ function rendererCylinderPath(
             top: isTopFirst ? 3 : 0,
             bottom: isTopFirst ? 0 : 3,
 
-            front: isFronFirst ? 2 : 1,
-            back: isFronFirst ? 1 : 2,
+            front: isFrontFirst ? 2 : 1,
+            back: isFrontFirst ? 1 : 2,
 
             group: cuboidData.zIndexes.group
         }
@@ -173,7 +187,7 @@ function rendererCylinderPath(
  * Returns curved path in format of:
  * [ M, x, y, ...[C, cp1x, cp2y, cp2x, cp2y, epx, epy]*n_times ]
  * (cp - control point, ep - end point)
- * @private
+ * @internal
  */
 function rendererGetCurvedPath(
     this: SVGRenderer3D.Composition,
@@ -195,7 +209,7 @@ function rendererGetCurvedPath(
 
 /**
  * Returns cylinder Back path.
- * @private
+ * @internal
  */
 function rendererGetCylinderBack(
     this: SVGRenderer3D.Composition,
@@ -264,7 +278,7 @@ function rendererGetCylinderBack(
 
 /**
  * Returns cylinder path for top or bottom.
- * @private
+ * @internal
  */
 function rendererGetCylinderEnd(
     this: SVGRenderer3D.Composition,
@@ -278,7 +292,7 @@ function rendererGetCylinderEnd(
 
         // A half of the smaller one out of width or depth (optional, because
         // there's no depth for a funnel that reuses the code)
-        depth = pick(shapeArgs.depth, width, 0),
+        depth = (shapeArgs.depth ?? width ?? 0),
         radius = Math.min(width, depth) / 2,
 
         // Approximated longest diameter
@@ -392,7 +406,7 @@ function rendererGetCylinderEnd(
 
 /**
  * Returns cylinder Front path.
- * @private
+ * @internal
  */
 function rendererGetCylinderFront(
     this: SVGRenderer3D.Composition,
@@ -449,8 +463,10 @@ function rendererGetCylinderFront(
  *
  * */
 
+/** @internal */
 const CylinderComposition = {
     compose
 };
 
+/** @internal */
 export default CylinderComposition;

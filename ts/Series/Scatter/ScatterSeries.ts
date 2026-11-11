@@ -1,10 +1,12 @@
 /* *
  *
- *  (c) 2010-2024 Torstein Honsi
+ *  (c) 2010-2026 Highsoft AS
+ *  Author: Torstein Hønsi
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  * */
 
@@ -19,18 +21,28 @@
 import type ScatterPoint from './ScatterPoint';
 import type ScatterSeriesOptions from './ScatterSeriesOptions';
 
+import ColumnSeries from '../Column/ColumnSeries.js';
+import LineSeries from '../Line/LineSeries.js';
 import ScatterSeriesDefaults from './ScatterSeriesDefaults.js';
 import SeriesRegistry from '../../Core/Series/SeriesRegistry.js';
-const {
-    column: ColumnSeries,
-    line: LineSeries
-} = SeriesRegistry.seriesTypes;
-import U from '../../Core/Utilities.js';
-const {
-    addEvent,
-    extend,
-    merge
-} = U;
+import { addEvent, extend, merge } from '../../Shared/Utilities.js';
+
+/* *
+ *
+ *  Declarations
+ *
+ * */
+
+/** @internal */
+declare module '../../Core/Series/SeriesBase' {
+    interface SeriesBase {
+        /**
+         * Allow scatter points on the edge to be interacted
+         * with outside the plot.
+         */
+        allowOutsidePlotInteraction?: boolean;
+    }
+}
 
 /* *
  *
@@ -40,8 +52,6 @@ const {
 
 /**
  * Scatter series type.
- *
- * @private
  */
 class ScatterSeries extends LineSeries {
 
@@ -51,6 +61,7 @@ class ScatterSeries extends LineSeries {
      *
      * */
 
+    /** @internal */
     public static defaultOptions = merge(
         LineSeries.defaultOptions,
         ScatterSeriesDefaults
@@ -75,10 +86,9 @@ class ScatterSeries extends LineSeries {
      * */
 
     /* eslint-disable valid-jsdoc */
-
     /**
      * Optionally add the jitter effect.
-     * @private
+     * @internal
      */
     public applyJitter(): void {
         const series = this,
@@ -88,7 +98,7 @@ class ScatterSeries extends LineSeries {
         /**
          * Return a repeatable, pseudo-random number based on an integer
          * seed.
-         * @private
+         * @internal
          */
         function unrandom(seed: number): number {
             const rand = Math.sin(seed) * 10000;
@@ -96,25 +106,21 @@ class ScatterSeries extends LineSeries {
         }
 
         if (jitter) {
-            this.points.forEach(function (point, i): void {
-                (['x', 'y'] as ['x', 'y']).forEach(function (dim, j): void {
+            this.points.forEach((point, i): void => {
+                (['x', 'y'] as const).forEach((dim, j): void => {
                     if (jitter[dim] && !point.isNull) {
                         const plotProp: 'plotX'|'plotY' =
                                 `plot${dim.toUpperCase() as 'X'|'Y'}`,
-                            axis = series[`${dim}Axis`],
-                            translatedJitter = (jitter as any)[dim] *
-                                axis.transA;
+                            axis = series[`${dim}Axis`];
+
                         if (axis && !axis.logarithmic) {
 
                             // Identify the outer bounds of the jitter range
-                            const min = Math.max(
-                                    0,
-                                    (point[plotProp] || 0) - translatedJitter
-                                ),
-                                max = Math.min(
-                                    axis.len,
-                                    (point[plotProp] || 0) + translatedJitter
-                                );
+                            // (#25054)
+                            const translatedJitter = jitter[dim] * axis.transA *
+                                    (axis.reversed ? -1 : 1),
+                                min = (point[plotProp] || 0) - translatedJitter,
+                                max = (point[plotProp] || 0) + translatedJitter;
 
                             // Find a random position within this range
                             point[plotProp] = min +
@@ -132,7 +138,7 @@ class ScatterSeries extends LineSeries {
     }
 
     /**
-     * @private
+     * @internal
      */
     public drawGraph(): void {
         if (this.options.lineWidth) {
@@ -142,7 +148,6 @@ class ScatterSeries extends LineSeries {
         }
     }
 
-    /* eslint-enable valid-jsdoc */
 
 }
 
@@ -153,9 +158,11 @@ class ScatterSeries extends LineSeries {
  * */
 
 interface ScatterSeries {
+    /** @internal */
     pointClass: typeof ScatterPoint;
 }
 extend(ScatterSeries.prototype, {
+    allowOutsidePlotInteraction: true,
     drawTracker: ColumnSeries.prototype.drawTracker,
     sorted: false,
     requireSorting: false,
@@ -189,6 +196,7 @@ declare module '../../Core/Series/SeriesType' {
     }
 }
 SeriesRegistry.registerSeriesType('scatter', ScatterSeries);
+
 
 /* *
  *

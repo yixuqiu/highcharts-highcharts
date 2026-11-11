@@ -1,12 +1,13 @@
 /* *
  *
- *  (c) 2014-2024 Highsoft AS
+ *  (c) 2014-2026 Highsoft AS
  *
- *  Authors: Jon Arild Nygard / Oystein Moseng
+ *  Authors: Jon Arild Nygård / Øystein Moseng
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  * */
 
@@ -21,10 +22,8 @@
 import type TreemapPoint from './TreemapPoint';
 import type TreemapSeriesOptions from './TreemapSeriesOptions';
 
-import { Palette } from '../../Core/Color/Palettes';
 import SeriesRegistry from '../../Core/Series/SeriesRegistry.js';
-import U from '../../Core/Utilities.js';
-const { isString } = U;
+import { isString } from '../../Shared/Utilities.js';
 
 /* *
  *
@@ -40,7 +39,7 @@ const { isString } = U;
  *         Treemap
  *
  * @extends      plotOptions.scatter
- * @excluding    cluster, connectEnds, connectNulls, dataSorting, dragDrop, jitter, marker
+ * @excluding    connectEnds, connectNulls, dataSorting, dragDrop, jitter, marker
  * @product      highcharts
  * @requires     modules/treemap
  * @optionparent plotOptions.treemap
@@ -55,7 +54,7 @@ const TreemapSeriesDefaults: TreemapSeriesOptions = {
      * @sample {highcharts} highcharts/plotoptions/treemap-allowdrilltonode/
      *         Enabled
      *
-     * @deprecated
+     * @deprecated 7.0.3
      * @type      {boolean}
      * @default   false
      * @since     4.1.0
@@ -69,6 +68,8 @@ const TreemapSeriesDefaults: TreemapSeriesOptions = {
      *
      * @sample {highcharts} highcharts/plotoptions/treemap-allowtraversingtree/
      *         Enabled
+     * @sample {highcharts} highcharts/plotoptions/treemap-grouping-traversing/
+     *         Traversing to Grouped Points node
      *
      * @since     7.0.3
      * @product   highcharts
@@ -95,7 +96,7 @@ const TreemapSeriesDefaults: TreemapSeriesOptions = {
 
     /**
      * When the series contains less points than the crop threshold, all
-     * points are drawn, event if the points fall outside the visible plot
+     * points are drawn, even if the points fall outside the visible plot
      * area at the current zoom. The advantage of drawing all points
      * (including markers and columns), is that animation is performed on
      * updates. On the other hand, when the series contains more points than
@@ -160,7 +161,7 @@ const TreemapSeriesDefaults: TreemapSeriesOptions = {
      * of the global [colors](#colors) when
      * [colorByPoint](#plotOptions.treemap.colorByPoint) is true.
      *
-     * @type      {Array<Highcharts.ColorString|Highcharts.GradientColorObject|Highcharts.PatternObject>}
+     * @type      {Array<Highcharts.ColorType>}
      * @since     3.0
      * @product   highcharts
      * @apioption plotOptions.treemap.colors
@@ -194,7 +195,6 @@ const TreemapSeriesDefaults: TreemapSeriesOptions = {
      * @since 4.1.0
      */
     dataLabels: {
-        defer: false,
         enabled: true,
         formatter: function (): string {
             const point: TreemapPoint = this && this.point ?
@@ -204,13 +204,29 @@ const TreemapSeriesDefaults: TreemapSeriesOptions = {
 
             return name;
         },
+        /**
+         * Whether the data label should act as a group-level header. For leaf
+         * nodes, headers are not supported and the data label will be rendered
+         * inside.
+         *
+         * @sample {highcharts} highcharts/series-treemap/headers
+         *         Headers for parent nodes
+         *
+         * @since 12.2.0
+         */
+        headers: false,
         inside: true,
-        verticalAlign: 'middle'
+        padding: 2,
+        verticalAlign: 'middle',
+        style: {
+            textOverflow: 'ellipsis'
+        }
     },
 
     tooltip: {
         headerFormat: '',
-        pointFormat: '<b>{point.name}</b>: {point.value}<br/>'
+        pointFormat: '<b>{point.name}</b>: {point.value}<br/>',
+        clusterFormat: '+ {point.groupedPointsAmount} more...<br/>'
     },
 
     /**
@@ -275,7 +291,7 @@ const TreemapSeriesDefaults: TreemapSeriesOptions = {
      *
      * Since v9.3.3 the `traverseUpButton` is replaced by `breadcrumbs`.
      *
-     * @deprecated
+     * @deprecated 9.3.3
      */
     traverseUpButton: {
 
@@ -312,6 +328,18 @@ const TreemapSeriesDefaults: TreemapSeriesOptions = {
         }
     },
 
+    /**
+     * Group padding for parent elements in terms of pixels. See also the
+     * `nodeSizeBy` option that controls how the leaf nodes' size is affected by
+     * the padding.
+     *
+     * @sample    {highcharts} highcharts/series-treemap/grouppadding/
+     *            Group padding
+     * @type      {number}
+     * @since 12.2.0
+     * @product   highcharts
+     * @apioption plotOptions.treemap.groupPadding
+     */
 
     /**
      * Set options on specific levels. Takes precedence over series options,
@@ -326,6 +354,22 @@ const TreemapSeriesDefaults: TreemapSeriesOptions = {
      * @since     4.1.0
      * @product   highcharts
      * @apioption plotOptions.treemap.levels
+     */
+
+    /**
+     * Experimental. How to set the size of child nodes when a header or padding
+     * is present. When `leaf`, the group is expanded to make room for headers
+     * and padding in order to preserve the relative sizes between leaves. When
+     * `group`, the leaves are naïvely fit into the remaining area after the
+     * header and padding are subtracted.
+     *
+     * @sample    {highcharts} highcharts/series-treemap/nodesizeby/
+     *            Node sizing
+     * @since 12.2.0
+     * @type      {string}
+     * @validvalue ["group", "leaf"]
+     * @default   group
+     * @apioption plotOptions.treemap.nodeSizeBy
      */
 
     /**
@@ -361,10 +405,22 @@ const TreemapSeriesDefaults: TreemapSeriesOptions = {
     /**
      * Can set a color on all points which lies on the same level.
      *
-     * @type      {Highcharts.ColorString|Highcharts.GradientColorObject|Highcharts.PatternObject}
+     * @type      {Highcharts.ColorType}
      * @since     4.1.0
      * @product   highcharts
      * @apioption plotOptions.treemap.levels.color
+     */
+
+    /**
+     * Determines whether the chart should receive one color per point based
+     * on this level.
+     *
+     * @sample {highcharts} highcharts/demo/treemap-with-levels/
+     *         One color per point on the first level
+     *
+     * @type      {boolean}
+     * @product   highcharts
+     * @apioption plotOptions.treemap.levels.colorByPoint
      */
 
     /**
@@ -421,6 +477,16 @@ const TreemapSeriesDefaults: TreemapSeriesOptions = {
      */
 
     /**
+     * Can set the group padding on a specific level. Overrides the series
+     * option of the same name.
+     *
+     * @type      {number}
+     * @since     12.2.0
+     * @product   highcharts
+     * @apioption plotOptions.treemap.levels.groupPadding
+     */
+
+    /**
      * Can set the layoutAlgorithm option on a specific level.
      *
      * @type       {string}
@@ -453,25 +519,39 @@ const TreemapSeriesDefaults: TreemapSeriesOptions = {
      * @apioption plotOptions.treemap.levels.level
      */
 
+    /**
+     * Whether the `level` number is absolute, or relative to the currently
+     * visible root. Overrides the series option of the same name for this
+     * level.
+     *
+     * @type      {boolean}
+     * @product   highcharts
+     * @apioption plotOptions.treemap.levels.levelIsConstant
+     */
+
 
     // Presentational options
 
     /**
      * The color of the border surrounding each tree map item.
      *
-     * @type {Highcharts.ColorString}
+     * @type    {Highcharts.ColorString}
+     * @product highcharts
      */
-    borderColor: Palette.neutralColor10,
+    borderColor: 'var(--highcharts-neutral-color-10)',
 
     /**
      * The width of the border surrounding each tree map item.
+     *
+     * @product highcharts
      */
     borderWidth: 1,
 
     colorKey: 'colorValue',
 
     /**
-     * The opacity of a point in treemap. When a point has children, the
+     * The opacity of grouped points in treemap. When a point has children, the
+     * group point is covering the children, and is given this opacity. The
      * visibility of the children is determined by the opacity.
      *
      * @since 4.2.4
@@ -496,7 +576,7 @@ const TreemapSeriesDefaults: TreemapSeriesOptions = {
             /**
              * The border color for the hovered state.
              */
-            borderColor: Palette.neutralColor40,
+            borderColor: 'var(--highcharts-neutral-color-40)',
 
             /**
              * Brightness for the hovered point. Defaults to 0 if the
@@ -527,7 +607,135 @@ const TreemapSeriesDefaults: TreemapSeriesOptions = {
         }
     },
 
-    legendSymbol: 'rectangle'
+    legendSymbol: 'rectangle',
+
+    /**
+     * This option enables automatic traversing to the last child level upon
+     * node interaction. This feature simplifies navigation by immediately
+     * focusing on the deepest layer of the data structure without intermediate
+     * steps.
+     *
+     * @sample {highcharts} highcharts/plotoptions/treemap-traverse-to-leaf/
+     *         Traverse to leaf enabled
+     *
+     * @since   11.4.4
+     *
+     * @product highcharts
+     */
+    traverseToLeaf: false,
+
+    /**
+     * An option to optimize treemap series rendering by grouping smaller leaf
+     * nodes below a certain square area threshold in pixels. If the square area
+     * of a point becomes smaller than the specified threshold, determined by
+     * the `pixelWidth` and/or `pixelHeight` options, then this point is moved
+     * into one group point per series.
+     *
+     * @sample {highcharts} highcharts/plotoptions/treemap-grouping-simple
+     *         Simple demo of Treemap grouping
+     * @sample {highcharts} highcharts/plotoptions/treemap-grouping-multiple-parents
+     *         Treemap grouping with multiple parents
+     * @sample {highcharts} highcharts/plotoptions/treemap-grouping-advanced
+     *         Advanced demo of Treemap grouping
+     *
+     * @since 12.1.0
+     *
+     * @excluding allowOverlap, animation, dataLabels, drillToCluster, events,
+     * layoutAlgorithm, marker, states, zones
+     *
+     * @product highcharts
+     */
+    cluster: {
+        /**
+         * An additional, individual class name for the grouped point's graphic
+         * representation.
+         *
+         * @type      string
+         * @product   highcharts
+         */
+        className: void 0,
+
+        /**
+         * Individual color for the grouped point. By default the color is
+         * pulled from the parent color.
+         *
+         * @type      {Highcharts.ColorType}
+         * @product   highcharts
+         */
+        color: void 0,
+
+        /**
+         * Enable or disable Treemap grouping.
+         *
+         * @type {boolean}
+         * @since 12.1.0
+         * @product highcharts
+         */
+        enabled: false,
+
+        /**
+         * The pixel threshold width of area, which is used in Treemap grouping.
+         *
+         * @type {number}
+         * @since 12.1.0
+         * @product highcharts
+         */
+        pixelWidth: void 0,
+
+        /**
+         * The pixel threshold height of area, which is used in Treemap
+         * grouping.
+         *
+         * @type {number}
+         * @since 12.1.0
+         * @product highcharts
+         */
+        pixelHeight: void 0,
+
+        /**
+         * The name of the point of grouped nodes shown in the tooltip,
+         * dataLabels, etc. By default it is set to '+ n', where n is number of
+         * grouped points.
+         *
+         * @type {string}
+         * @since 12.1.0
+         * @product highcharts
+         */
+        name: void 0,
+
+
+        /**
+         * A configuration property that specifies the factor by which the value
+         * and size of a grouped node are reduced. This can be particularly
+         * useful when a grouped node occupies a disproportionately large
+         * portion of the graph, ensuring better visual balance and readability.
+         *
+         * @type {number}
+         * @since 12.1.0
+         * @product highcharts
+         */
+        reductionFactor: void 0,
+
+        /**
+         * Defines the minimum number of child nodes required to create a group
+         * of small nodes.
+         *
+         * @type {number}
+         * @since 12.1.0
+         * @product highcharts
+         */
+        minimumClusterSize: 5,
+
+        layoutAlgorithm: {
+            distance: 0,
+            gridSize: 0,
+            kmeansThreshold: 0
+        },
+        marker: {
+            lineWidth: 0,
+            radius: 0
+        }
+    }
 
 };
 
@@ -536,7 +744,7 @@ const TreemapSeriesDefaults: TreemapSeriesOptions = {
  * not specified, it is inherited from [chart.type](#chart.type).
  *
  * @extends   series,plotOptions.treemap
- * @excluding dataParser, dataURL, stack, dataSorting
+ * @excluding stack, dataSorting
  * @product   highcharts
  * @requires  modules/treemap
  * @apioption series.treemap
@@ -574,6 +782,7 @@ const TreemapSeriesDefaults: TreemapSeriesOptions = {
  * @sample {highcharts} highcharts/series/data-array-of-objects/
  *         Config objects
  *
+ * @basic
  * @type      {Array<number|null|*>}
  * @extends   series.heatmap.data
  * @excluding x, y, pointPadding

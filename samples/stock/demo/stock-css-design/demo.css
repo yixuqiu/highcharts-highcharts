@@ -2,6 +2,22 @@
 @import url("https://code.highcharts.com/css/stocktools/gui.css");
 @import url("https://code.highcharts.com/css/highcharts.css");
 
+body {
+    font-family:
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        Roboto,
+        Helvetica,
+        Arial,
+        "Apple Color Emoji",
+        "Segoe UI Emoji",
+        "Segoe UI Symbol",
+        sans-serif;
+    background: #19191b;
+    color: #fff;
+}
+
 :root {
     --highcharts-background-color: #19191b;
     --highcharts-color-1: #9689e6;
@@ -132,4 +148,14 @@ button.highcharts-menu-item-btn-active {
 
 .highcharts-bindings-wrapper .highcharts-submenu-wrapper {
     background-color: var(--highcharts-background-color);
+}
+
+.highcharts-description {
+    background: light-dark(#f2f6f2, #323232);
+    border-radius: 0 4px 4px 0;
+    border-left: 2px solid light-dark(#1d6aff, #fff);
+    font-size: 0.8rem;
+    font-style: italic;
+    padding: 8px 16px;
+    margin: 2em 10px 1em;
 }

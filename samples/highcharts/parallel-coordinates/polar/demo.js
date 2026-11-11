@@ -37,6 +37,9 @@ Highcharts.chart('container', {
         verticalAlign: 'middle',
         layout: 'vertical'
     },
+    pane: {
+        size: '85%'
+    },
     xAxis: {
         categories: [
             'Training date',
@@ -50,7 +53,8 @@ Highcharts.chart('container', {
         labels: {
             distance: 30,
             style: {
-                fontWeight: 'bold'
+                fontWeight: 'bold',
+                textOverflow: 'none'
             }
         },
         gridLineWidth: 0

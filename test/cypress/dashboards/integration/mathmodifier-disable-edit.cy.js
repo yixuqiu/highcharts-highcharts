@@ -1,20 +1,29 @@
 describe('MathModifier created columns and interaction.', () => {
     before(() => {
-        cy.visit('/dashboards/cypress/datagrid-mathmodifier/');
+        cy.visit('/dashboards/cypress/grid-mathmodifier/');
     })
 
-    it('DataGrid and HC component should disable changing the mathmodifier column.', () => {
+    it('Grid and HC component should disable changing the mathmodifier column.', () => {
         cy.board().then((board) => {
         const mComponents = board.mountedComponents,
             hcComponent = mComponents[0].component,
             dgComponent = mComponents[1].component;
             assert.deepEqual(
-                dgComponent.dataGrid.options.columns,
-                {
-                    USD: {
-                        editable: false
+                dgComponent.grid.options.columns,
+                [{
+                    id: 'USD',
+                    cells: {
+                        editMode: {
+                            enabled: false
+                        }
                     }
-                },
+                }, {
+                    id: 'Day'
+                }, {
+                    id: 'EUR'
+                }, {
+                    id: 'Rate'
+                }],
                 'USD column is not editable'
             );
             hcComponent.chart.series.forEach(series => {
@@ -38,3 +47,4 @@ describe('MathModifier created columns and interaction.', () => {
     });
 
 });
+

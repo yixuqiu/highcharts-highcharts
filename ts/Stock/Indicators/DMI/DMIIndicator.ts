@@ -1,11 +1,13 @@
 /* *
- *  (c) 2010-2024 Rafal Sebestjanski
+ *  (c) 2010-2026 Highsoft AS
+ *  Author: Rafał Sebestjański
  *
  *  Directional Movement Index (DMI) indicator for Highcharts Stock
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  * */
 
@@ -22,22 +24,19 @@ import type {
     DMIParamsOptions
 } from './DMIOptions';
 import type DMIPoint from './DMIPoint';
+import type { IndicatorLinkedSeriesBase } from '../IndicatorBase';
 import type IndicatorValuesObject from '../IndicatorValuesObject';
 import type LineSeries from '../../../Series/Line/LineSeries';
 
 import MultipleLinesComposition from '../MultipleLinesComposition.js';
-import { Palette } from '../../../Core/Color/Palettes.js';
+import SMAIndicator from '../SMA/SMAIndicator.js';
 import SeriesRegistry from '../../../Core/Series/SeriesRegistry.js';
-const {
-    sma: SMAIndicator
-} = SeriesRegistry.seriesTypes;
-import U from '../../../Core/Utilities.js';
-const {
+import {
     correctFloat,
     extend,
     isArray,
     merge
-} = U;
+} from '../../../Shared/Utilities.js';
 
 /* *
  *
@@ -48,7 +47,6 @@ const {
 /**
  * The Directional Movement Index (DMI) series type.
  *
- * @private
  * @class
  * @name Highcharts.seriesTypes.dmi
  *
@@ -67,7 +65,7 @@ class DMIIndicator extends SMAIndicator {
      * This series requires the `linkedTo` option to be set and should
      * be loaded after the `stock/indicators/indicators.js` file.
      *
-     * @sample stock/indicators/dmi
+     * @sample {highstock} stock/indicators/dmi
      *         DMI indicator
      *
      * @extends      plotOptions.sma
@@ -76,9 +74,10 @@ class DMIIndicator extends SMAIndicator {
      * @excluding    allAreas, colorAxis, joinBy, keys, navigatorOptions,
      *               pointInterval, pointIntervalUnit, pointPlacement,
      *               pointRange, pointStart, showInNavigator, stacking
-     * @requires     stock/indicators/indicators
-     * @requires     stock/indicators/dmi
+     * @requires     indicators/indicators
+     * @requires     indicators/dmi
      * @optionparent plotOptions.dmi
+     * @internal
      */
     public static defaultOptions: DMIOptions = merge(SMAIndicator.defaultOptions, {
         /**
@@ -118,7 +117,7 @@ class DMIIndicator extends SMAIndicator {
                  *
                  * @type {Highcharts.ColorString}
                  */
-                lineColor: Palette.positiveColor // Green-ish
+                lineColor: 'var(--highcharts-positive-color)' // Green-ish
             }
         },
         /**
@@ -138,7 +137,7 @@ class DMIIndicator extends SMAIndicator {
                  *
                  * @type {Highcharts.ColorString}
                  */
-                lineColor: Palette.negativeColor // Red-ish
+                lineColor: 'var(--highcharts-negative-color)' // Red-ish
             }
         },
         dataGrouping: {
@@ -160,6 +159,7 @@ class DMIIndicator extends SMAIndicator {
      *
      * */
 
+    /** @internal */
     public calculateDM(
         yVal: Array<Array<number>>,
         i: number,
@@ -183,6 +183,7 @@ class DMIIndicator extends SMAIndicator {
         return correctFloat(DM);
     }
 
+    /** @internal */
     public calculateDI(
         smoothedDM: number,
         tr: number
@@ -190,6 +191,7 @@ class DMIIndicator extends SMAIndicator {
         return smoothedDM / tr * 100;
     }
 
+    /** @internal */
     public calculateDX(
         plusDI: number,
         minusDI: number
@@ -199,6 +201,7 @@ class DMIIndicator extends SMAIndicator {
         );
     }
 
+    /** @internal */
     public smoothValues(
         accumulatedValues: number,
         currentValue: number,
@@ -209,6 +212,7 @@ class DMIIndicator extends SMAIndicator {
         );
     }
 
+    /** @internal */
     public getTR(
         currentPoint: Array<number>,
         prevPoint?: Array<number>
@@ -225,8 +229,9 @@ class DMIIndicator extends SMAIndicator {
         );
     }
 
+    /** @internal */
     public getValues<TLinkedSeries extends LineSeries>(
-        series: TLinkedSeries,
+        series: TLinkedSeries&IndicatorLinkedSeriesBase,
         params: DMIParamsOptions
     ): (IndicatorValuesObject<TLinkedSeries>|undefined) {
         const period: number = (params.period as any),
@@ -352,6 +357,7 @@ class DMIIndicator extends SMAIndicator {
  *
  * */
 
+/** @internal */
 interface DMIIndicator extends MultipleLinesComposition.IndicatorComposition {
     nameBase: string;
     pointArrayMap: Array<keyof DMIPoint>;
@@ -405,11 +411,11 @@ export default DMIIndicator;
  * @extends   series,plotOptions.dmi
  * @since 9.1.0
  * @product   highstock
- * @excluding allAreas, colorAxis,  dataParser, dataURL, joinBy, keys,
- *            navigatorOptions, pointInterval, pointIntervalUnit,
- *            pointPlacement, pointRange, pointStart, showInNavigator, stacking
- * @requires  stock/indicators/indicators
- * @requires  stock/indicators/dmi
+ * @excluding allAreas, colorAxis, joinBy, keys, navigatorOptions,
+ *            pointInterval, pointIntervalUnit, pointPlacement, pointRange,
+ *            pointStart, showInNavigator, stacking
+ * @requires  indicators/indicators
+ * @requires  indicators/dmi
  * @apioption series.dmi
  */
 

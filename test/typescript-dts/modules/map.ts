@@ -1,7 +1,5 @@
 import * as Highcharts from 'highcharts';
-import MapModule from 'highcharts/modules/map';
-
-MapModule(Highcharts);
+import 'highcharts/modules/map';
 
 test_simple();
 test_series();
@@ -32,9 +30,9 @@ function test_simple() {
 function test_series() {
     const defaultOptions = Highcharts.getOptions();
     const tooltipFormatter = function(
-        this: Highcharts.TooltipFormatterContextObject
+        this: Highcharts.Point
     ) {
-        const point = this.point as any; // @todo make id, lat, lon public
+        const point = this as any; // @todo make id, lat, lon public
         return point.id + (
             point.lat ? `<br>Lat:${point.lat} Lon: ${point.lon}` : ''
         );

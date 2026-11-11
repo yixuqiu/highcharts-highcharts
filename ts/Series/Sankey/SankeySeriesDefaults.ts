@@ -2,11 +2,13 @@
  *
  *  Sankey diagram module
  *
- *  (c) 2010-2024 Torstein Honsi
+ *  (c) 2010-2026 Highsoft AS
+ *  Author: Torstein Hønsi
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  * */
 
@@ -18,10 +20,9 @@
  *
  * */
 
-import type { PlotOptionsOf } from '../../Core/Series/SeriesOptions';
 import type Point from '../../Core/Series/Point';
-import type { SankeyDataLabelFormatterContext } from './SankeyDataLabelOptions';
-import type SankeySeries from './SankeySeries';
+import type SankeyPoint from './SankeyPoint';
+import type SankeySeriesOptions from './SankeySeriesOptions';
 
 /* *
  *
@@ -39,24 +40,24 @@ import type SankeySeries from './SankeySeries';
  *         Inverted sankey diagram
  * @sample highcharts/plotoptions/sankey-outgoing
  *         Sankey diagram with outgoing links
+ * @sample highcharts/series-sankey/circular-dependencies/
+ *         Sankey diagram with circular and self-referencing links
  *
  * @extends      plotOptions.column
  * @since        6.0.0
  * @product      highcharts
- * @excluding    animationLimit, boostThreshold, borderRadius,
- *               crisp, cropThreshold, colorAxis, colorKey, depth, dragDrop,
- *               edgeColor, edgeWidth, findNearestPointBy, grouping,
- *               groupPadding, groupZPadding, maxPointWidth, negativeColor,
- *               pointInterval, pointIntervalUnit, pointPadding,
- *               pointPlacement, pointRange, pointStart, pointWidth,
- *               shadow, softThreshold, stacking, threshold, zoneAxis,
- *               zones, minPointLength, dataSorting, boostBlending
+ * @excluding    animationLimit, boostBlending, boostThreshold,
+ *               crisp, cropThreshold, colorAxis, colorKey, dataSorting, depth,
+ *               dragDrop, edgeColor, edgeWidth, findNearestPointBy, grouping,
+ *               groupPadding, groupZPadding, legendSymbolColor, maxPointWidth,
+ *               minPointLength, negativeColor, pointInterval,
+ *               pointIntervalUnit, pointPadding, pointPlacement, pointRange,
+ *               pointStart, pointWidth, shadow, softThreshold, stacking,
+ *               threshold, zoneAxis, zones
  * @requires     modules/sankey
  * @optionparent plotOptions.sankey
- *
- * @private
  */
-const SankeySeriesDefaults: PlotOptionsOf<SankeySeries> = {
+const SankeySeriesDefaults: SankeySeriesOptions = {
 
     borderWidth: 0,
 
@@ -64,10 +65,10 @@ const SankeySeriesDefaults: PlotOptionsOf<SankeySeries> = {
 
     /**
      * Higher numbers makes the links in a sankey diagram or dependency
-     * wheelrender more curved. A `curveFactor` of 0 makes the lines
-     * straight.
-     *
-     * @private
+     * wheel render more curved. A `curveFactor` of 0 makes the lines
+     * straight. It also sets the turn radius of the bands wrapping around
+     * a circular layout; a self-link's loop turns on the node width
+     * instead.
      */
     curveFactor: 0.33,
 
@@ -79,8 +80,6 @@ const SankeySeriesDefaults: PlotOptionsOf<SankeySeries> = {
      * string by default.
      *
      * @declare Highcharts.SeriesSankeyDataLabelsOptionsObject
-     *
-     * @private
      */
     dataLabels: {
 
@@ -112,10 +111,7 @@ const SankeySeriesDefaults: PlotOptionsOf<SankeySeries> = {
          * @since 6.0.2
          */
         nodeFormatter: function (
-            this: (
-                SankeyDataLabelFormatterContext|
-                Point.PointLabelObject
-            )
+            this: (SankeyPoint|Point)
         ): (string|undefined) {
             return this.point.name;
         },
@@ -136,7 +132,6 @@ const SankeySeriesDefaults: PlotOptionsOf<SankeySeries> = {
     /**
      * @default   true
      * @extends   plotOptions.series.inactiveOtherPoints
-     * @private
      */
     inactiveOtherPoints: true,
 
@@ -169,7 +164,7 @@ const SankeySeriesDefaults: PlotOptionsOf<SankeySeries> = {
     /**
      * Can set `color` on all nodes which lay on the same level.
      *
-     * @type      {Highcharts.ColorString|Highcharts.GradientColorObject|Highcharts.PatternObject}
+     * @type      {Highcharts.ColorType}
      * @apioption plotOptions.sankey.levels.color
      */
 
@@ -227,21 +222,17 @@ const SankeySeriesDefaults: PlotOptionsOf<SankeySeries> = {
      *         Sankey diagram with gradients and explanation
      *
      * @type      {('from'|'gradient'|'to')}
-     * @since     @next
+     * @since     11.2.0
      */
     linkColorMode: 'from',
 
     /**
      * Opacity for the links between nodes in the sankey diagram.
-     *
-     * @private
      */
     linkOpacity: 0.5,
 
     /**
      * Opacity for the nodes in the sankey diagram.
-     *
-     * @private
      */
     opacity: 1,
 
@@ -256,15 +247,14 @@ const SankeySeriesDefaults: PlotOptionsOf<SankeySeries> = {
      * @since     7.1.3
      * @default   0
      * @apioption plotOptions.sankey.minLinkWidth
-     *
-     * @private
      */
     minLinkWidth: 0,
 
     /**
      * Determines which side of the chart the nodes are to be aligned to. When
      * the chart is inverted, `top` aligns to the left and `bottom` to the
-     * right.
+     * right. With circular links, the nodes align within the space those
+     * links leave.
      *
      * @sample highcharts/plotoptions/sankey-nodealignment
      *         Node alignment demonstrated
@@ -322,7 +312,7 @@ const SankeySeriesDefaults: PlotOptionsOf<SankeySeries> = {
      *
      * @since 11.4.0
      * @sample highcharts/series-sankey/node-distance
-     *         Sankey with dnode distance of 100% means equal to node width
+     *         Sankey with node distance of 100% means equal to node width
      * @sample highcharts/series-organization/node-distance
      *         Organization chart with node distance of 50%
      * @type   {number|string}
@@ -365,6 +355,7 @@ const SankeySeriesDefaults: PlotOptionsOf<SankeySeries> = {
              * Animation when not hovering over the marker.
              *
              * @type      {boolean|Partial<Highcharts.AnimationOptionsObject>}
+             * @default   { duration: 50 }
              * @apioption plotOptions.series.states.inactive.animation
              */
             animation: {
@@ -408,13 +399,12 @@ const SankeySeriesDefaults: PlotOptionsOf<SankeySeries> = {
  *
  * @extends   series,plotOptions.sankey
  * @excluding animationLimit, boostBlending, boostThreshold, borderColor,
- *            borderRadius, borderWidth, crisp, cropThreshold, dataParser,
- *            dataURL, depth, dragDrop, edgeColor, edgeWidth,
- *            findNearestPointBy, getExtremesFromAll, grouping, groupPadding,
- *            groupZPadding, label, maxPointWidth, negativeColor, pointInterval,
- *            pointIntervalUnit, pointPadding, pointPlacement, pointRange,
- *            pointStart, pointWidth, shadow, softThreshold, stacking,
- *            threshold, zoneAxis, zones, dataSorting
+ *            borderWidth, crisp, cropThreshold, depth, dragDrop, edgeColor,
+ *            edgeWidth, findNearestPointBy, getExtremesFromAll, grouping,
+ *            groupPadding, groupZPadding, label, maxPointWidth, negativeColor,
+ *            pointInterval, pointIntervalUnit, pointPadding, pointPlacement,
+ *            pointRange, pointStart, pointWidth, shadow, softThreshold,
+ *            stacking, threshold, zoneAxis, zones, dataSorting
  * @product   highcharts
  * @requires  modules/sankey
  * @apioption series.sankey
@@ -446,7 +436,7 @@ const SankeySeriesDefaults: PlotOptionsOf<SankeySeries> = {
 /**
  * The color of the auto generated node.
  *
- * @type      {Highcharts.ColorString|Highcharts.GradientColorObject|Highcharts.PatternObject}
+ * @type      {Highcharts.ColorType}
  * @product   highcharts
  * @apioption series.sankey.nodes.color
  */
@@ -461,7 +451,7 @@ const SankeySeriesDefaults: PlotOptionsOf<SankeySeries> = {
  */
 
 /**
- * An optional column index of where to place the node. The default behaviour is
+ * An optional column index of where to place the node. The default behavior is
  * to place it next to the preceding node. Note that this option name is
  * counter intuitive in inverted charts, like for example an organization chart
  * rendered top down. In this case the "columns" are horizontal.
@@ -473,6 +463,17 @@ const SankeySeriesDefaults: PlotOptionsOf<SankeySeries> = {
  * @since     6.0.5
  * @product   highcharts
  * @apioption series.sankey.nodes.column
+ */
+
+/**
+ * A reserved subspace to store options and values for customized
+ * functionality. Here you can add additional data for your own event
+ * callbacks and formatter callbacks.
+ *
+ * @type      {Highcharts.Dictionary<*>}
+ * @since     next
+ * @product   highcharts
+ * @apioption series.sankey.nodes.custom
  */
 
 /**
@@ -495,9 +496,9 @@ const SankeySeriesDefaults: PlotOptionsOf<SankeySeries> = {
  */
 
 /**
- * An optional level index of where to place the node. The default behaviour is
+ * An optional level index of where to place the node. The default behavior is
  * to place it next to the preceding node. Alias of `nodes.column`, but in
- * inverted sankeys and org charts, the levels are laid out as rows.
+ * inverted sankey and org chart, the levels are laid out as rows.
  *
  * @type      {number}
  * @since     7.1.0
@@ -530,7 +531,7 @@ const SankeySeriesDefaults: PlotOptionsOf<SankeySeries> = {
  * If a percentage string is given, the node is offset by the percentage of the
  * node size plus `nodePadding`.
  *
- * @deprecated
+ * @deprecated 9.3.0
  * @type      {number|string}
  * @default   0
  * @since     6.0.5
@@ -604,6 +605,7 @@ const SankeySeriesDefaults: PlotOptionsOf<SankeySeries> = {
  * @sample {highcharts} highcharts/series/data-array-of-objects/
  *         Config objects
  *
+ * @basic
  * @declare   Highcharts.SeriesSankeyPointOptionsObject
  * @type      {Array<*>|Array<Array<(string|number)>>}
  * @extends   series.line.data
@@ -618,7 +620,7 @@ const SankeySeriesDefaults: PlotOptionsOf<SankeySeries> = {
  * the points, so when setting a specific link color, consider setting the
  * `fillOpacity` to 1.
  *
- * @type      {Highcharts.ColorString|Highcharts.GradientColorObject|Highcharts.PatternObject}
+ * @type      {Highcharts.ColorType}
  * @product   highcharts
  * @apioption series.sankey.data.color
  */

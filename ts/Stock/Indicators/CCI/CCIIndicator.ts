@@ -1,8 +1,9 @@
 /* *
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  * */
 
 'use strict';
@@ -18,18 +19,13 @@ import type {
     CCIParamsOptions
 } from './CCIOptions';
 import type CCIPoint from './CCIPoint';
+import type { IndicatorLinkedSeriesBase } from '../IndicatorBase';
 import type IndicatorValuesObject from '../IndicatorValuesObject';
 import type LineSeries from '../../../Series/Line/LineSeries';
 
+import SMAIndicator from '../SMA/SMAIndicator.js';
 import SeriesRegistry from '../../../Core/Series/SeriesRegistry.js';
-const {
-    sma: SMAIndicator
-} = SeriesRegistry.seriesTypes;
-import U from '../../../Core/Utilities.js';
-const {
-    isArray,
-    merge
-} = U;
+import { isArray, merge } from '../../../Shared/Utilities.js';
 
 /* *
  *
@@ -38,18 +34,14 @@ const {
  * */
 
 // Utils:
-/**
- * @private
- */
+/** @internal */
 function sumArray(array: Array<number>): number {
     return array.reduce(function (prev, cur): number {
         return prev + cur;
     }, 0);
 }
 
-/**
- * @private
- */
+/** @internal */
 function meanDeviation(arr: Array<number>, sma: number): number {
     const len = arr.length;
     let sum = 0,
@@ -71,7 +63,6 @@ function meanDeviation(arr: Array<number>, sma: number): number {
 /**
  * The CCI series type.
  *
- * @private
  * @class
  * @name Highcharts.seriesTypes.cci
  *
@@ -89,15 +80,16 @@ class CCIIndicator extends SMAIndicator {
      * Commodity Channel Index (CCI). This series requires `linkedTo` option to
      * be set.
      *
-     * @sample stock/indicators/cci
+     * @sample {highstock} stock/indicators/cci
      *         CCI indicator
      *
      * @extends      plotOptions.sma
      * @since        6.0.0
      * @product      highstock
-     * @requires     stock/indicators/indicators
-     * @requires     stock/indicators/cci
+     * @requires     indicators/indicators
+     * @requires     indicators/cci
      * @optionparent plotOptions.cci
+     * @internal
      */
     public static defaultOptions: CCIOptions = merge(SMAIndicator.defaultOptions, {
         /**
@@ -124,8 +116,9 @@ class CCIIndicator extends SMAIndicator {
      *
      * */
 
+    /** @internal */
     public getValues<TLinkedSeries extends LineSeries>(
-        series: TLinkedSeries,
+        series: TLinkedSeries&IndicatorLinkedSeriesBase,
         params: CCIParamsOptions
     ): (IndicatorValuesObject<TLinkedSeries>|undefined) {
         const period: number = (params.period as any),
@@ -231,10 +224,9 @@ export default CCIIndicator;
  *
  * @extends   series,plotOptions.cci
  * @since     6.0.0
- * @excluding dataParser, dataURL
  * @product   highstock
- * @requires  stock/indicators/indicators
- * @requires  stock/indicators/cci
+ * @requires  indicators/indicators
+ * @requires  indicators/cci
  * @apioption series.cci
  */
 

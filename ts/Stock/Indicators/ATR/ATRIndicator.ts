@@ -1,8 +1,9 @@
 /* *
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  * */
 
@@ -19,18 +20,13 @@ import type {
     ATRParamsOptions
 } from './ATROptions';
 import type ATRPoint from './ATRPoint';
+import type { IndicatorLinkedSeriesBase } from '../IndicatorBase';
 import type IndicatorValuesObject from '../IndicatorValuesObject';
 import type LineSeries from '../../../Series/Line/LineSeries';
 
+import SMAIndicator from '../SMA/SMAIndicator.js';
 import SeriesRegistry from '../../../Core/Series/SeriesRegistry.js';
-const {
-    sma: SMAIndicator
-} = SeriesRegistry.seriesTypes;
-import U from '../../../Core/Utilities.js';
-const {
-    isArray,
-    merge
-} = U;
+import { isArray, merge } from '../../../Shared/Utilities.js';
 
 /* *
  *
@@ -40,9 +36,7 @@ const {
 
 // Utils:
 
-/**
- * @private
- */
+/** @internal */
 function accumulateAverage(
     points: Array<[number, Array<number>]>,
     xVal: Array<number>,
@@ -55,9 +49,7 @@ function accumulateAverage(
     points.push([xValue, yValue]);
 }
 
-/**
- * @private
- */
+/** @internal */
 function getTR(
     currentPoint: Array<number>,
     prevPoint: Array<number>
@@ -72,9 +64,7 @@ function getTR(
     return TR;
 }
 
-/**
- * @private
- */
+/** @internal */
 function populateAverage(
     points: Array<[number, Array<number>]>,
     xVal: Array<number>,
@@ -99,7 +89,6 @@ function populateAverage(
 /**
  * The ATR series type.
  *
- * @private
  * @class
  * @name Highcharts.seriesTypes.atr
  *
@@ -117,15 +106,16 @@ class ATRIndicator extends SMAIndicator {
      * Average true range indicator (ATR). This series requires `linkedTo`
      * option to be set.
      *
-     * @sample stock/indicators/atr
+     * @sample {highstock} stock/indicators/atr
      *         ATR indicator
      *
      * @extends      plotOptions.sma
      * @since        6.0.0
      * @product      highstock
-     * @requires     stock/indicators/indicators
-     * @requires     stock/indicators/atr
+     * @requires     indicators/indicators
+     * @requires     indicators/atr
      * @optionparent plotOptions.atr
+     * @internal
      */
     public static defaultOptions: ATROptions = merge(SMAIndicator.defaultOptions, {
         /**
@@ -152,8 +142,9 @@ class ATRIndicator extends SMAIndicator {
      *
      * */
 
+    /** @internal */
     public getValues<TLinkedSeries extends LineSeries>(
-        series: TLinkedSeries,
+        series: TLinkedSeries&IndicatorLinkedSeriesBase,
         params: ATRParamsOptions
     ): (IndicatorValuesObject<TLinkedSeries>|undefined) {
         const period: number = (params.period as any),
@@ -234,6 +225,7 @@ interface ATRIndicator {
  *  Registry
  *
  * */
+
 declare module '../../../Core/Series/SeriesType' {
     interface SeriesTypeRegistry {
         atr: typeof ATRIndicator;
@@ -263,9 +255,8 @@ export default ATRIndicator;
  * @extends   series,plotOptions.atr
  * @since     6.0.0
  * @product   highstock
- * @excluding dataParser, dataURL
- * @requires  stock/indicators/indicators
- * @requires  stock/indicators/atr
+ * @requires  indicators/indicators
+ * @requires  indicators/atr
  * @apioption series.atr
  */
 

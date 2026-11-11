@@ -1,3 +1,10 @@
+---
+description: >-
+  Configure chart zooming and panning for mouse and touch interactions. Learn
+  which modules enable wheel and non-cartesian zooming, and how default
+  navigation behavior differs between Highcharts Core and Stock.
+---
+
 Zooming
 =======
 
@@ -14,6 +21,10 @@ is set, the user can press that key and drag the mouse in order to pan.
 Otherwise, the user can't pan the zoomed area but has to zoom out then in again
 on a new area.
 
+When both zooming and panning are enabled without their corresponding action keys
+([chart.zooming.key](https://api.highcharts.com/highcharts/chart.zooming.key)
+and [chart.panKey](https://api.highcharts.com/highcharts/chart.panKey)), zooming will take precedence over panning by default.
+
 When zooming, a button appears that lets the user zoom out. Programmatically,
 the _Chart.zoomOut_ function can be used to the same effect.
 
@@ -28,9 +39,23 @@ and
 [endOnTick](https://api.highcharts.com/highcharts/yAxis.endOnTick)
 are set to `false`.
 
-Since v11.1, mouse wheel zooming is available through the [zooming.mouseWheel](https://api.highcharts.com/highcharts/chart.zooming.mouseWheel) option set. It requires a [separate module
+#### Mouse wheel zooming
+Mouse wheel zooming is available through the
+[zooming.mouseWheel](https://api.highcharts.com/highcharts/chart.zooming.mouseWheel)
+option set (since v11.1). It requires a [separate module
 file](https://code.highcharts.com/modules/mouse-wheel-zoom.js) for Highcharts Core,
 but is bundled in Highcharts Stock.
+
+#### Non-cartesian zooming
+Zooming is also available for non-cartesian series, such as pie, treegraph,
+sankey amongst others (since v12.3). To enable zooming for non-cartesian series,
+you need to include an [additional module
+file](https://code.highcharts.com/modules/non-cartesian-zoom.js). The panning
+and zooming behavior for non-cartesian series mirrors that of cartesian series,
+with support for mouse drag, touch gestures, and mouse wheel zooming (when
+enabled). The zoom rectangle in non-cartesian zooming has a fixed aspect ratio
+that matches the chart's width-to-height ratio, as this ensures consistent and
+meaningful zoom behavior for these types of series.
 
 ### Highcharts Stock
 

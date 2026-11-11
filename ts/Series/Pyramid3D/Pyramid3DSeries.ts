@@ -2,12 +2,13 @@
  *
  *  Highcharts pyramid3d series module
  *
- *  (c) 2010-2024 Highsoft AS
+ *  (c) 2010-2026 Highsoft AS
  *  Author: Kacper Madej
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  * */
 
@@ -23,12 +24,9 @@ import type Pyramid3DPoint from './Pyramid3DPoint';
 import type Pyramid3DSeriesOptions from './Pyramid3DSeriesOptions';
 
 import Pyramid3DSeriesDefaults from './Pyramid3DSeriesDefaults.js';
+import Funnel3DSeries from '../Funnel3D/Funnel3DSeries.js';
 import SeriesRegistry from '../../Core/Series/SeriesRegistry.js';
-const {
-    funnel3d: Funnel3DSeries
-} = SeriesRegistry.seriesTypes;
-import U from '../../Core/Utilities.js';
-const { merge } = U;
+import { merge } from '../../Shared/Utilities.js';
 
 /* *
  *
@@ -39,6 +37,7 @@ const { merge } = U;
 /**
  * The pyramid3d series type.
  *
+ * @internal
  * @class
  * @name Highcharts.seriesTypes.pyramid3d
  * @augments seriesTypes.funnel3d
@@ -55,6 +54,7 @@ class Pyramid3DSeries extends Funnel3DSeries {
      *
      * */
 
+    /** @internal */
     public static defaultOptions: Pyramid3DSeriesOptions = merge(
         Funnel3DSeries.defaultOptions,
         Pyramid3DSeriesDefaults
@@ -80,6 +80,7 @@ class Pyramid3DSeries extends Funnel3DSeries {
  *
  * */
 
+/** @internal */
 interface Pyramid3DSeries {
     pointClass: typeof Pyramid3DPoint;
 }

@@ -20,7 +20,9 @@ Math.easeOutBounce = pos => {
 
 
 const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-let mapLoaded = false;
+// let mapLoaded = false;
+let pointRadius = 37;
+let pointCenterRadius = 14;
 
 
 const imgPath = 'https://www.highcharts.com/samples/graphics/homepage/';
@@ -43,44 +45,73 @@ const maps = {
             load: function () {
                 const chart = this;
 
-                const mapPointPoint = document.querySelector(
-                    '.map-point-point'
-                );
-                const mapPointTop = document.getElementsByClassName(
-                    'map-point-top'
-                )[1];
-                const mapPointCenter = document.getElementsByClassName(
-                    'map-point-center'
-                )[1];
+                // const mapPointPoint = document.querySelector(
+                //     '.map-point-point'
+                // );
+                // const mapPointTop = document.getElementsByClassName(
+                //     'map-point-top'
+                // )[1];
+                // const mapPointCenter = document.getElementsByClassName(
+                //     'map-point-center'
+                // )[1];
+                const mapPointSeries = chart.series[14];
+                const mapPointCenterSeries = chart.series[15];
+                // const mapPointPointerSeries = chart.series[16];
                 const leftSide =  document.querySelector('.left');
                 const rightSide =  document.querySelector('.right');
-                const top =  document.querySelector('.top');
-                const bottom =  document.querySelector('.bottom');
-                const background = document.getElementsByClassName(
-                    'highcharts-plot-background'
-                )[0];
+                // const top =  document.querySelector('.top');
+                // const bottom =  document.querySelector('.bottom');
+                // const background = document.getElementsByClassName(
+                //     'highcharts-plot-background'
+                // )[0];
 
-                const finalHide = function () {
-                    [].forEach.call(
-                        document.getElementsByClassName('particle'),
-                        p => p.classList.add('fade')
-                    );
-                    [].forEach.call(
-                        document.getElementsByClassName('green'),
-                        g => g.classList.add('fade')
-                    );
+                // if(chart.chartWidth >= 775) {
+                //     pointRadius = 58;
+                //     pointCenterRadius = 22;
+                // }
 
-                    leftSide.classList.add('fade');
-                    rightSide.classList.add('fade');
-                    bottom.classList.add('fade');
-                    top.classList.add('fade');
-                    leftSide.style.transition = 'all 1s';
-                    rightSide.style.transition = 'all 1s';
-                    mapPointPoint.classList.add('hide');
-                    mapPointTop.classList.add('hide');
-                    mapPointCenter.classList.add('hide');
-                    background.style.fill = '#1f1836';
-                };
+                pointRadius = parseFloat(chart.chartWidth * 0.072);
+                pointCenterRadius = parseFloat(chart.chartWidth * 0.03);
+
+                mapPointSeries.update({
+                    marker: {
+                        enabled: true,
+                        symbol: 'circle',
+                        radius: pointRadius
+                    }
+                }, false);
+
+                mapPointCenterSeries.update({
+                    marker: {
+                        enabled: true,
+                        symbol: 'circle',
+                        radius: pointCenterRadius
+                    }
+                }, false);
+
+                chart.redraw();
+
+                // const finalHide = function () {
+                //     [].forEach.call(
+                //         document.getElementsByClassName('particle'),
+                //         p => p.classList.add('fade')
+                //     );
+                //     [].forEach.call(
+                //         document.getElementsByClassName('green'),
+                //         g => g.classList.add('fade')
+                //     );
+
+                //     leftSide.classList.add('fade');
+                //     rightSide.classList.add('fade');
+                //     bottom.classList.add('fade');
+                //     top.classList.add('fade');
+                //     leftSide.style.transition = 'all 1s';
+                //     rightSide.style.transition = 'all 1s';
+                //     mapPointPoint.classList.add('hide');
+                //     mapPointTop.classList.add('hide');
+                //     mapPointCenter.classList.add('hide');
+                //     background.style.fill = '#1f1836';
+                // };
 
 
                 const updateData = function () {
@@ -151,15 +182,15 @@ const maps = {
                         growEnvelope();
                     }
                     // /grow the map marker
-                    mapPointPoint.classList.add('grow');
-                    mapPointTop.classList.add('grow');
-                    mapPointCenter.classList.add('grow');
+                    // mapPointPoint.classList.add('grow');
+                    // mapPointTop.classList.add('grow');
+                    // mapPointCenter.classList.add('grow');
                 }, 1000);
 
                 setTimeout(function () {
-                    // /animation is don
-                    // /hide everything
-                    finalHide();
+                    // animation is done
+                    // hide everything
+                    // finalHide();
                 }, 4000);
 
             }
@@ -467,12 +498,7 @@ const maps = {
             data: [
                 {
                     x: 10,
-                    y: 8.4, // 11,
-                    marker: {
-                        enabled: true,
-                        symbol: 'circle',
-                        radius: 37
-                    }
+                    y: 8.4
                 }
             ],
             zIndex: 15,
@@ -488,12 +514,7 @@ const maps = {
             data: [
                 {
                     x: 10,
-                    y: 8.44,
-                    marker: {
-                        enabled: true,
-                        symbol: 'circle',
-                        radius: 14
-                    }
+                    y: 8.44
                 }
             ],
             zIndex: 19,
@@ -587,168 +608,168 @@ const maps = {
     ]
 };
 
-const finalMap = function () {
-    (async () => {
+// const finalMap = function () {
+//     (async () => {
 
-        // Load the dataset
-        const data = await fetch(
-            'https://www.highcharts.com/samples/data/world-population-density.json'
-        ).then(response => response.json());
+//         // Load the dataset
+//         const data = await fetch(
+//             'https://www.highcharts.com/samples/data/world-population-density.json'
+//         ).then(response => response.json());
 
-        // Assign id's
-        data.forEach(function (p) {
-            p.id = p.code;
-        });
+//         // Assign id's
+//         data.forEach(function (p) {
+//             p.id = p.code;
+//         });
 
-        // Initialize the chart
-        Highcharts.mapChart('maps', {
-            chart: {
-                styledMode: true,
-                animation: {
+//         // Initialize the chart
+//         Highcharts.mapChart('maps', {
+//             chart: {
+//                 styledMode: true,
+//                 animation: {
 
-                    duration: 1000
+//                     duration: 1000
 
-                },
-                events: {
-                    load: function () {
-                        const mapSeries = document.querySelector(
-                            '.highcharts-map-series'
-                        );
-                        const title = document.querySelector(
-                            '.highcharts-title'
-                        );
-                        const subtitle = document.querySelector(
-                            '.highcharts-subtitle'
-                        );
-                        mapSeries.style.opacity = 0;
-                        setTimeout(function () {
-                            mapSeries.style.opacity = 0;
-                            title.classList.add('fade-in');
-                            subtitle.classList.add('fade-in');
-                        }, 200);
+//                 },
+//                 events: {
+//                     load: function () {
+//                         const mapSeries = document.querySelector(
+//                             '.highcharts-map-series'
+//                         );
+//                         const title = document.querySelector(
+//                             '.highcharts-title'
+//                         );
+//                         const subtitle = document.querySelector(
+//                             '.highcharts-subtitle'
+//                         );
+//                         mapSeries.style.opacity = 0;
+//                         setTimeout(function () {
+//                             mapSeries.style.opacity = 0;
+//                             title.classList.add('fade-in');
+//                             subtitle.classList.add('fade-in');
+//                         }, 200);
 
-                        setTimeout(function () {
-                            mapSeries.classList.add('fade-in');
-                        }, 500);
+//                         setTimeout(function () {
+//                             mapSeries.classList.add('fade-in');
+//                         }, 500);
 
 
-                        setTimeout(function () {
-                            mapLoaded  = true;
-                        }, 2000);
-                    },
-                    redraw: function () {
-                        const mapSeries = document.querySelector(
-                            '.highcharts-map-series'
-                        );
-                        if (mapLoaded) {
-                            mapSeries.classList.add('show');
-                        }
-                    }
-                }
-            },
-            credits: {
-                enabled: false
-            },
-            title: {
-                text: 'World Population Density',
-                style: {
-                    fontFamily: 'IBM Plex Sans',
-                    color: '#fff'
-                }
-            },
-            exporting: {
-                enabled: false
-            },
-            legend: {
-                title: {
-                    text: 'Population density per km²'
-                },
-                labelStyle: {
-                    color: '#fff'
+//                         setTimeout(function () {
+//                             mapLoaded  = true;
+//                         }, 2000);
+//                     },
+//                     redraw: function () {
+//                         const mapSeries = document.querySelector(
+//                             '.highcharts-map-series'
+//                         );
+//                         if (mapLoaded) {
+//                             mapSeries.classList.add('show');
+//                         }
+//                     }
+//                 }
+//             },
+//             credits: {
+//                 enabled: false
+//             },
+//             title: {
+//                 text: 'World Population Density',
+//                 style: {
+//                     fontFamily: 'IBM Plex Sans',
+//                     color: '#fff'
+//                 }
+//             },
+//             exporting: {
+//                 enabled: false
+//             },
+//             legend: {
+//                 title: {
+//                     text: 'Population density per km²'
+//                 },
+//                 labelStyle: {
+//                     color: '#fff'
 
-                },
-                floating: true,
-                y: 20
-            },
-            colorAxis: {
-                min: 1,
-                max: 1000,
-                type: 'logarithmic',
-                maxColor: '#4455f2'
-            },
-            mapNavigation: {
-                enabled: true,
-                buttonOptions: {
-                    verticalAlign: 'bottom',
-                    x: 5
-                }
-            },
-            // mapView: {
-            //     center: [4100, 8280], // In terms of pre-projected units
-            //     zoom: 0.1
-            // },
-            tooltip: {
-                useHTML: true,
-                distance: -15,
-                formatter: function () {
-                    const htmlString =
-                        `<div class="tip-grid">
-                        <div class="tip-content">
-                            <div class="dot"></div>${this.point.name}
-                        </div>
-                        <i class="fas fa-caret-down tip-point"></i>
-                        </div>
-                        `;
-                    return htmlString;
-                },
-                valueSuffix: '/km²'
-            },
-            series: [{
-                data: data,
-                mapData: Highcharts.maps['custom/world-highres'],
-                joinBy: ['iso-a2', 'code'],
-                name: 'Population density',
-                allowPointSelect: true,
-                cursor: 'pointer',
-                events: {
-                    click: function (e) {
-                        e.point.zoomTo();
-                    }
-                }
+//                 },
+//                 floating: true,
+//                 y: 20
+//             },
+//             colorAxis: {
+//                 min: 1,
+//                 max: 1000,
+//                 type: 'logarithmic',
+//                 maxColor: '#4455f2'
+//             },
+//             mapNavigation: {
+//                 enabled: true,
+//                 buttonOptions: {
+//                     verticalAlign: 'bottom',
+//                     x: 5
+//                 }
+//             },
+//             // mapView: {
+//             //     center: [4100, 8280], // In terms of pre-projected units
+//             //     zoom: 0.1
+//             // },
+//             tooltip: {
+//                 useHTML: true,
+//                 distance: -15,
+//                 formatter: function () {
+//                     const htmlString =
+//                         `<div class="tip-grid">
+//                         <div class="tip-content">
+//                             <div class="dot"></div>${this.point.name}
+//                         </div>
+//                         <i class="fas fa-caret-down tip-point"></i>
+//                         </div>
+//                         `;
+//                     return htmlString;
+//                 },
+//                 valueSuffix: '/km²'
+//             },
+//             series: [{
+//                 data: data,
+//                 mapData: Highcharts.maps['custom/world-highres'],
+//                 joinBy: ['iso-a2', 'code'],
+//                 name: 'Population density',
+//                 allowPointSelect: true,
+//                 cursor: 'pointer',
+//                 events: {
+//                     click: function (e) {
+//                         e.point.zoomTo();
+//                     }
+//                 }
 
-            }],
-            responsive: {
-                rules: [{
-                    condition: {
-                        maxWidth: 400
-                    },
-                    chartOptions: {
-                        subtitle: {
-                            text: ''
-                        },
-                        chart: {
-                            margin: [40, 1, 65, 0]
-                        }
-                    }
-                },
-                {
-                    condition: {
-                        minWidth: 401
-                    },
-                    chartOptions: {
-                        subtitle: {
-                            text: 'Click a country to zoom to it.'
-                        },
-                        chart: {
-                            margin: [60, 1, 65, 0]
-                        }
+//             }],
+//             responsive: {
+//                 rules: [{
+//                     condition: {
+//                         maxWidth: 400
+//                     },
+//                     chartOptions: {
+//                         subtitle: {
+//                             text: ''
+//                         },
+//                         chart: {
+//                             margin: [40, 1, 65, 0]
+//                         }
+//                     }
+//                 },
+//                 {
+//                     condition: {
+//                         minWidth: 401
+//                     },
+//                     chartOptions: {
+//                         subtitle: {
+//                             text: 'Click a country to zoom to it.'
+//                         },
+//                         chart: {
+//                             margin: [60, 1, 65, 0]
+//                         }
 
-                    }
-                }]
-            }
-        });
-    })();
-};
+//                     }
+//                 }]
+//             }
+//         });
+//     })();
+// };
 
 document.addEventListener('DOMContentLoaded', function () {
     Highcharts.mapChart('maps', maps);
@@ -758,7 +779,7 @@ document.addEventListener('DOMContentLoaded', function () {
         dtime = 5500;
     }
     setTimeout(function () {
-        finalMap();
+    //  finalMap();
     }, dtime);
 
 });

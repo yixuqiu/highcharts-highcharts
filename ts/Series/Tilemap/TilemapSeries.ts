@@ -1,13 +1,14 @@
 /* *
  *
- *  Tilemaps module
+ *  Tilemap module
  *
- *  (c) 2010-2024 Highsoft AS
+ *  (c) 2010-2026 Highsoft AS
  *  Author: Øystein Moseng
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  * */
 
@@ -27,22 +28,14 @@ const {
     composed,
     noop
 } = H;
+import ColumnSeries from '../Column/ColumnSeries.js';
+import HeatmapSeries from '../Heatmap/HeatmapSeries.js';
+import ScatterSeries from '../Scatter/ScatterSeries.js';
 import SeriesRegistry from '../../Core/Series/SeriesRegistry.js';
-const {
-    column: ColumnSeries,
-    heatmap: HeatmapSeries,
-    scatter: ScatterSeries
-} = SeriesRegistry.seriesTypes;
 import TilemapPoint from './TilemapPoint.js';
 import TilemapSeriesDefaults from './TilemapSeriesDefaults.js';
 import TilemapShapes from './TilemapShapes.js';
-import U from '../../Core/Utilities.js';
-const {
-    addEvent,
-    extend,
-    merge,
-    pushUnique
-} = U;
+import { addEvent, extend, merge, pushUnique } from '../../Shared/Utilities.js';
 
 /* *
  *
@@ -50,14 +43,14 @@ const {
  *
  * */
 
-declare module '../../Core/Axis/AxisLike' {
-    interface AxisLike {
+declare module '../../Core/Axis/AxisBase' {
+    interface AxisBase {
         recomputingForTilemap?: boolean;
     }
 }
 
-declare module '../../Core/Series/SeriesLike' {
-    interface SeriesLike {
+declare module '../../Core/Series/SeriesBase' {
+    interface SeriesBase {
         getSeriesPixelPadding?(axis: Axis): Record<string, number>;
     }
 }
@@ -78,7 +71,7 @@ declare module '../../Core/Series/SeriesOptions' {
  * Extension to add pixel padding for series. Uses getSeriesPixelPadding on each
  * series and adds the largest padding required. If no series has this function
  * defined, we add nothing.
- * @private
+ * @internal
  */
 function onAxisAfterSetAxisTranslation(
     this: Axis
@@ -127,7 +120,6 @@ function onAxisAfterSetAxisTranslation(
  * */
 
 /**
- * @private
  * @class
  * @name Highcharts.seriesTypes.tilemap
  *
@@ -141,6 +133,7 @@ class TilemapSeries extends HeatmapSeries {
      *
      * */
 
+    /** @internal */
     public static defaultOptions: TilemapSeriesOptions = merge(
         HeatmapSeries.defaultOptions,
         TilemapSeriesDefaults
@@ -152,6 +145,7 @@ class TilemapSeries extends HeatmapSeries {
      *
      * */
 
+    /** @internal */
     public static compose(
         AxisClass: typeof Axis
     ): void {
@@ -178,6 +172,7 @@ class TilemapSeries extends HeatmapSeries {
 
     public points!: Array<TilemapPoint>;
 
+    /** @internal */
     public tileShape!: TilemapShapes.DefinitionObject;
 
     /* *
@@ -188,12 +183,13 @@ class TilemapSeries extends HeatmapSeries {
 
     /**
      * Use the shape's defined data label alignment function.
-     * @private
+     * @internal
      */
     public alignDataLabel(): void {
         return this.tileShape.alignDataLabel.apply(this, arguments);
     }
 
+    /** @internal */
     public drawPoints(): void {
         // In styled mode, use CSS, otherwise the fill used in the style
         // sheet will take precedence over the fill attribute.
@@ -209,7 +205,7 @@ class TilemapSeries extends HeatmapSeries {
 
     /**
      * Get metrics for padding of axis for this series.
-     * @private
+     * @internal
      */
     public getSeriesPixelPadding(
         axis: Axis
@@ -267,7 +263,7 @@ class TilemapSeries extends HeatmapSeries {
 
     /**
      * Set tile shape object on series.
-     * @private
+     * @internal
      */
     public setOptions(): TilemapSeriesOptions {
         // Call original function
@@ -281,7 +277,7 @@ class TilemapSeries extends HeatmapSeries {
 
     /**
      * Use translate from tileShape.
-     * @private
+     * @internal
      */
     public translate(): void {
         return this.tileShape.translate.apply(this, arguments);
@@ -296,6 +292,7 @@ class TilemapSeries extends HeatmapSeries {
  * */
 
 interface TilemapSeries {
+    /** @internal */
     pointClass: typeof TilemapPoint;
 }
 

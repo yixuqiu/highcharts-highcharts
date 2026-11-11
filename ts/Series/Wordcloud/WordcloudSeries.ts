@@ -1,13 +1,14 @@
 /* *
  *
- *  Experimental Highcharts module which enables visualization of a word cloud.
+ *  Highcharts module which enables visualization of a word cloud.
  *
- *  (c) 2016-2024 Highsoft AS
- *  Authors: Jon Arild Nygard
+ *  (c) 2016-2026 Highsoft AS
+ *  Authors: Jon Arild Nygård
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  * */
 
 'use strict';
@@ -33,21 +34,18 @@ import DPU from '../DrawPointUtilities.js';
 import H from '../../Core/Globals.js';
 const { noop } = H;
 import Series from '../../Core/Series/Series.js';
+import ColumnSeries from '../Column/ColumnSeries.js';
 import SeriesRegistry from '../../Core/Series/SeriesRegistry.js';
-const {
-    column: ColumnSeries
-} = SeriesRegistry.seriesTypes;
-import U from '../../Core/Utilities.js';
-const {
+import WordcloudPoint from './WordcloudPoint.js';
+import WordcloudSeriesDefaults from './WordcloudSeriesDefaults.js';
+import WU from './WordcloudUtils.js';
+import {
     extend,
     isArray,
     isNumber,
     isObject,
     merge
-} = U;
-import WordcloudPoint from './WordcloudPoint.js';
-import WordcloudSeriesDefaults from './WordcloudSeriesDefaults.js';
-import WU from './WordcloudUtils.js';
+} from '../../Shared/Utilities.js';
 const {
     archimedeanSpiral,
     extendPlayingField,
@@ -74,7 +72,6 @@ const {
  * */
 
 /**
- * @private
  * @class
  * @name Highcharts.seriesTypes.wordcloud
  *
@@ -88,6 +85,7 @@ class WordcloudSeries extends ColumnSeries {
      *
      * */
 
+    /** @internal */
     public static defaultOptions: WordcloudSeriesOptions = merge(
         ColumnSeries.defaultOptions,
         WordcloudSeriesDefaults
@@ -99,15 +97,20 @@ class WordcloudSeries extends ColumnSeries {
      *
      * */
     public data!: Array<WordcloudPoint>;
+    /** @internal */
+    public defaultScale?: number;
+    /** @internal */
+    public field?: WordcloudSeries.WordcloudFieldObject;
     public options!: WordcloudSeriesOptions;
     public points!: Array<WordcloudPoint>;
 
-    /**
+    /* *
      *
      * Functions
      *
-     */
+     * */
 
+    /** @internal */
     public pointAttribs(
         point: WordcloudPoint,
         state?: StatesOptionsKey
@@ -124,7 +127,7 @@ class WordcloudSeries extends ColumnSeries {
     /**
      * Calculates the fontSize of a word based on its weight.
      *
-     * @private
+     * @internal
      * @function Highcharts.Series#deriveFontSize
      *
      * @param {number} [relativeWeight=0]
@@ -152,7 +155,17 @@ class WordcloudSeries extends ColumnSeries {
         return Math.floor(Math.max(min, weight * max));
     }
 
+    /** @internal */
     public drawPoints(): void {
+        if (
+            this.zooming ||
+            (
+                this.defaultScale &&
+                this.group.scaleX !== this.defaultScale
+            )
+        ) {
+            return;
+        }
         const series = this,
             hasRendered = series.hasRendered,
             xAxis = series.xAxis,
@@ -344,13 +357,17 @@ class WordcloudSeries extends ColumnSeries {
         testElement = testElement.destroy() as any;
 
         // Scale the series group to fit within the plotArea.
-        const scale = getScale(xAxis.len, yAxis.len, field);
+        series.defaultScale = getScale(xAxis.len, yAxis.len, field);
+
+        series.field = field;
+
         series.group.attr({
-            scaleX: scale,
-            scaleY: scale
+            scaleX: series.defaultScale,
+            scaleY: series.defaultScale
         });
     }
 
+    /** @internal */
     public hasData(): boolean {
         const series = this;
 
@@ -362,23 +379,138 @@ class WordcloudSeries extends ColumnSeries {
         );
     }
 
-    public getPlotBox(): Series.PlotBoxTransform {
+    /** @internal */
+    public getPlotBox(name?: string): Series.PlotBoxTransform {
         const series = this,
-            chart = series.chart,
-            inverted = chart.inverted,
+            { chart, group, zooming } = this,
+            { plotSizeX = 0, plotSizeY = 0, inverted } = chart,
             // Swap axes for inverted (#2339)
             xAxis = series[(inverted ? 'yAxis' : 'xAxis')],
             yAxis = series[(inverted ? 'xAxis' : 'yAxis')],
             width = xAxis ? xAxis.len : chart.plotWidth,
             height = yAxis ? yAxis.len : chart.plotHeight,
             x = xAxis ? xAxis.left : chart.plotLeft,
-            y = yAxis ? yAxis.top : chart.plotTop;
+            y = yAxis ? yAxis.top : chart.plotTop,
+            field = series.field;
+
+        let left = 0,
+            top = 0,
+            translateX = x + width / 2,
+            translateY = y + height / 2,
+            initLeft = translateX,
+            initTop = translateY,
+            scale = series.defaultScale || 1,
+            seriesHeight = 0,
+            seriesWidth = 0;
+
+        if (field) {
+            seriesHeight =
+                Math.max(Math.abs(field.top), Math.abs(field.bottom)) * 2;
+            seriesWidth =
+                Math.max(Math.abs(field.left), Math.abs(field.right)) * 2;
+        }
+
+        if (inverted) {
+            [seriesWidth, seriesHeight] = [seriesHeight, seriesWidth];
+        }
+
+        if (group && zooming) {
+            // Uncomment this block to visualize the zooming
+            // bounding box and the point, which is normalized
+            // position to zoom-in
+            // chart.renderer.rect(
+            //    (plotSizeX - seriesWidth) / 2 + zooming.x * plotSizeX +
+            //        chart.plotLeft,
+            //    (plotSizeY - seriesHeight) / 2 + zooming.y * plotSizeY +
+            //        chart.plotTop,
+            //    zooming.width * plotSizeX,
+            //    zooming.height * plotSizeY,
+            //    0,
+            //    2
+            // ).attr({
+            //    stroke: 'red'
+            // }).add();
+
+            // chart.renderer.circle(
+            //    (plotSizeX - seriesWidth) / 2 + zooming.zoomX * plotSizeX +
+            //        chart.plotLeft,
+            //    (plotSizeY - seriesHeight) / 2 + zooming.zoomY * plotSizeY +
+            //        chart.plotTop,
+            //    2
+            // ).attr({
+            //    stroke: 'blue'
+            // }).add();
+
+            scale = Math.max(zooming.scale, series.defaultScale || 1);
+
+            const newWidth = Math.max(seriesWidth * scale, width),
+                newHeight = Math.max(seriesHeight * scale, height),
+                newMiddleX = x + newWidth / 2,
+                newMiddleY = y + newHeight / 2,
+                scaleDiff = scale - (group.scaleX || 1);
+
+            left = scaleDiff * (
+                (plotSizeX - seriesWidth) / 2 +
+                    zooming.zoomX * plotSizeX - width / 2
+            );
+            top = scaleDiff * (
+                (plotSizeY - seriesHeight) / 2 +
+                    zooming.zoomY * plotSizeY - height / 2
+            );
+
+            if (name === 'series') {
+                zooming.x = Math.max(
+                    0,
+                    Math.min(
+                        1 - zooming.width,
+                        zooming.x + (zooming.panX / zooming.scale)
+                    )
+                );
+                left += zooming.panX * plotSizeX;
+                zooming.panX = 0;
+                zooming.y = Math.max(
+                    0,
+                    Math.min(
+                        1 - zooming.height,
+                        zooming.y + (zooming.panY / zooming.scale)
+                    )
+                );
+                top += zooming.panY * plotSizeY;
+                zooming.panY = 0;
+            }
+
+            if (isNumber(group.translateX) && isNumber(group.translateY)) {
+                initLeft = group.translateX;
+                initTop = group.translateY;
+            }
+
+            translateX = initLeft - left;
+            translateY = initTop - top;
+
+            // Do not allow to move outside the chart
+            // Vertical lock
+            if (translateY > newMiddleY) {
+                translateY = newMiddleY;
+            } else if (
+                translateY < 2 * y + height - newMiddleY
+            ) {
+                translateY = 2 * y + height - newMiddleY;
+            }
+            // Horizontal lock
+            if (translateX > newMiddleX) {
+                translateX = newMiddleX;
+            } else if (
+                translateX < 2 * x + width - newMiddleX
+            ) {
+                translateX = 2 * x + width - newMiddleX;
+            }
+        }
 
         return {
-            translateX: x + (width / 2),
-            translateY: y + (height / 2),
-            scaleX: 1, // #1623
-            scaleY: 1
+            translateX: translateX,
+            translateY: translateY,
+            scaleX: scale,
+            scaleY: scale
         };
     }
 }
@@ -389,10 +521,15 @@ class WordcloudSeries extends ColumnSeries {
  *
  * */
 interface WordcloudSeries {
+    /** @internal */
     placementStrategy: Record<string, WordcloudSeries.WordcloudPlacementFunction>;
+    /** @internal */
     pointArrayMap: Array<string>;
+    /** @internal */
     pointClass: typeof WordcloudPoint;
+    /** @internal */
     spirals: Record<string, WordcloudSeries.WordcloudSpiralFunction>;
+    /** @internal */
     utils: typeof WU;
 }
 
@@ -471,6 +608,7 @@ SeriesRegistry.registerSeriesType('wordcloud', WordcloudSeries);
  *
  * */
 
+/** @internal */
 namespace WordcloudSeries {
     export interface WordcloudFieldObject extends PolygonBoxObject, SizeObject {
         ratioX: number;

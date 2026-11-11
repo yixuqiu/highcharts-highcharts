@@ -1,10 +1,12 @@
 /* *
  *
- *  (c) 2010-2024 Torstein Honsi
+ *  (c) 2010-2026 Highsoft AS
+ *  Author: Torstein Hønsi
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  * */
 
@@ -19,17 +21,18 @@
 import type { XAxisOptions } from './Axis/AxisOptions';
 import type { ChartOptions } from './Chart/ChartOptions';
 import type { SeriesOptions } from './Series/SeriesOptions';
+import type { LegendOptions } from './Legend/LegendOptions';
 
 import Axis from './Axis/Axis.js';
 import Chart from './Chart/Chart.js';
+import Legend from './Legend/Legend.js';
 import Series from './Series/Series.js';
-import U from './Utilities.js';
-const {
+import {
     addEvent,
     isFunction,
     objectEach,
     removeEvent
-} = U;
+} from '../Shared/Utilities.js';
 
 /* *
  *
@@ -37,6 +40,7 @@ const {
  *
  * */
 
+/** @internal */
 namespace Foundation {
 
     /* *
@@ -45,18 +49,17 @@ namespace Foundation {
      *
      * */
 
-    /* eslint-disable valid-jsdoc */
 
     /**
      * Register event options. If an event handler is set on the options, it
      * should be subject to Chart.update, Axis.update and Series.update. This is
      * contrary to general handlers that are set directly using addEvent either
      * on the class or on the instance. #6538, #6943, #10861.
-     * @private
+     * @internal
      */
     export function registerEventOptions(
-        component: Axis|Chart|Series,
-        options: XAxisOptions|ChartOptions|SeriesOptions
+        component: Axis|Chart|Legend|Series,
+        options: XAxisOptions|ChartOptions|LegendOptions|SeriesOptions
     ): void {
 
         // A lookup over those events that are added by _options_ (not
@@ -100,4 +103,5 @@ namespace Foundation {
  *
  * */
 
+/** @internal */
 export default Foundation;

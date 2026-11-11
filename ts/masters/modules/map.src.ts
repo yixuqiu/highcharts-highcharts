@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: LicenseRef-Highcharts
 /**
  * @license Highmaps JS v@product.version@ (@product.date@)
  * @module highcharts/modules/map
@@ -5,9 +6,11 @@
  *
  * Highmaps as a plugin for Highcharts or Highcharts Stock.
  *
- * (c) 2011-2024 Torstein Honsi
+ * (c) 2011-2026 Highsoft AS
+ * Author: Torstein Hønsi
  *
- * License: www.highcharts.com/license
+ * A commercial license may be required depending on use,
+ * see www.highcharts.com/license
  */
 'use strict';
 import Highcharts from '../../Core/Globals.js';
@@ -37,7 +40,7 @@ G.geojson = GeoJSONComposition.geojson;
 G.topo2geo = GeoJSONComposition.topo2geo;
 // Compositions
 GeoJSONComposition.compose(G.Chart);
-MapBubbleSeries.compose(G.Axis, G.Chart, G.Legend, G.Series);
+MapBubbleSeries.compose(G.Axis, G.Chart, G.Legend);
 MapNavigation.compose(MapChart, G.Pointer, G.SVGRenderer);
 MapView.compose(MapChart);
 // Default Export

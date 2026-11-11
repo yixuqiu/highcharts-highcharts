@@ -1,10 +1,11 @@
 /* *
  *
- *  (c) 2009-2024 Highsoft AS
+ *  (c) 2009-2026 Highsoft AS
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  *  Authors:
  *  - Sebastian Bochan
@@ -13,23 +14,23 @@
  *  - Sophie Bremer
  *
  * */
-import U from '../../Core/Utilities.js';
 import type Row from '../Layout/Row.js';
 import type Cell from '../Layout/Cell.js';
+import type { ContextDetails } from './ContextDetection';
 import Globals from '../Globals.js';
 import EditGlobals from '../EditMode/EditGlobals.js';
 import EditMode from '../EditMode/EditMode.js';
 import { HTMLDOMElement } from '../../Core/Renderer/DOMElementType.js';
 import GUIElement from '../Layout/GUIElement.js';
 import ContextDetection from './ContextDetection.js';
-
-const {
+import {
     addEvent,
-    merge,
+    createElement,
     css,
     fireEvent,
-    createElement
-} = U;
+    merge
+} from '../../Shared/Utilities.js';
+
 
 /**
  * Class providing a drag and drop functionality.
@@ -43,7 +44,7 @@ class DragDrop {
      *
      * */
 
-    protected static readonly defaultOptions: DragDrop.Options = {
+    protected static readonly defaultOptions: Options = {
         enabled: true,
         rowDropOffset: 30,
         cellDropOffset: 30,
@@ -63,12 +64,12 @@ class DragDrop {
      * @param {EditMode} editMode
      * The parent editMode reference.
      *
-     * @param {DragDrop.Options} options
+     * @param {Options} options
      * Options for the DragDrop.
      */
     constructor(
         editMode: EditMode,
-        options?: DragDrop.Options
+        options?: Options
     ) {
         this.editMode = editMode;
         this.options = merge(DragDrop.defaultOptions, options);
@@ -109,7 +110,7 @@ class DragDrop {
     /**
      * DragDrop options.
      */
-    public options: DragDrop.Options;
+    public options: Options;
 
     /**
      * Dragged element reference.
@@ -146,7 +147,7 @@ class DragDrop {
     /**
      * Element to visualize a drop spot.
      */
-    public dropPointer: DragDrop.DropPointer;
+    public dropPointer: DropPointer;
 
     /**
      * Function to call when drag ends (when no context).
@@ -347,12 +348,12 @@ class DragDrop {
                 if (dragDrop.editMode.editCellContext) {
                     dragDrop.editMode.showToolbars(
                         ['row', 'cell'],
-                        dragDrop.editMode.editCellContext
+                        dragDrop.editMode.editCellContext as Cell
                     );
 
                     if (dragDrop.editMode.resizer) {
                         dragDrop.editMode.resizer.setSnapPositions(
-                            dragDrop.editMode.editCellContext
+                            dragDrop.editMode.editCellContext as Cell
                         );
                     }
                 }
@@ -371,12 +372,12 @@ class DragDrop {
      * @param {PointerEvent} e
      * Mouse event.
      *
-     * @param {ContextDetection.ContextDetails} contextDetails
+     * @param {ContextDetails} contextDetails
      * Context details (cell, side)
      */
     public onRowDrag(
         e: PointerEvent,
-        contextDetails?: ContextDetection.ContextDetails
+        contextDetails?: ContextDetails
     ): void {
         const dragDrop = this,
             mouseCellContext = dragDrop.mouseCellContext,
@@ -431,6 +432,8 @@ class DragDrop {
 
     /**
      * Unmounts dropped row and mounts it in a new position.
+     *
+     * @fires DragDrop#layoutChanged
      */
     public onRowDragEnd(): void {
         const dragDrop = this,
@@ -468,6 +471,16 @@ class DragDrop {
 
         dragDrop.hideDropPointer();
         draggedRow.show();
+
+        fireEvent(
+            dragDrop.editMode,
+            'layoutChanged',
+            {
+                type: 'rowDragEnd',
+                target: draggedRow,
+                board: dragDrop.editMode.board
+            }
+        );
     }
 
     /**
@@ -477,12 +490,12 @@ class DragDrop {
      * @param {PointerEvent} e
      * Mouse event.
      *
-     * @param {ContextDetection.ContextDetails} contextDetails
+     * @param {ContextDetails} contextDetails
      * Context details (cell, side)
      */
     public onCellDrag(
         e: PointerEvent,
-        contextDetails?: ContextDetection.ContextDetails
+        contextDetails?: ContextDetails
     ): void {
         const dragDrop = this,
             mouseCellContext = dragDrop.mouseCellContext as Cell,
@@ -506,12 +519,12 @@ class DragDrop {
      * @param {PointerEvent} e
      * Mouse event.
      *
-     * @param {ContextDetection.ContextDetails} context
+     * @param {ContextDetails} context
      * Context details (cell, side)
      */
     public onCellDragCellCtx(
         e: PointerEvent,
-        context: ContextDetection.ContextDetails
+        context: ContextDetails
     ): void {
         const dragDrop = this,
             dropPointerSize = dragDrop.options.dropPointerSize || 0,
@@ -689,6 +702,8 @@ class DragDrop {
      *
      * @param {Cell} contextCell
      * Cell used as a dragDrop context.
+     *
+     * @fires DragDrop#layoutChanged
      */
     public onCellDragEnd(
         contextCell?: Cell
@@ -731,7 +746,7 @@ class DragDrop {
                 row.unmountCell(dropContextCell);
 
                 const newCell = row.addCell({
-                    id: GUIElement.createElementId('col-nested-'),
+                    id: GUIElement.getElementId('col-nested'),
                     layout: {
                         rows: [{}, {}]
                     }
@@ -766,71 +781,69 @@ class DragDrop {
 
         dragDrop.hideDropPointer();
         draggedCell.show();
+
+        fireEvent(
+            dragDrop.editMode,
+            'layoutChanged',
+            {
+                type: 'cellDragEnd',
+                target: draggedCell,
+                board: dragDrop.editMode.board
+            }
+        );
     }
 }
 
 /* *
  *
- *  Class Namespace
+ *  Type Declarations
  *
  * */
 
-namespace DragDrop {
-
-    /* *
+/**
+ * Options for Drag and Drop
+ */
+export interface Options {
+    /**
+     * Offset how far from the cell edge the context (dragged element)
+     * should be detectable.
      *
-     *  Declarations
-     *
-     * */
+     * @default 30
+     */
+    cellDropOffset?: number;
 
     /**
-     * Options for Drag and Drop
+     * Size of the drop pointer in pixels.
+     *
+     * @default 16
      */
-    export interface Options {
-        /**
-         * Offset how far from the cell edge the context (dragged element)
-         * should be detectable.
-         *
-         * @default 30
-         */
-        cellDropOffset?: number;
-
-        /**
-         * Size of the drop pointer in pixels.
-         *
-         * @default 16
-         */
-        dropPointerSize?: number;
-
-        /**
-         * Whether the drag and drop is enabled.
-         *
-         * Try it:
-         * {@link https://jsfiddle.net/gh/get/library/pure/highcharts/highcharts/tree/master/samples/dashboards/edit-mode/dragdrop-disabled/ | Drag drop disabled}
-         *
-         * @default true
-         */
-        enabled?: boolean;
-
-        /**
-         * Offset how far from the row edge the context (dragged element) should
-         * be detectable.
-         *
-         * @default 30
-         */
-        rowDropOffset?: number;
-    }
+    dropPointerSize?: number;
 
     /**
-     * @internal
+     * Whether the drag and drop is enabled.
+     *
+     * Try it:
+     * {@link https://jsfiddle.net/gh/get/library/pure/highcharts/highcharts/tree/master/samples/dashboards/edit-mode/dragdrop-disabled/ | Drag drop disabled}
      */
-    export interface DropPointer {
-        isVisible: boolean;
-        element: HTMLDOMElement;
-        align: string;
-        nested?: boolean;
-    }
+    enabled?: boolean;
 
+    /**
+     * Offset how far from the row edge the context (dragged element) should
+     * be detectable.
+     *
+     * @default 30
+     */
+    rowDropOffset?: number;
+}
+
+/**
+ * @internal
+ */
+export interface DropPointer {
+    isVisible: boolean;
+    element: HTMLDOMElement;
+    align: string;
+    nested?: boolean;
 }
 
 /* *

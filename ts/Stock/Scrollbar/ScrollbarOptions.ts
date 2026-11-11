@@ -1,0 +1,339 @@
+/* *
+ *
+ *  (c) 2010-2026 Torstein Honsi
+ *
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
+ *
+ *
+ * */
+
+/* *
+ *
+ *  Imports
+ *
+ * */
+
+import type ColorType from '../../Core/Color/ColorType';
+
+/* *
+ *
+ *  Declarations
+ *
+ * */
+
+declare module '../../Core/Options'{
+    interface Options {
+        /**
+         * The scrollbar is a means of panning over the X axis of a stock chart.
+         * Scrollbars can also be applied to other types of axes.
+         *
+         * Another approach to scrollable charts is the
+         * [chart.scrollablePlotArea](
+         * https://api.highcharts.com/highcharts/chart.scrollablePlotArea) option
+         * that is especially suitable for simpler cartesian charts on mobile.
+         *
+         * In styled mode, all the presentational options for the
+         * scrollbar are replaced by the classes `.highcharts-scrollbar-thumb`,
+         * `.highcharts-scrollbar-arrow`, `.highcharts-scrollbar-button`,
+         * `.highcharts-scrollbar-rifles` and `.highcharts-scrollbar-track`.
+         *
+         * @sample stock/yaxis/inverted-bar-scrollbar/
+         *         A scrollbar on a simple bar chart
+         *
+         * @product highstock gantt
+         */
+        scrollbar?: ScrollbarOptions;
+    }
+}
+
+export interface ScrollbarOptions {
+
+    /**
+     * The background color of the scrollbar itself.
+     *
+     * @sample stock/scrollbar/style/
+     *         Scrollbar styling
+     *
+     * @default 'var(--highcharts-neutral-color-20)'
+     */
+    barBackgroundColor?: ColorType;
+
+    /**
+     * The color of the scrollbar's border.
+     *
+     * @default 'var(--highcharts-neutral-color-20)'
+     */
+    barBorderColor?: ColorType;
+
+    /**
+     * The border rounding radius of the bar.
+     *
+     * @sample stock/scrollbar/style/
+     *         Scrollbar styling
+     *
+     * @default 5
+     */
+    barBorderRadius?: number;
+
+    /**
+     * The width of the bar's border.
+     *
+     * @sample stock/scrollbar/style/
+     *         Scrollbar styling
+     *
+     * @default 0
+     */
+    barBorderWidth?: number;
+
+    /**
+     * The color of the small arrow inside the scrollbar buttons.
+     *
+     * @sample stock/scrollbar/style/
+     *         Scrollbar styling
+     *
+     * @default 'var(--highcharts-neutral-color-80)'
+     */
+    buttonArrowColor?: ColorType;
+
+    /**
+     * The color of scrollbar buttons.
+     *
+     * @sample stock/scrollbar/style/
+     *         Scrollbar styling
+     *
+     * @default 'var(--highcharts-neutral-color-10)'
+     */
+    buttonBackgroundColor?: ColorType;
+
+    /**
+     * The color of the border of the scrollbar buttons.
+     *
+     * @sample stock/scrollbar/style/
+     *         Scrollbar styling
+     *
+     * @default 'var(--highcharts-neutral-color-20)'
+     */
+    buttonBorderColor?: ColorType;
+
+    /**
+     * The corner radius of the scrollbar buttons.
+     *
+     * @sample stock/scrollbar/style/
+     *         Scrollbar styling
+     *
+     * @default 0
+     */
+    buttonBorderRadius?: number;
+
+    /**
+     * The border width of the scrollbar buttons.
+     *
+     * @sample stock/scrollbar/style/
+     *         Scrollbar styling
+     *
+     * @default 1
+     */
+    buttonBorderWidth?: number;
+
+    /**
+     * Enable or disable the buttons at the end of the scrollbar.
+     *
+     * @default false
+     *
+     * @since 11.0.0
+     */
+    buttonsEnabled?: boolean;
+
+    /**
+     * Enable or disable the scrollbar.
+     *
+     * @sample stock/scrollbar/enabled/
+     *         Disable the scrollbar, only use navigator
+     *
+     * @default   true
+     */
+    enabled?: boolean;
+
+    /**
+     * The height of the scrollbar. If `buttonsEnabled` is true, the height
+     * also applies to the width of the scroll arrows so that they are always
+     * squares.
+     *
+     * @sample stock/scrollbar/style/
+     *         Non-default height
+     *
+     * @default 10
+     */
+    height?: number;
+
+    /** @internal */
+    inverted?: boolean;
+
+    /**
+     * Whether to redraw the main chart as the scrollbar or the navigator
+     * zoomed window is moved. Defaults to `true` for modern browsers and
+     * `false` for mobile devices. This option works regardless of whether the
+     * scrollbar is enabled or not.
+     *
+     * @sample stock/scrollbar/liveredraw
+     *         Setting live redraw to false
+     *
+     * @default undefined
+     * @since 1.3
+     */
+    liveRedraw?: boolean;
+
+    /**
+     * The margin between the scrollbar and its axis when the scrollbar is
+     * applied directly to an axis, or the navigator in case that is enabled.
+     * Defaults to 10 for axis, 3 for navigator.
+     *
+     * @default undefined
+     */
+    margin?: number;
+
+    /**
+     * The minimum width of the scrollbar.
+     *
+     * @default 6
+     *
+     * @since 1.2.5
+     */
+    minWidth?: number;
+
+    /**
+     * Defines the position of the scrollbar. By default, it is positioned
+     * on the opposite of the main axis (right side of the chart).
+     * However, in the case of RTL languages could be set to `false`
+     * which positions the scrollbar on the left.
+     *
+     * Works only for vertical axes.
+     * This means yAxis in a non-inverted chart and xAxis in the inverted.
+     *
+     * @sample stock/yaxis/scrollbar-opposite/
+     *         A scrollbar not on the opposite side
+     *
+     * @default   true
+     * @since 9.3.0
+     */
+    opposite?: boolean;
+
+    /**
+     * The color of the small rifles in the middle of the scrollbar.
+     *
+     * @default 'none'
+     */
+    rifleColor?: ColorType;
+
+    /**
+     * Whether to show or hide the scrollbar when the scrolled content is
+     * zoomed out to it full extent.
+     *
+     * @default   true
+     */
+    showFull?: boolean;
+
+    /**
+     * The width of a vertical scrollbar or height of a horizontal
+     * scrollbar. Defaults to 20 on touch devices.
+     *
+     * @since     4.2.6
+     * @product   highstock
+     */
+    size?: number;
+
+    /**
+     * @default 0.2
+     *
+     * @internal
+     */
+    step?: number;
+
+    /**
+     * The color of the track background.
+     *
+     * @sample stock/scrollbar/style/
+     *         Scrollbar styling
+     *
+     * @default 'rgba(255, 255, 255, 0.001)'
+     */
+    trackBackgroundColor?: ColorType;
+
+    /**
+     * The color of the border of the scrollbar track.
+     *
+     * @sample stock/scrollbar/style/
+     *         Scrollbar styling
+     *
+     * @default 'var(--highcharts-neutral-color-20)'
+     */
+    trackBorderColor?: ColorType;
+
+    /**
+     * The corner radius of the border of the scrollbar track.
+     *
+     * @sample stock/scrollbar/style/
+     *         Scrollbar styling
+     *
+     * @default 5
+     */
+    trackBorderRadius?: number;
+
+    /**
+     * The width of the border of the scrollbar track.
+     *
+     * @sample stock/scrollbar/style/
+     *         Scrollbar styling
+     *
+     * @default 1
+     */
+    trackBorderWidth?: number;
+
+    /** @internal */
+    vertical?: boolean;
+
+    /**
+     * The z index of the scrollbar group.
+     *
+     * @default 3
+     */
+    zIndex?: number;
+}
+
+/**
+ * Options for a scrollbar applied directly to an axis. Shared between the
+ * X and Y axis variants, it only differs from the base
+ * [scrollbar](#scrollbar) options in the default of `enabled`.
+ */
+export interface AxisScrollbarOptions extends ScrollbarOptions {
+
+    /**
+     * @default false
+     */
+    enabled?: boolean;
+
+}
+
+/**
+ * Options for a scrollbar applied to an X axis.
+ */
+export interface XAxisScrollbarOptions extends AxisScrollbarOptions {
+    // Nothing here yet
+}
+
+/**
+ * Options for a scrollbar applied to a Y axis.
+ */
+export interface YAxisScrollbarOptions extends AxisScrollbarOptions {
+    // Nothing here yet
+}
+
+/* *
+ *
+ *  Default Export
+ *
+ * */
+
+export default ScrollbarOptions;

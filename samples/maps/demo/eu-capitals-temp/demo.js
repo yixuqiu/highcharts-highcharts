@@ -73,10 +73,6 @@
                 .air_temperature,
             value = parseInt(temp, 10);
 
-        const country = {
-            'hc-key': point[0],
-            value
-        };
         const capital = {
             name: point[3],
             lat: point[1],
@@ -90,8 +86,10 @@
             }
         };
 
-        countries.addPoint(country);
-        capitals.addPoint(capital);
+        countries.points.find(p => p['hc-key'] === point[0])
+            .update(value, false);
+        capitals.addPoint(capital, false);
+        countries.chart.redraw(false);
     }
 
     // Create the chart
@@ -99,10 +97,21 @@
         chart: {
             map: topology,
             events: {
-                load: function () {
+                load: async function () {
                     const countries = this.series[0],
                         capitals = this.series[1];
-                    newData.forEach(elem => getTemp(elem, countries, capitals));
+
+                    // Sort by latitude to make the entrance nice and smooth
+                    newData.sort((a, b) => a[1] - b[1]);
+
+                    for (const elem of newData) {
+                        await getTemp(elem, countries, capitals)
+                            .catch(() => {
+                                console.error(
+                                    `Error fetching temperature for ${elem[3]}`
+                                );
+                            });
+                    }
                 }
             }
         },
@@ -113,7 +122,7 @@
         },
 
         subtitle: {
-            text: 'Data source: <a href="https://api.met.no/">https://api.met.no/</a>',
+            text: 'Data source: <a href="https://api.met.no/">api.met.no</a>',
             align: 'left'
         },
 
@@ -170,11 +179,24 @@
                 lineWidth: 1,
                 lineColor: '#000'
             },
-            dataLabels: {
+            dataLabels: [{
+                align: 'right',
+                verticalAlign: 'middle',
+                y: -2,
+                x: -2,
                 crop: true,
-                format: '<span>{key}</span><br><span>' +
-                    '{point.custom.label}</span>'
-            },
+                format: '{key}',
+                style: {
+                    fontWeight: 'normal'
+                }
+            }, {
+                align: 'left',
+                verticalAlign: 'middle',
+                y: -2,
+                x: 2,
+                crop: true,
+                format: '{custom.label}'
+            }],
             accessibility: {
                 point: {
                     valueDescriptionFormat: '{xDescription}, {point.temp}°C.'

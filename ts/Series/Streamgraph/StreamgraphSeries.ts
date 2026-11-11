@@ -2,11 +2,13 @@
  *
  *  Streamgraph module
  *
- *  (c) 2010-2024 Torstein Honsi
+ *  (c) 2010-2026 Highsoft AS
+ *  Author: Torstein Hønsi
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  * */
 
@@ -21,21 +23,14 @@
 import type StreamgraphPoint from './StreamgraphPoint';
 import type StreamgraphSeriesOptions from './StreamgraphSeriesOptions';
 
+import AreaSplineSeries from '../AreaSpline/AreaSplineSeries.js';
 import SeriesRegistry from '../../Core/Series/SeriesRegistry.js';
-const {
-    areaspline: AreaSplineSeries
-} = SeriesRegistry.seriesTypes;
 import StreamgraphSeriesDefaults from './StreamgraphSeriesDefaults.js';
-import U from '../../Core/Utilities.js';
-const {
-    merge,
-    extend
-} = U;
+import { addEvent, extend, merge } from '../../Shared/Utilities.js';
 
 /**
  * Streamgraph series type
  *
- * @private
  * @class
  * @name Highcharts.seriesTypes.streamgraph
  *
@@ -49,6 +44,7 @@ class StreamgraphSeries extends AreaSplineSeries {
      *
      * */
 
+    /** @internal */
     public static defaultOptions: StreamgraphSeriesOptions = merge(
         AreaSplineSeries.defaultOptions,
         StreamgraphSeriesDefaults
@@ -74,6 +70,7 @@ class StreamgraphSeries extends AreaSplineSeries {
 
     // Modifier function for stream stacks. It simply moves the point up or
     // down in order to center the full stack vertically.
+    /** @internal */
     public streamStacker(
         pointExtremes: Array<number>,
         stack: Record<string, number>,
@@ -84,12 +81,19 @@ class StreamgraphSeries extends AreaSplineSeries {
         // Y value
         pointExtremes[1] -= stack.total / 2;
 
-        // Record the Y data for use when getting axis extremes
-        (this.stackedYData as any)[i] = pointExtremes;
+        // Record the Y data for use when getting axis extremes. Register only
+        // the max. This is picked up in the `afterGetExtremes` event, and the
+        // dataMin property is reflected.
+        if (this.stackedYData) {
+            this.stackedYData[i] = Math.max.apply(0, pointExtremes);
+        }
     }
-
 }
 
+// Reflect the dataMin property, as only dataMax is registered above
+addEvent(StreamgraphSeries, 'afterGetExtremes', (e): void => {
+    (e as any).dataExtremes.dataMin = -(e as any).dataExtremes.dataMax;
+});
 /* *
  *
  *  Class Prototype
@@ -97,7 +101,9 @@ class StreamgraphSeries extends AreaSplineSeries {
  * */
 
 interface StreamgraphSeries {
+    /** @internal */
     negStacks: boolean;
+    /** @internal */
     pointClass: typeof StreamgraphPoint;
 }
 

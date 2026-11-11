@@ -2,12 +2,13 @@
  *
  *  Highcharts pyramid3d series module
  *
- *  (c) 2010-2024 Highsoft AS
+ *  (c) 2010-2026 Highsoft AS
  *  Author: Kacper Madej
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  * */
 
@@ -36,7 +37,7 @@ import type Pyramid3DSeriesOptions from './Pyramid3DSeriesOptions';
  *         Pyramid3d
  *
  * @extends      plotOptions.funnel3d
- * @excluding    neckHeight, neckWidth, dataSorting
+ * @excluding    dataSorting, legendSymbolColor, neckHeight, neckWidth,
  * @product      highcharts
  * @since        7.1.0
  * @requires     highcharts-3d
@@ -46,6 +47,16 @@ import type Pyramid3DSeriesOptions from './Pyramid3DSeriesOptions';
  * @optionparent plotOptions.pyramid3d
  */
 const Pyramid3DSeriesDefaults: Pyramid3DSeriesOptions = {
+
+    /**
+     * The center of the series. By default, it is centered in the middle
+     * of the plot area, so it fills the plot area height.
+     *
+     * @type    {Array<number|string>}
+     * @default ["50%", "50%"]
+     * @since   7.1.0
+     */
+    center: ['50%', '50%'],
 
     /**
      * A reversed pyramid3d is funnel3d, but the latter supports neck
@@ -79,7 +90,10 @@ const Pyramid3DSeriesDefaults: Pyramid3DSeriesOptions = {
  * @excluding allAreas,boostThreshold,colorAxis,compare,compareBase,dataSorting
  * @product   highcharts
  * @sample    {highcharts} highcharts/demo/pyramid3d/ Pyramid3d
- * @requires  modules/pyramid3d
+ * @requires     highcharts-3d
+ * @requires     modules/cylinder
+ * @requires     modules/funnel3d
+ * @requires     modules/pyramid3d
  * @apioption series.pyramid3d
  */
 
@@ -126,13 +140,14 @@ const Pyramid3DSeriesDefaults: Pyramid3DSeriesOptions = {
  * @sample {highcharts} highcharts/series/data-array-of-objects/
  *         Config objects
  *
+ * @basic
  * @type      {Array<number|Array<number>|*>}
  * @extends   series.funnel3d.data
  * @product   highcharts
  * @apioption series.pyramid3d.data
  */
 
-''; // Detachs doclets above
+''; // Keeps doclets above
 
 /* *
  *

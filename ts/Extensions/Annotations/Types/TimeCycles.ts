@@ -1,8 +1,7 @@
 /* *
  *
- *  Authors: Rafal Sebestjanski and Pawel Lysy
+ *  Authors: Rafał Sebestjański and Paweł Lysy
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  * */
 
@@ -15,20 +14,23 @@
  * */
 
 import type { AnnotationEventObject } from '../EventEmitter';
+import type {
+    AnnotationOptions,
+    AnnotationTypeOptions
+} from '../AnnotationOptions';
 import type { ControlPointOptionsObject } from '../ControlPointOptions';
-import type MockPointOptions from '../MockPointOptions';
+import type MockPointOptions from '../AnnotationMockPointOptionsObject';
 import type PositionObject from '../../../Core/Renderer/PositionObject';
 import type SVGPath from '../../../Core/Renderer/SVG/SVGPath';
 
 import Annotation from '../Annotation.js';
 import CrookedLine from './CrookedLine.js';
+import D from '../../../Core/Defaults.js';
+const { defaultOptions } = D;
 import ControlPoint from '../ControlPoint.js';
-import U from '../../../Core/Utilities.js';
-const {
-    merge,
-    isNumber,
-    defined
-} = U;
+import NBU from '../NavigationBindingsUtilities.js';
+const { getAxisFromOptions } = NBU;
+import { defined, isNumber, merge } from '../../../Shared/Utilities.js';
 
 /* *
  *
@@ -36,9 +38,91 @@ const {
  *
  * */
 
-interface TimeCyclesOptions extends CrookedLine.Options {
-    xAxis: number;
-    yAxis: number;
+/** @internal */
+interface TimeCyclesOptions extends AnnotationOptions {
+    xAxis: number|string;
+    yAxis: number|string;
+}
+
+if (defaultOptions.annotations?.types) {
+    defaultOptions.annotations.types.timeCycles = merge(
+        defaultOptions.annotations.types.crookedLine,
+        /**
+         * Options for the time cycles annotation type.
+         *
+         * @sample highcharts/annotations-advanced/time-cycles/
+         *         Time Cycles annotation
+         *
+         * @extends      annotations.types.crookedLine
+         * @product      highstock
+         * @exclude      labelOptions
+         * @requires     modules/annotations-advanced
+         * @optionparent annotations.types.timeCycles
+         */
+        {
+            typeOptions: {
+                /**
+                 * @exclude   y
+                 * @product   highstock
+                 * @apioption annotations.types.timeCycles.typeOptions.points
+                 */
+
+                controlPointOptions: [{
+                    positioner: function (
+                        this: ControlPoint,
+                        target: TimeCycles
+                    ): PositionObject {
+                        const point = target.points[0],
+                            position = target.anchor(point).absolutePosition;
+
+                        return {
+                            x: position.x - (this.graphic.width || 0) / 2,
+                            y: target.y - (this.graphic.height || 0)
+                        };
+                    },
+                    events: {
+                        drag: function (
+                            this: ControlPoint,
+                            e: AnnotationEventObject,
+                            target: TimeCycles
+                        ): void {
+                            const position = target.anchor(
+                                target.points[0]
+                            ).absolutePosition;
+                            target.translatePoint(e.chartX - position.x, 0, 0);
+                            target.redraw(false);
+                        }
+                    }
+                }, {
+                    positioner: function (
+                        this: ControlPoint,
+                        target: TimeCycles
+                    ): PositionObject {
+                        const point = target.points[1],
+                            position = target.anchor(point).absolutePosition;
+
+                        return {
+                            x: position.x - (this.graphic.width || 0) / 2,
+                            y: target.y - (this.graphic.height || 0)
+                        };
+                    },
+                    events: {
+                        drag: function (
+                            this: ControlPoint,
+                            e: AnnotationEventObject,
+                            target: TimeCycles
+                        ): void {
+                            const position = target.anchor(
+                                target.points[1]
+                            ).absolutePosition;
+                            target.translatePoint(e.chartX - position.x, 0, 1);
+                            target.redraw(false);
+                        }
+                    }
+                }]
+            }
+        }
+    );
 }
 
 /* *
@@ -49,6 +133,8 @@ interface TimeCyclesOptions extends CrookedLine.Options {
 
 /**
  * Function to create start of the path.
+ *
+ * @internal
  * @param {number} x x position of the TimeCycles
  * @param {number} y y position of the TimeCycles
  * @return {string} path
@@ -58,14 +144,14 @@ function getStartingPath(x: number, y: number): SVGPath.MoveTo {
 }
 
 /**
- * Function which generates the path of the halfcircle.
+ * Function which generates the path of the semicircle.
  *
+ * @internal
  * @param {number} pixelInterval diameter of the circle in pixels
- * @param {number} numberOfCircles number of cricles
+ * @param {number} numberOfCircles number of circles
  * @param {number} startX x position of the first circle
  * @param {number} y y position of the bottom of the timeCycles
  * @return {string} path
- *
  */
 function getCirclePath(
     pixelInterval: number,
@@ -97,6 +183,7 @@ function getCirclePath(
  *
  * */
 
+/** @internal */
 class TimeCycles extends CrookedLine {
 
     /* *
@@ -145,7 +232,7 @@ class TimeCycles extends CrookedLine {
     }
 
     public addShapes(): void {
-        const typeOptions = this.options.typeOptions;
+        const typeOptions = this.options.typeOptions!;
         this.setPathProperties();
         const shape = this.initShape(
             merge(typeOptions.line, {
@@ -163,7 +250,7 @@ class TimeCycles extends CrookedLine {
     public addControlPoints(): void {
         const options = this.options,
             typeOptions = options.typeOptions as TimeCycles.TypeOptions;
-        options.controlPointOptions.style.cursor = this.chart.inverted ?
+        options.controlPointOptions!.style.cursor = this.chart.inverted ?
             'ns-resize' :
             'ew-resize';
 
@@ -184,24 +271,22 @@ class TimeCycles extends CrookedLine {
     }
 
     public setPathProperties(): void {
-        const options = this.options.typeOptions,
+        const options = this.options.typeOptions!,
             points = options.points;
 
         if (!points) {
             return;
         }
 
-        const point1 = points[0],
-            point2 = points[1],
-            xAxisNumber = options.xAxis || 0,
-            yAxisNumber = options.yAxis || 0,
-            xAxis = this.chart.xAxis[xAxisNumber],
-            yAxis = this.chart.yAxis[yAxisNumber],
+        const point1 = points[0] as any,
+            point2 = points[1] as any,
+            xAxis = getAxisFromOptions(this.chart, 'xAxis', options.xAxis ?? 0),
+            yAxis = getAxisFromOptions(this.chart, 'yAxis', options.yAxis ?? 0),
             xValue1 = point1.x,
             yValue = point1.y,
             xValue2 = point2.x;
 
-        if (!xValue1 || !xValue2) {
+        if (!xValue1 || !xValue2 || !xAxis || !yAxis) {
             return;
         }
 
@@ -240,6 +325,7 @@ class TimeCycles extends CrookedLine {
  *
  * */
 
+/** @internal */
 interface TimeCycles {
     defaultOptions: CrookedLine['defaultOptions'];
     startX: number;
@@ -248,84 +334,6 @@ interface TimeCycles {
     y: number;
 }
 
-TimeCycles.prototype.defaultOptions = merge(
-    CrookedLine.prototype.defaultOptions,
-    /**
-     * The TimeCycles Annotation
-     *
-     * @sample highcharts/annotations-advanced/time-cycles/
-     *         Time Cycles annotation
-     *
-     * @extends      annotations.crookedLine
-     * @product      highstock
-     * @exclude      labelOptions
-     * @optionparent annotations.timeCycles
-     */
-    {
-        typeOptions: {
-            /**
-             * @exclude   y
-             * @product   highstock
-             * @apioption annotations.timeCycles.typeOptions.points
-             */
-
-            controlPointOptions: [{
-                positioner: function (
-                    this: ControlPoint,
-                    target: TimeCycles
-                ): PositionObject {
-                    const point = target.points[0],
-                        position = target.anchor(point).absolutePosition;
-
-                    return {
-                        x: position.x - (this.graphic.width || 0) / 2,
-                        y: target.y - (this.graphic.height || 0)
-                    };
-                },
-                events: {
-                    drag: function (
-                        this: ControlPoint,
-                        e: AnnotationEventObject,
-                        target: TimeCycles
-                    ): void {
-                        const position = target.anchor(
-                            target.points[0]
-                        ).absolutePosition;
-                        target.translatePoint(e.chartX - position.x, 0, 0);
-                        target.redraw(false);
-                    }
-                }
-            }, {
-                positioner: function (
-                    this: ControlPoint,
-                    target: TimeCycles
-                ): PositionObject {
-                    const point = target.points[1],
-                        position = target.anchor(point).absolutePosition;
-
-                    return {
-                        x: position.x - (this.graphic.width || 0) / 2,
-                        y: target.y - (this.graphic.height || 0)
-                    };
-                },
-                events: {
-                    drag: function (
-                        this: ControlPoint,
-                        e: AnnotationEventObject,
-                        target: TimeCycles
-                    ): void {
-                        const position = target.anchor(
-                            target.points[1]
-                        ).absolutePosition;
-                        target.translatePoint(e.chartX - position.x, 0, 1);
-                        target.redraw(false);
-                    }
-                }
-            }]
-        }
-    }
-);
-
 /* *
  *
  *  Class Namespace
@@ -333,10 +341,21 @@ TimeCycles.prototype.defaultOptions = merge(
  * */
 
 namespace TimeCycles {
-    export interface Options extends CrookedLine.Options {
+    /**
+     * Options for the time cycles annotation type.
+     *
+     * @sample highcharts/annotations-advanced/time-cycles/
+     *         Time Cycles annotation
+     *
+     * @extends      annotations.types.crookedLine
+     * @product      highstock
+     * @exclude      labelOptions
+     * @optionparent annotations.types.timeCycles
+     */
+    export interface Options extends AnnotationOptions {
         typeOptions: TypeOptions;
     }
-    export interface TypeOptions extends CrookedLine.TypeOptions {
+    export interface TypeOptions extends AnnotationTypeOptions {
         type: string;
         controlPointOptions: ControlPointOptionsObject[];
     }
@@ -348,6 +367,7 @@ namespace TimeCycles {
  *
  * */
 
+/** @internal */
 declare module './AnnotationType' {
     interface AnnotationTypeRegistry {
         timeCycles: typeof TimeCycles;

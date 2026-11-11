@@ -11,7 +11,11 @@
 }
 
 .highcharts-description {
-    margin: 1rem 0;
+    margin: 10px;
+}
+
+.controls {
+    margin: 10px;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -29,10 +33,7 @@
         /* UI colors */
         --highcharts-background-color: #333;
 
-        /*
-            Neutral color variations
-            https://www.highcharts.com/samples/highcharts/css/palette-helper
-        */
+        /* Neutral color variations */
         --highcharts-neutral-color-100: rgb(255, 255, 255);
         --highcharts-neutral-color-80: rgb(214, 214, 214);
         --highcharts-neutral-color-60: rgb(173, 173, 173);

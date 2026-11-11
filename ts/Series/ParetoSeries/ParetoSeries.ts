@@ -1,10 +1,12 @@
 /* *
  *
- *  (c) 2010-2024 Sebastian Bochan
+ *  (c) 2010-2026 Highsoft AS
+ *  Author: Sebastian Bochan
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  * */
 
@@ -21,16 +23,9 @@ import type ParetoSeriesOptions from './ParetoSeriesOptions';
 
 import DerivedComposition from '../DerivedComposition.js';
 import ParetoSeriesDefaults from './ParetoSeriesDefaults.js';
+import LineSeries from '../Line/LineSeries.js';
 import SeriesRegistry from '../../Core/Series/SeriesRegistry.js';
-const {
-    line: LineSeries
-} = SeriesRegistry.seriesTypes;
-import U from '../../Core/Utilities.js';
-const {
-    correctFloat,
-    merge,
-    extend
-} = U;
+import { correctFloat, extend, merge } from '../../Shared/Utilities.js';
 
 /* *
  *
@@ -41,7 +36,6 @@ const {
 /**
  * The pareto series type.
  *
- * @private
  * @class
  * @name Highcharts.seriesTypes.pareto
  *
@@ -56,6 +50,7 @@ class ParetoSeries extends LineSeries {
      *
      * */
 
+    /** @internal */
     public static defaultOptions: ParetoSeriesOptions = merge(
         LineSeries.defaultOptions,
         ParetoSeriesDefaults
@@ -80,7 +75,7 @@ class ParetoSeries extends LineSeries {
     /**
      * Calculate y sum and each percent point.
      *
-     * @private
+     * @internal
      * @function Highcharts.Series#sumPointsPercents
      *
      * @param {Array<number>} yValues
@@ -137,13 +132,13 @@ class ParetoSeries extends LineSeries {
     /**
      * Calculate sum and return percent points.
      *
-     * @private
+     * @internal
      * @function Highcharts.Series#setDerivedData
      * @requires modules/pareto
      */
     public setDerivedData(): void {
-        const xValues = (this.baseSeries as any).xData,
-            yValues = (this.baseSeries as any).yData,
+        const xValues = this.baseSeries?.getColumn('x') || [],
+            yValues = this.baseSeries?.getColumn('y') || [],
             sum = this.sumPointsPercents(
                 yValues,
                 xValues,
@@ -181,9 +176,6 @@ DerivedComposition.compose(ParetoSeries);
  *
  * */
 
-/**
- * @private
- */
 declare module '../../Core/Series/SeriesType' {
     interface SeriesTypeRegistry {
         pareto: typeof ParetoSeries;

@@ -1,12 +1,14 @@
 /* *
  *
- *  (c) 2009-2024 Øystein Moseng
+ *  (c) 2009-2026 Highsoft AS
+ *  Author: Øystein Moseng
  *
  *  Default lang/i18n options for accessibility.
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  * */
 
@@ -18,6 +20,7 @@
  *
  * */
 
+import type { DeepPartial } from '../../Shared/Types';
 import type LangOptions from './LangOptions';
 
 /* *
@@ -27,7 +30,6 @@ import type LangOptions from './LangOptions';
  * */
 
 const langOptions: DeepPartial<LangOptions> = {
-
     /**
      * Configure the accessibility strings in the chart. Requires the
      * [accessibility module](https://code.highcharts.com/modules/accessibility.js)
@@ -247,6 +249,16 @@ const langOptions: DeepPartial<LangOptions> = {
         },
 
         /**
+         * Stock tools language options for accessibility.
+         *
+         * @since 12.6.0
+         */
+        stockTools: {
+            groupLabel: 'Stock chart tools',
+            arrowLabel: 'Toggle submenu'
+        },
+
+        /**
          * Accessibility language options for the data table.
          *
          * @since 8.0.0
@@ -371,7 +383,12 @@ const langOptions: DeepPartial<LangOptions> = {
             timeRangeMinutes: 'Data range: {range} minutes.',
             timeRangeSeconds: 'Data range: {range} seconds.',
             rangeFromTo: 'Data ranges from {rangeFrom} to {rangeTo}.',
-            rangeCategories: 'Data range: {numCategories} categories.'
+            rangeCategories: 'Data range: {numCategories} categories.',
+            defaultAxisNames: {
+                categories: 'categories',
+                time: 'Time',
+                values: 'values'
+            }
         }, /* eslint-enable max-len */
 
         /**
@@ -381,7 +398,7 @@ const langOptions: DeepPartial<LangOptions> = {
          */
         exporting: {
             chartMenuLabel: 'Chart menu',
-            menuButtonLabel: 'View chart menu, {chartTitle}'
+            menuButtonLabel: 'View chart context menu, {chartTitle}'
         },
 
         /**

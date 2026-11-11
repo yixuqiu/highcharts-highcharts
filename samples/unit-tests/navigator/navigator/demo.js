@@ -1,5 +1,5 @@
 QUnit.test(
-    'Handles should not be overlapped by xAxis labels (#2908)',
+    'Navigator handles general tests',
     function (assert) {
         const chart = Highcharts.StockChart('container', {
             navigator: {
@@ -31,7 +31,7 @@ QUnit.test(
         assert.ok(
             chart.scroller.handles[0].zIndex >=
                 chart.scroller.xAxis.labelGroup.zIndex,
-            'Labels no overlap handles'
+            'Handles should not be overlapped by xAxis labels (#2908)'
         );
 
         assert.ok(
@@ -42,6 +42,107 @@ QUnit.test(
         assert.ok(
             chart.get('navigator-y-axis') !== undefined,
             'Navigator yAxis should be accessed by the default id.'
+        );
+
+        chart.update({
+            navigator: {
+                handles: {
+                    symbols: [
+                        'url(https://www.highcharts.com/samples/graphics/sun.png)',
+                        'url(https://www.highcharts.com/samples/graphics/sun.png)'
+                    ],
+                    width: 20,
+                    height: 20
+                }
+            }
+        });
+
+        let leftHandle = chart.navigator.handles[0],
+            rightHandle = chart.navigator.handles[1],
+            lhEvents = leftHandle.element.hcEvents,
+            rhEvents = rightHandle.element.hcEvents,
+            shadesEvents = chart.navigator.shades.map(
+                shade => shade.element.hcEvents
+            );
+
+        assert.ok(
+            shadesEvents.every(
+                se => se.mousedown.length === 1 && se.touchstart.length === 1
+            ),
+            `Navigator shades should always have only one mousedown and
+            touchstart event after update.`
+        );
+
+        assert.ok(
+            lhEvents.mousedown.length === 1 &&
+            rhEvents.mousedown.length === 1 &&
+            lhEvents.touchstart.length === 1 &&
+            rhEvents.touchstart.length === 1,
+            `Navigator handles should always have only one mousedown and
+            touchstart event after update.`
+        );
+
+        assert.strictEqual(
+            leftHandle.element.tagName,
+            'image',
+            'Navigator handles should be updated to images. (#21660)'
+        );
+
+        const controller = new TestController(chart),
+            handleX = rightHandle.translateX - 2,
+            handleY = rightHandle.translateY + 10,
+            extremesBefore = chart.xAxis[0].getExtremes();
+
+        controller.pan([handleX, handleY], [handleX - 50, handleY]);
+
+        assert.ok(
+            extremesBefore.max > chart.xAxis[0].max,
+            'Dragging navigator handle should update axis extremes.'
+        );
+
+        const plotSizeYBefore = chart.plotSizeY;
+        chart.update({
+            navigator: {
+                enabled: false
+            }
+        });
+
+        chart.update({
+            navigator: {
+                enabled: true
+            }
+        });
+        const plotSizeYAfter = chart.plotSizeY;
+
+        assert.strictEqual(
+            plotSizeYBefore,
+            plotSizeYAfter,
+            'Navigator toggle should not shrink the chart. (#21775)'
+        );
+
+        leftHandle = chart.navigator.handles[0];
+        rightHandle = chart.navigator.handles[1];
+        lhEvents = leftHandle.element.hcEvents;
+        rhEvents = rightHandle.element.hcEvents;
+        shadesEvents = chart.navigator.shades.map(
+            shade => shade.element.hcEvents
+        );
+
+        assert.ok(
+            lhEvents.mousedown.length === 1 &&
+            rhEvents.mousedown.length === 1 &&
+            lhEvents.touchstart.length === 1 &&
+            rhEvents.touchstart.length === 1,
+            `Navigator handles should always have only one mousedown and
+            touchstart event after navigator enabled toggle.`
+        );
+
+        assert.ok(
+            shadesEvents.every(
+                se => se.mousedown.length === 1 && se.touchstart.length === 1
+            ),
+            `Navigator shades should always have only one mousedown and
+            touchstart event after navigator enabled toggle.`
         );
     }
 );
@@ -198,6 +299,7 @@ QUnit.test('General Navigator tests', function (assert) {
         'All series, including navSeries, removed without errors (#5581)'
     );
 
+    let setExtremesCount = -1;
     chart = Highcharts.stockChart('container', {
         chart: {
             animation: false,
@@ -231,7 +333,13 @@ QUnit.test('General Navigator tests', function (assert) {
         },
         xAxis: {
             min: 1512743400000,
-            max: 1513089000000
+            max: 1513089000000,
+            events: {
+                setExtremes: function () {
+                    // First call is from the first render, hence start from -1.
+                    setExtremesCount++;
+                }
+            }
         },
         series: [
             {
@@ -294,6 +402,18 @@ QUnit.test('General Navigator tests', function (assert) {
             'translated after yAxis label reserve more space (#12573).'
     );
 
+    // #24114
+    const shadeBBox = chart.navigator.shades[0].getBBox(),
+        shadeX = shadeBBox.x + shadeBBox.width / 2,
+        shadeY = shadeBBox.y + shadeBBox.height / 2;
+    controller.click(shadeX, shadeY);
+    assert.strictEqual(
+        setExtremesCount,
+        1,
+        `SetExtremes event should be fired only once, per one navigator shade
+        click (#24114).`
+    );
+
     chart = Highcharts.stockChart('container', {
         navigator: {
             series: {
@@ -334,6 +454,120 @@ QUnit.test('General Navigator tests', function (assert) {
         'Navigator position should be updated when scrollbar ' +
             'disabled and navigator.baseSeries not set (#13114).'
     );
+
+    chart.update({
+        scrollbar: {
+            enabled: true
+        }
+    });
+    const defaultScrollbarMargin = 3;
+    const actualScrollbarNavigatorSpace =
+        chart.scrollbar.renderer.spacingBox.height -
+        chart.navigator.top - chart.navigator.height;
+    assert.strictEqual(
+        actualScrollbarNavigatorSpace,
+        defaultScrollbarMargin,
+        'The space between scrollbar and navigator should be 3px by default'
+    );
+
+    const scrollbarMargin = 10;
+    const navigatorMargin = 20;
+    chart.update({
+        navigator: {
+            margin: navigatorMargin
+        },
+        scrollbar: {
+            margin: scrollbarMargin
+        },
+        xAxis: {
+            visible: false
+        }
+    });
+    const definedScrollbarNavigatorSpace =
+        chart.scrollbar.y - chart.scrollbar.trackBorderWidth -
+        chart.navigator.top - chart.navigator.height;
+    const definedNavigatorAxisSpace =
+        chart.xAxis[0].bottom - (chart.chartHeight - chart.navigator.top);
+
+    assert.strictEqual(
+        definedScrollbarNavigatorSpace,
+        scrollbarMargin,
+        'The space between scrollbar and navigator should match ' +
+            'the defined scrollbar margin'
+    );
+    assert.strictEqual(
+        definedNavigatorAxisSpace,
+        navigatorMargin,
+        'The space between navigator and axis should match ' +
+            'the defined navigator margin'
+    );
+
+    chart.xAxis[0].setExtremes(0, 5);
+
+    const outlinePathArray = chart.navigator.outline.pathArray;
+
+    assert.equal(
+        outlinePathArray[0][2], // Upper left of navigator outline
+        outlinePathArray[5][2], // Upper right of navigator outline
+        'Upper part of navigator outline should be a straight line.'
+    );
+
+    chart = Highcharts.stockChart('container', {
+        xAxis: {
+            ordinal: false,
+            minPadding: 0.05,
+            maxPadding: 0.05
+        },
+        series: [
+            {
+                data: [1, 2, 3]
+            }
+        ]
+    });
+
+    assert.strictEqual(
+        chart.navigator.xAxis.options.minPadding,
+        chart.xAxis[0].options.minPadding,
+        'Navigator should inherit the minPadding property from the main axis.'
+    );
+
+    assert.strictEqual(
+        chart.navigator.xAxis.options.maxPadding,
+        chart.xAxis[0].options.maxPadding,
+        'Navigator should inherit the maxPadding property from the main axis.'
+    );
+
+    // #21584
+    const start = +new Date();
+
+    const lineSeries = {
+        type: 'line',
+        showInNavigator: true,
+        data: Array.from({ length: 10 }, (_, i) => [start + 60000 * i, i])
+    };
+    const lineSeries2 = {
+        type: 'line',
+        showInNavigator: true,
+        data: Array.from({ length: 10 }, (_, i) => [start + 60000 * i, 2 * i])
+    };
+
+    const options = {
+        navigator: {
+            enabled: true
+        },
+        series: [lineSeries, lineSeries2]
+    };
+
+    chart = Highcharts.stockChart('container', options);
+
+    // Update the chart
+    options.series = [lineSeries];
+    options.navigator.enabled = false;
+    chart.update(options, true, true, false);
+    assert.ok(
+        true,
+        `Updating the chart with oneToOne should not throw an error in the
+        navigator, #21584.`);
 });
 
 QUnit.test('Reversed xAxis with navigator', function (assert) {
@@ -460,10 +694,10 @@ QUnit.test('Missing points using navigator (#5699, #17212)', function (assert) {
     });
 
     assert.strictEqual(
-        chart.series[0].processedXData[0],
-        chart.series[1].processedXData[0],
+        chart.series[0].getColumn('x', true)[0],
+        chart.series[1].getColumn('x', true)[0],
         'Navigator by default should start at the parent series starting ' +
-        'point, #17212.'
+            'point, #17212.'
     );
 
     navigator.handlesMousedown(
@@ -917,6 +1151,25 @@ QUnit.test('Chart update enables navigator (#7067)', function (assert) {
         chart.navigator && chart.navigator.navigatorEnabled,
         'Navigator should be enabled.'
     );
+
+    chart.update({
+        navigator: {
+            adaptToUpdatedData: false,
+            enabled: false
+        }
+    });
+
+    chart.update({
+        navigator: {
+            enabled: true
+        }
+    });
+
+    assert.ok(
+        chart.navigator.series.length,
+        `Navigator series should reappear when reenabling navigator with
+        adaptToUpdatedData: false (#22557).`
+    );
 });
 QUnit.test(
     'Navigator series visibility should be in sync with master series (#8374)',
@@ -1365,7 +1618,8 @@ QUnit.test(
     });
 
 
-QUnit.test('Navigator, testing method: getBaseSeriesMin', function (assert) {
+// Skipped due to impractical mock objects. Make integration test instead.
+QUnit.skip('Navigator, testing method: getBaseSeriesMin', function (assert) {
     const method = Highcharts.Navigator.prototype.getBaseSeriesMin;
 
     const mocks = [
@@ -1406,4 +1660,43 @@ QUnit.test('Navigator, testing method: getBaseSeriesMin', function (assert) {
             `With config: ${JSON.stringify(mock)}, the min should not be a NaN`
         );
     });
+});
+
+QUnit.test('Multiple navigators tests.', function (assert) {
+    const container1 = document.createElement('div'),
+        container2 = document.createElement('div'),
+        container3 = document.createElement('div');
+    document.getElementById('container').appendChild(container1);
+    document.getElementById('container').appendChild(container2);
+    document.getElementById('container').appendChild(container3);
+
+    const chart1 = Highcharts.stockChart(container1, {
+        series: [{
+            data: [1, 2, 3]
+        }]
+    });
+    const chart2 = Highcharts.stockChart(container2, {
+        series: [{
+            data: [1, 2, 3]
+        }]
+    });
+    const chart3 = Highcharts.stockChart(container3, {
+        series: [{
+            data: [1, 2, 3]
+        }]
+    });
+
+    assert.ok(
+        chart1.navigator.hcEvents.setRange.length === 1 &&
+        chart2.navigator.hcEvents.setRange.length === 1 &&
+        chart3.navigator.hcEvents.setRange.length === 1,
+        'Each navigator should have only 1 setRange event, #24057.'
+    );
+
+    chart1.destroy();
+    container1.parentNode.removeChild(container1);
+    chart2.destroy();
+    container2.parentNode.removeChild(container2);
+    chart3.destroy();
+    container3.parentNode.removeChild(container3);
 });

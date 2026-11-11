@@ -1,13 +1,14 @@
 /* *
  *
- *  Tilemaps module
+ *  Tilemap module
  *
- *  (c) 2010-2024 Highsoft AS
+ *  (c) 2010-2026 Highsoft AS
  *  Author: Øystein Moseng
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  * */
 
@@ -30,16 +31,9 @@ import type { TilemapShapeValue } from './TilemapSeriesOptions';
 
 import H from '../../Core/Globals.js';
 const { noop } = H;
-import SeriesRegistry from '../../Core/Series/SeriesRegistry.js';
-const {
-    heatmap: HeatmapSeries,
-    scatter: ScatterSeries
-} = SeriesRegistry.seriesTypes;
-import U from '../../Core/Utilities.js';
-const {
-    clamp,
-    pick
-} = U;
+import HeatmapSeries from '../Heatmap/HeatmapSeries.js';
+import ScatterSeries from '../Scatter/ScatterSeries.js';
+import { clamp } from '../../Shared/Utilities.js';
 
 /* *
  *
@@ -49,7 +43,7 @@ const {
 
 /**
  * Utility func to get padding definition from tile size division
- * @private
+ * @internal
  */
 function tilePaddingFromTileSize(
     series: TilemapSeries,
@@ -78,6 +72,7 @@ namespace TilemapShapes {
      *
      * */
 
+    /** @internal */
     export interface DefinitionObject {
         alignDataLabel(
             this: TilemapSeries,
@@ -95,6 +90,7 @@ namespace TilemapShapes {
         translate(this: TilemapSeries): void;
     }
 
+    /** @internal */
     export interface PaddingObject {
         xPad: number;
         yPad: number;
@@ -110,7 +106,7 @@ namespace TilemapShapes {
 
 /**
  * Map of shape types.
- * @private
+ * @internal
  */
 const TilemapShapes: Record<TilemapShapeValue, TilemapShapes.DefinitionObject> = {
 
@@ -403,7 +399,7 @@ const TilemapShapes: Record<TilemapShapeValue, TilemapShapes.DefinitionObject> =
                             )
                         ), -xAxis.len, 2 * xAxis.len
                     ),
-                    pointPadding = pick(point.pointPadding, seriesPointPadding),
+                    pointPadding = (point.pointPadding ?? seriesPointPadding),
                     // We calculate the point padding of the midpoints to
                     // preserve the angles of the shape.
                     midPointPadding = pointPadding *
@@ -465,7 +461,7 @@ const TilemapShapes: Record<TilemapShapeValue, TilemapShapes.DefinitionObject> =
         haloPath: function (
             this: TilemapPoint,
             size: number
-        ): SVGPath { // eslint-disable-line @typescript-eslint/indent
+        ): SVGPath { // eslint-disable-line @stylistic/indent
             return ScatterSeries.prototype.pointClass.prototype.haloPath
                 .call(
                     this,

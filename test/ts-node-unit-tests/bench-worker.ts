@@ -1,7 +1,12 @@
 import { parentPort } from 'node:worker_threads';
+import { resolve, dirname } from 'node:path';
+import { writeFileSync, readFileSync } from 'node:fs';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
-import { resolve } from 'node:path';
+import { register } from 'tsx/esm/api';
+
 import { BenchmarkFunction } from './benchmark';
+
 
 export type BeforeFunction = (sampleSize: number)=> BeforeReturnType;
 
@@ -10,6 +15,12 @@ export type BeforeReturnType = {
     func: () => string;
 }
 
+// register tsx to be able to import() ts files
+const unregister = register();
+
+const __dirname = import.meta?.dirname ?? dirname(fileURLToPath(import.meta.url));
+
+parentPort.on('close', unregister);
 
 parentPort.on('message', async value =>{
     function getTestData(before: BeforeFunction, size: number){
@@ -21,7 +32,7 @@ parentPort.on('message', async value =>{
         );
 
         try {
-            const content = require('fs').readFileSync(file);
+            const content = readFileSync(file);
             if (fileName.endsWith('.json')) {
                 return JSON.parse(content);
             }
@@ -31,7 +42,7 @@ parentPort.on('message', async value =>{
             console.log(`Generating data for sample size: ${size}`);
             let data = func();
 
-            require('fs').writeFileSync(
+            writeFileSync(
                 file,
                 fileName.endsWith('.json') ?
                     JSON.stringify(data) :
@@ -42,25 +53,32 @@ parentPort.on('message', async value =>{
         }
     }
 
-    if(value.testFile && value.size){
-        const { default: test, before } = await import(value.testFile);
-
+    if (value.testFile && value.size) {
         try {
-            if (typeof test === 'function') {
-                const data = before ?
-                    getTestData(before, value.size) :
-                    undefined;
+            const mod = await import(pathToFileURL(value.testFile).href);
+            // tsx can expose either ESM exports or a CommonJS default wrapper.
+            const { before, default: test } = typeof mod.default === 'function' ?
+                mod : mod.default ?? mod;
 
-                const result = await (test as BenchmarkFunction)({
-                    size: value.size,
-                    CODE_PATH: value.CODE_PATH,
-                    data
-                });
-
-                parentPort.postMessage({
-                    result
-                });
+            if (typeof test !== 'function') {
+                throw new Error(
+                    `Benchmark ${value.testFile} must export a default function`
+                );
             }
+
+            const data = before ?
+                getTestData(before, value.size) :
+                undefined;
+
+            const result = await (test as BenchmarkFunction)({
+                size: value.size,
+                CODE_PATH: value.CODE_PATH,
+                data
+            });
+
+            parentPort.postMessage({
+                result
+            });
         } catch (error) {
             parentPort.postMessage({
                 error

@@ -1,10 +1,11 @@
 /* *
  *
- *  (c) 2009-2024 Highsoft AS
+ *  (c) 2009-2026 Highsoft AS
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  *  Authors:
  *  - Sebastian Bochan
@@ -19,11 +20,23 @@
  *  Imports
  *
  * */
-import type Cell from '../Layout/Cell';
 import type Row from '../Layout/Row';
 import type Board from '../Board';
+import type { GUIOptions as BoardGUIOptions } from '../Board';
 import type { HTMLDOMElement } from '../../Core/Renderer/DOMElementType';
+import type {
+    Options as CellEditToolbarOptions
+} from './Toolbar/CellEditToolbar';
+import type { Options as ConfirmationPopupOptions } from './ConfirmationPopup';
+import type { Options as DragDropOptions } from '../Actions/DragDrop';
+import type { LangOptions } from './EditGlobals';
+import type { Options as EditContextMenuOptions } from './EditContextMenu';
+import type { Options as ResizerOptions } from '../Actions/Resizer';
+import type { Options as RowEditToolbarOptions } from './Toolbar/RowEditToolbar';
+import type { Options as SidebarPopupOptions } from './SidebarPopup';
 
+import Cell, { isCell } from '../Layout/Cell.js';
+import CellHTML, { isCellHTML } from '../Layout/CellHTML.js';
 import EditGlobals from './EditGlobals.js';
 import EditRenderer from './EditRenderer.js';
 import CellEditToolbar from './Toolbar/CellEditToolbar.js';
@@ -33,17 +46,10 @@ import EditContextMenu from './EditContextMenu.js';
 import DragDrop from '../Actions/DragDrop.js';
 import Resizer from '../Actions/Resizer.js';
 import ConfirmationPopup from './ConfirmationPopup.js';
-import ContextDetection from '../Actions/ContextDetection.js';
 import GUIElement from '../Layout/GUIElement.js';
 import Globals from '../Globals.js';
 import Layout from '../Layout/Layout.js';
-import U from '../../Core/Utilities.js';
-const {
-    addEvent,
-    createElement,
-    css,
-    merge
-} = U;
+import { addEvent, createElement, css, merge } from '../../Shared/Utilities.js';
 
 /* *
  *
@@ -60,7 +66,7 @@ class EditMode {
     /**
      * Edit mode constructor.
      * @internal
-      *
+     *
      * @param board
      * Board instance
      *
@@ -69,7 +75,7 @@ class EditMode {
      */
     constructor(
         board: Board,
-        options?: EditMode.Options
+        options?: Options
     ) {
         this.iconsURLPrefix =
             (options && options.iconsURLPrefix) || this.iconsURLPrefix;
@@ -86,6 +92,9 @@ class EditMode {
                     icon: this.iconsURLPrefix + 'menu.svg'
                 },
                 dragDrop: {
+                    enabled: true
+                },
+                viewFullscreen: {
                     enabled: true
                 },
                 enabled: true,
@@ -109,20 +118,25 @@ class EditMode {
                         icon: this.iconsURLPrefix + 'add.svg'
                     }
                 }
-            } as EditMode.Options,
+            } as Options,
             options || {}
         );
 
         this.board = board;
         this.lang = merge({}, EditGlobals.lang, this.options.lang);
 
-        this.initLayout();
+        board.boardWrapper = board.container;
+        if (board.guiEnabled) {
+            this.initLayout();
+        }
 
         this.isInitialized = false;
         this.isContextDetectionActive = false;
         this.tools = {};
 
         if (board.editModeEnabled) {
+            this.customHTMLMode = !this.board.layoutsWrapper;
+
             this.contextPointer = {
                 isVisible: false,
                 element: createElement(
@@ -154,7 +168,13 @@ class EditMode {
             );
             this.isEditOverlayActive = false;
 
-            board.fullscreen = new Dashboards.FullScreen(board);
+            board.fullscreen = new Globals.win.Dashboards.Fullscreen(board);
+
+            if (this.customHTMLMode) {
+                board.container.classList.add(
+                    Globals.classNames.boardContainer
+                );
+            }
         }
     }
 
@@ -169,13 +189,17 @@ class EditMode {
      */
     private active: boolean = false;
     /**
+     * Whether the board is generated with custom HTML.
+     */
+    public customHTMLMode: boolean = false;
+    /**
      * Edit mode options.
      */
-    public options: EditMode.Options;
+    public options: Options;
     /**
      * URL from which the icons will be fetched.
      */
-    public iconsURLPrefix: string = '@product.assetPrefix@/gfx/dashboards-icons/';
+    public iconsURLPrefix: string = 'https://code.highcharts.com/dashboards/@product.version@/gfx/dashboards-icons/';
     /**
      * Dashboards' board instance.
      */
@@ -183,7 +207,7 @@ class EditMode {
     /**
      * Language dictionary.
      */
-    public lang: EditGlobals.LangOptions;
+    public lang: LangOptions;
     /**
      * Instance of the toolbar, which is displayed for the cell.
      */
@@ -217,7 +241,7 @@ class EditMode {
     /**
      * @internal
      */
-    public tools: EditMode.Tools;
+    public tools: Tools;
     /**
      * Instance of the confirmation popup.
      */
@@ -230,7 +254,7 @@ class EditMode {
     /**
      * @internal
      */
-    public mouseCellContext?: Cell;
+    public mouseCellContext?: Cell | CellHTML;
     /**
      * @internal
      */
@@ -238,15 +262,15 @@ class EditMode {
     /**
      * @internal
      */
-    public potentialCellContext?: Cell;
+    public potentialCellContext?: Cell | CellHTML;
     /**
      * @internal
      */
-    public editCellContext?: Cell;
+    public editCellContext?: Cell | CellHTML;
     /**
      * @internal
      */
-    public contextPointer?: EditMode.ContextPointer;
+    public contextPointer?: ContextPointer;
     /**
      * @internal
      */
@@ -285,7 +309,7 @@ class EditMode {
     /**
      * Activate or deactivate edit mode.
      */
-    public onEditModeToggle(): void {
+    public toggleEditMode(): void {
         const editMode = this;
 
         if (editMode.active) {
@@ -302,7 +326,7 @@ class EditMode {
     public init(): void {
         const editMode = this;
 
-        if (this.options.resize?.enabled) {
+        if (this.options.resize?.enabled && !editMode.customHTMLMode) {
             editMode.resizer = new Resizer(editMode, editMode.options.resize);
         }
 
@@ -312,7 +336,11 @@ class EditMode {
         );
 
         // Init rowToolbar.
-        if (editMode.options.toolbars?.row?.enabled && !editMode.rowToolbar) {
+        if (
+            editMode.options.toolbars?.row?.enabled &&
+            !editMode.rowToolbar &&
+            !editMode.customHTMLMode
+        ) {
             editMode.rowToolbar = new RowEditToolbar(editMode);
         }
 
@@ -341,9 +369,25 @@ class EditMode {
         const editMode = this,
             board = editMode.board;
 
-        for (let i = 0, iEnd = board.layouts.length; i < iEnd; ++i) {
-            editMode.setLayoutEvents(board.layouts[i]);
+        if (this.customHTMLMode) {
+            const length = board.mountedComponents.length;
+
+            for (let i = 0, iEnd = length; i < iEnd; ++i) {
+                editMode.setCellEvents(board.mountedComponents[i].cell);
+            }
+        } else {
+            for (let i = 0, iEnd = board.layouts.length; i < iEnd; ++i) {
+                editMode.setLayoutEvents(board.layouts[i]);
+            }
         }
+
+        addEvent(document, 'keydown', (e: KeyboardEvent): void => {
+            if (e.key === 'Escape' && editMode.isActive()) {
+                editMode.hideToolbars(['cell', 'row']);
+                editMode.editCellContext = void 0;
+                editMode.resizer?.disableResizer();
+            }
+        });
 
         if (editMode.cellToolbar) {
             // Stop context detection when mouse on cell toolbar.
@@ -362,6 +406,7 @@ class EditMode {
                     editMode.isContextDetectionActive = true;
                 }
             );
+
         }
 
         if (editMode.rowToolbar) {
@@ -383,21 +428,26 @@ class EditMode {
             );
         }
 
-        if (board.layoutsWrapper) {
-            addEvent(
-                board.layoutsWrapper,
-                'mousemove',
-                editMode.onDetectContext.bind(editMode)
-            );
-            addEvent(
-                board.layoutsWrapper,
-                'click',
-                editMode.onContextConfirm.bind(editMode)
-            );
-            addEvent(board.layoutsWrapper, 'mouseleave', (): void => {
+        const elementForEvents = this.customHTMLMode ?
+            board.container : board.layoutsWrapper;
+
+        addEvent(
+            elementForEvents,
+            'mousemove',
+            editMode.onDetectContext.bind(editMode)
+        );
+        addEvent(
+            elementForEvents,
+            'click',
+            editMode.onContextConfirm.bind(editMode)
+        );
+        addEvent(
+            elementForEvents,
+            'mouseleave',
+            (): void => {
                 editMode.hideContextPointer();
-            });
-        }
+            }
+        );
     }
 
     /**
@@ -410,9 +460,6 @@ class EditMode {
 
         // Clear the container from any content.
         board.container.innerHTML = '';
-
-        // Set the main wrapper container.
-        board.boardWrapper = board.container;
 
         // Add container for the board.
         board.container = createElement(
@@ -433,10 +480,6 @@ class EditMode {
         if (board.options.gui) {
             this.setLayouts(board.options.gui);
         }
-
-        if (board.options.layoutsJSON && !board.layouts.length) {
-            this.setLayoutsFromJSON(board.options.layoutsJSON);
-        }
     }
 
     /**
@@ -447,7 +490,7 @@ class EditMode {
      * The GUI options for the layout.
      *
      */
-    private setLayouts(guiOptions: Board.GUIOptions): void {
+    private setLayouts(guiOptions: BoardGUIOptions): void {
         const board = this.board,
             layoutsOptions = guiOptions.layouts;
 
@@ -460,27 +503,7 @@ class EditMode {
             );
         }
     }
-    /**
-     * Set the layouts from JSON.
-     * @internal
-     *
-     * @param json
-     * An array of layout JSON objects.
-     *
-     */
-    private setLayoutsFromJSON(json: Array<Layout.JSON>): void {
-        const board = this.board;
 
-        let layout;
-
-        for (let i = 0, iEnd = json.length; i < iEnd; ++i) {
-            layout = Layout.fromJSON(json[i], board);
-
-            if (layout) {
-                board.layouts.push(layout);
-            }
-        }
-    }
     /**
      * Set events for the layout.
      * @internal
@@ -546,18 +569,23 @@ class EditMode {
      * Set events for the cell.
      * @internal
      */
-    public setCellEvents(
-        cell: Cell
-    ): void {
+    public setCellEvents(cell: Cell | CellHTML): void {
         const editMode = this;
 
-        if (cell.nestedLayout) {
-            editMode.setLayoutEvents(cell.nestedLayout);
-        } else if (editMode.cellToolbar && cell.container) {
-            // Init dragDrop cell events.
-            if (editMode.dragDrop || editMode.resizer) {
-                const dragDrop = editMode.dragDrop;
-
+        if (isCellHTML(cell)) {
+            addEvent(
+                cell.container,
+                'mouseenter',
+                function (): void {
+                    if (editMode.isContextDetectionActive) {
+                        editMode.mouseCellContext = cell;
+                    }
+                }
+            );
+        } else {
+            if (cell.nestedLayout) {
+                editMode.setLayoutEvents(cell.nestedLayout);
+            } else if (editMode.cellToolbar && cell.container) {
                 addEvent(
                     cell.container,
                     'mouseenter',
@@ -568,36 +596,46 @@ class EditMode {
                     }
                 );
 
-                addEvent(
-                    cell.container,
-                    'mousemove',
-                    function (e: PointerEvent): void {
-                        if (
-                            dragDrop &&
-                            dragDrop.isActive &&
-                            e.target === cell.container
-                        ) {
-                            dragDrop.mouseCellContext = cell;
-                            dragDrop.mouseRowContext = void 0;
+                // Init dragDrop cell events only when using layouts.
+                if (editMode.dragDrop || editMode.resizer) {
+                    const dragDrop = editMode.dragDrop;
+
+                    addEvent(
+                        cell.container,
+                        'mousemove',
+                        function (e: PointerEvent): void {
+                            if (
+                                dragDrop &&
+                                dragDrop.isActive &&
+                                e.target === cell.container
+                            ) {
+                                dragDrop.mouseCellContext = cell;
+                                dragDrop.mouseRowContext = void 0;
+                            }
                         }
-                    }
-                );
+                    );
 
-                addEvent(cell.container, 'mouseleave', function (): void {
-                    if (
-                        dragDrop &&
-                        dragDrop.isActive &&
-                        dragDrop.mouseCellContext === cell
-                    ) {
-                        dragDrop.mouseCellContext = void 0;
-                    }
+                    addEvent(
+                        cell.container,
+                        'mouseleave',
+                        function (): void {
+                            if (
+                                dragDrop &&
+                                dragDrop.isActive &&
+                                dragDrop.mouseCellContext === cell
+                            ) {
+                                dragDrop.mouseCellContext = void 0;
+                            }
 
-                    if (editMode.isContextDetectionActive) {
-                        editMode.mouseCellContext = void 0;
-                    }
-                });
+                            if (editMode.isContextDetectionActive) {
+                                editMode.mouseCellContext = void 0;
+                            }
+                        }
+                    );
+                }
             }
         }
+
     }
     /**
      * Activate the edit mode.
@@ -617,7 +655,6 @@ class EditMode {
             EditGlobals.classNames.editModeEnabled
         );
 
-        // TODO all buttons should be activated, add some wrapper?
         if (this.addComponentBtn) {
             this.addComponentBtn.style.display = 'block';
         }
@@ -642,8 +679,8 @@ class EditMode {
         editMode.hideToolbars();
 
         // Remove highlight from the context row if exists.
-        if (this.editCellContext) {
-            this.editCellContext.row?.setHighlight(true);
+        if (this.editCellContext && isCell(this.editCellContext)) {
+            this.editCellContext.row?.setHighlight();
         }
 
         // TODO all buttons should be deactivated.
@@ -745,14 +782,12 @@ class EditMode {
             switch (toolbarsToShow[i]) {
                 case 'cell': {
                     if (currentCell && editMode.cellToolbar) {
-                        editMode.cellToolbar.isVisible = true;
                         editMode.cellToolbar.showToolbar(currentCell);
                     }
                     break;
                 }
                 case 'row': {
                     if (currentCell && currentCell.row && editMode.rowToolbar) {
-                        editMode.rowToolbar.isVisible = true;
                         editMode.rowToolbar.showToolbar(currentCell.row);
                     }
                     break;
@@ -777,43 +812,70 @@ class EditMode {
      */
     public createTools(): void {
         const editMode = this;
-        const options = this.options;
+        const { board, options, tools } = editMode;
 
         // Create tools container
-        this.tools.container = document.createElement('div');
-        this.tools.container.classList.add(EditGlobals.classNames.editTools);
+        tools.container = document.createElement('div');
+        tools.container.classList.add(EditGlobals.classNames.editTools);
 
-        this.board.layoutsWrapper?.parentNode.insertBefore(
-            this.tools.container,
-            this.board.layoutsWrapper
-        );
-
-        // Create context menu button
-        if (options.contextMenu && options.contextMenu.enabled) {
-            this.tools.contextButtonElement = EditRenderer.renderContextButton(
-                this.tools.container,
-                editMode
+        if (board.layoutsWrapper) {
+            // For the generated layout
+            board.layoutsWrapper.parentNode.insertBefore(
+                tools.container,
+                board.layoutsWrapper
             );
+        } else {
+            // For the custom layout
+            board.container.insertBefore(
+                tools.container,
+                board.container.firstChild
+            );
+        }
 
-            // Init contextMenu if doesn't exist.
-            if (!editMode.tools.contextMenu) {
-                editMode.tools.contextMenu = new EditContextMenu(
-                    editMode.board.container,
-                    editMode.options.contextMenu || {},
+        // Create context a menu button or edit mode toggle
+        if (options.contextMenu && options.contextMenu.enabled) {
+            if (options.contextMenu.items?.length) {
+                tools.contextButtonElement = EditRenderer.renderContextButton(
+                    tools.container,
                     editMode
                 );
+
+                // Init contextMenu if doesn't exist.
+                if (!editMode.tools.contextMenu) {
+                    editMode.tools.contextMenu = new EditContextMenu(
+                        editMode.board.container,
+                        editMode.options.contextMenu || {},
+                        editMode
+                    );
+                }
+            } else {
+                // Render the edit mode toggle when no items are provided
+                tools.standaloneEditToggle =
+                    EditRenderer.renderToggle(tools.container, {
+                        id: EditContextMenu.items.editMode.id,
+                        name: EditContextMenu.items.editMode.id,
+                        className: EditGlobals.classNames.editStandaloneToggle,
+                        title: editMode.lang.editMode,
+                        value: editMode.isActive(),
+                        lang: editMode.lang,
+                        langKey: 'editMode',
+                        onchange(): void {
+                            editMode.toggleEditMode();
+                        }
+                    });
             }
         }
 
         // Create add component button
         if (
             options.tools?.addComponentBtn?.enabled &&
-            options.toolbars?.cell?.enabled
+            options.toolbars?.cell?.enabled &&
+            !this.customHTMLMode
         ) {
             const addIconURL = options.tools.addComponentBtn.icon;
 
             this.addComponentBtn = EditRenderer.renderButton(
-                this.tools.container,
+                tools.container,
                 {
                     className: EditGlobals.classNames.editToolsBtn,
                     icon: addIconURL,
@@ -835,46 +897,43 @@ class EditMode {
 
     /**
      * Event fired when detecting context on drag&drop.
-     *
-     * @param e
-     * Mouse pointer event.
      */
-    public onDetectContext(e: PointerEvent): void {
-        const editMode = this,
-            offset = 50; // TODO - add it from options.
+    public onDetectContext(): void {
+        const editMode = this;
 
         if (
-            editMode.isActive() &&
-            editMode.isContextDetectionActive &&
-            (editMode.mouseCellContext || editMode.mouseRowContext) &&
-            !(editMode.dragDrop || {}).isActive
+            !editMode.isActive() ||
+            !editMode.isContextDetectionActive ||
+            (!editMode.mouseCellContext && !editMode.mouseRowContext) ||
+            (editMode.dragDrop || {}).isActive
         ) {
-            let cellContext,
-                rowContext;
+            return;
+        }
 
-            if (editMode.mouseCellContext) {
-                cellContext = ContextDetection
-                    .getContext(editMode.mouseCellContext, e, offset).cell;
-            } else if (editMode.mouseRowContext) {
-                rowContext = editMode.mouseRowContext;
-                cellContext = rowContext.layout.parentCell;
-            }
+        let cellContext: Cell | CellHTML | undefined;
+        let rowContext: Row | undefined;
 
-            this.potentialCellContext = cellContext;
+        if (editMode.mouseCellContext) {
+            cellContext = editMode.mouseCellContext;
+        } else if (editMode.mouseRowContext) {
+            rowContext = editMode.mouseRowContext;
+            cellContext = rowContext.layout.parentCell;
+        }
 
-            if (cellContext) {
-                const cellContextOffsets = GUIElement
-                    .getOffsets(cellContext, editMode.board.container);
-                const { width, height } = GUIElement
-                    .getDimFromOffsets(cellContextOffsets);
+        this.potentialCellContext = cellContext;
 
-                editMode.showContextPointer(
-                    cellContextOffsets.left,
-                    cellContextOffsets.top,
-                    width,
-                    height
-                );
-            }
+        if (cellContext) {
+            const cellContextOffsets = GUIElement
+                .getOffsets(cellContext, editMode.board.container);
+            const { width, height } = GUIElement
+                .getDimFromOffsets(cellContextOffsets);
+
+            editMode.showContextPointer(
+                cellContextOffsets.left,
+                cellContextOffsets.top,
+                width,
+                height
+            );
         }
     }
 
@@ -912,28 +971,42 @@ class EditMode {
      * @internal
      */
     public setEditCellContext(
-        editCellContext: Cell,
-        oldEditCellContext?: Cell
+        editCellContext: Cell | CellHTML,
+        oldEditCellContext?: Cell | CellHTML
     ): void {
-        const editMode = this,
-            oldContextRow = oldEditCellContext && oldEditCellContext.row;
+        const editMode = this;
+        const oldContext = oldEditCellContext;
 
-        editMode.editCellContext = editCellContext;
-        editMode.showToolbars(['row', 'cell'], editCellContext);
+        if (
+            isCellHTML(editCellContext) ||
+            isCellHTML(oldContext)
+        ) {
+            editMode.editCellContext = editCellContext;
+            editMode.cellToolbar?.showToolbar(editCellContext);
 
-        if (!oldContextRow || oldContextRow !== editCellContext.row) {
-            if (oldContextRow) {
-                // Remove highlight from the previous row.
-                oldContextRow.setHighlight(true);
+        } else {
+            const oldContextRow = oldContext?.row;
+
+            editMode.editCellContext = editCellContext;
+            editMode.showToolbars(['row', 'cell'], editCellContext);
+
+            if (!oldContextRow || oldContextRow !== editCellContext.row) {
+                if (oldContextRow) {
+                    // Remove highlight from the previous row.
+                    oldContextRow.setHighlight(true);
+                }
+
+                // Add highlight to the context row.
+                if (editCellContext.row) {
+                    editCellContext.row.setHighlight();
+                }
             }
 
-            // Add highlight to the context row.
-            editCellContext.row.setHighlight();
+            if (editMode.resizer) {
+                editMode.resizer.setSnapPositions(editCellContext);
+            }
         }
 
-        if (editMode.resizer) {
-            editMode.resizer.setSnapPositions(editCellContext);
-        }
     }
 
     /**
@@ -980,9 +1053,7 @@ class EditMode {
      * @param remove
      * Whether the edit overlay should be removed.
      */
-    public setEditOverlay(
-        remove?: boolean
-    ): void {
+    public setEditOverlay(remove?: boolean): void {
         const editMode = this,
             cnt = editMode.editOverlay,
             isSet = cnt?.classList.contains(
@@ -1001,213 +1072,169 @@ class EditMode {
 
 /* *
  *
- *  Namespace
+ *  Type Declarations
  *
  * */
-namespace EditMode {
-    export interface Options {
-        /**
-         * Context menu options.
-         */
-        contextMenu?: EditContextMenu.Options;
-        /**
-         * Confirmation popup options.
-         */
-        confirmationPopup?: ConfirmationPopup.Options;
-        /**
-         * Whether the edit mode should be enabled for the dashboards.
-         *
-         * Try it:
-         *
-         * {@link https://jsfiddle.net/gh/get/library/pure/highcharts/highcharts/tree/master/samples/dashboards/edit-mode/ctx-enabled/ | context enabled}
-         *
-         * @default false
-         *
-         */
-        enabled?: boolean;
-        /**
-         * Drag and drop options.
-         */
-        dragDrop?: DragDrop.Options;
-        /**
-         * The URL prefix for the icons used in the edit mode like the context
-         * menu icons, the row and cell edit toolbar icons, etc.
-         *
-         * @default @product.assetPrefix@/gfx/dashboards-icons/
-         */
-        iconsURLPrefix?: string;
-        /**
-         * Additional Language options.
-         *
-         * Try it:
-         *
-         * {@link https://jsfiddle.net/gh/get/library/pure/highcharts/highcharts/tree/master/samples/dashboards/edit-mode/lang/ | Norwegian language}
-         */
-        lang?: EditGlobals.LangOptions;
-        /**
-         * Resize options.
-         */
-        resize?: Resizer.Options;
-        /**
-         * Settings options.
-         */
-        settings?: SettingsOptions;
-        /**
-         * Toolbar options.
-         *
-         * Try it:
-         *
-         * {@link https://jsfiddle.net/gh/get/library/pure/highcharts/highcharts/tree/master/samples/dashboards/edit-mode/toolbars-disabled}
-         */
-        toolbars?: Toolbars;
-        /**
-         * Tools options.
-         */
-        tools?: Tools;
-    }
-
+export interface Options {
     /**
-     * Settings options
+     * Context menu options.
      */
-    export interface SettingsOptions {
-        /**
-         * Whether the toolbar settings buttons should be enabled.
-         *
-         * @default true
-         */
-        enabled?: boolean;
-    }
-
+    contextMenu?: EditContextMenuOptions;
     /**
-    * Toolbar options.
-    */
-    export interface Toolbars {
-        /**
-        * Options of the cell toolbar.
-        *
-        * When the cell toolbar is disabled, the Add Component button is not
-        * displayed.
-        */
-        cell?: CellEditToolbar.Options;
-        /**
-        * Options of the row toolbar.
-        */
-        row?: RowEditToolbar.Options;
-        /**
-        * Options of the sidebar.
-        */
-        sidebar?: SidebarPopup.Options;
-    }
-
-    /**
-    * Tools options.
-    */
-    export interface Tools {
-        /**
-        * Add Component button options.
-        */
-        addComponentBtn?: AddComponentBtn;
-        /**
-         * RWD buttons options.
-         *
-         * RWD buttons are permanently disabled since the change from
-         * options-managed responsiveness to fully CSS-managed.
-         *
-         * @deprecated
-         */
-        rwdButtons?: RwdButtons;
-        /**
-        * @internal
-        */
-        contextMenu?: EditContextMenu;
-        /**
-        * @internal
-        */
-        contextButtonElement?: HTMLDOMElement;
-        /**
-        * @internal
-        */
-        container?: HTMLDOMElement;
-    }
-
-    /**
-    * Add Component Button options.
-    */
-    export interface AddComponentBtn {
-        /**
-         * Whether the Add Component button should be visible.
-         *
-         * Note that the Add Component button is always disabled when cell
-         * toolbars are disabled.
-         *
-         * @default true
-         *
-         */
-        enabled?: boolean;
-        /**
-         * URL to the Add Component button icon.
-         */
-        icon: string;
-    }
-
-    /**
-     * Deprecated RWD buttons options.
-     *
-     * RWD buttons are permanently disabled since the change from
-     * options-managed responsiveness to fully CSS-managed.
-     *
-     * @deprecated
+     * Confirmation popup options.
      */
-    export interface RwdButtons {
-        /**
-         * Whether the RWD buttons should be visible.
-         *
-         * @deprecated
-         */
-        enabled?: boolean;
-        /**
-         * RWD buttons icons options.
-         *
-         * @deprecated
-         */
-        icons: RwdIcons;
-    }
-
+    confirmationPopup?: ConfirmationPopupOptions;
     /**
-     * RWD Buttons icons options.
+     * Whether the edit mode should be enabled for the dashboards.
      *
-     * @deprecated
+     * Try it:
+     *
+     * {@link https://jsfiddle.net/gh/get/library/pure/highcharts/highcharts/tree/master/samples/dashboards/edit-mode/ctx-enabled/ | context enabled}
+     *
+     * @default false
+     *
      */
-    export interface RwdIcons {
-        /**
-         * URL to small RWD button icon.
-         *
-         * @deprecated
-         */
-        small: string;
-        /**
-         * URL to medium RWD button icon.
-         *
-         * @deprecated
-         */
-        medium: string;
-        /**
-         * URL to large RWD button icon.
-         *
-         * @deprecated
-         */
-        large: string;
-    }
+    enabled?: boolean;
+    /**
+     * Drag and drop options.
+     */
+    dragDrop?: DragDropOptions;
+    /**
+     * The URL prefix for the icons used in the edit mode like the context
+     * menu icons, the row and cell edit toolbar icons, etc.
+     *
+     * @default @product.assetPrefix@/gfx/dashboards-icons/
+     */
+    iconsURLPrefix?: string;
+    /**
+     * Additional Language options.
+     *
+     * Try it:
+     *
+     * {@link https://jsfiddle.net/gh/get/library/pure/highcharts/highcharts/tree/master/samples/dashboards/edit-mode/lang/ | Norwegian language}
+     */
+    lang?: LangOptions;
+    /**
+     * Resize options.
+     */
+    resize?: ResizerOptions;
+    /**
+     * Settings options.
+     */
+    settings?: SettingsOptions;
+    /**
+     * Toolbar options.
+     *
+     * Try it:
+     *
+     * {@link https://jsfiddle.net/gh/get/library/pure/highcharts/highcharts/tree/master/samples/dashboards/edit-mode/toolbars-disabled}
+     */
+    toolbars?: Toolbars;
+    /**
+     * Tools options.
+     */
+    tools?: Tools;
+    /**
+     * Fullscreen options.
+     */
+    viewFullscreen?: ViewFullscreenOptions;
+}
 
+/**
+ * Settings options
+ */
+export interface SettingsOptions {
+    /**
+     * Whether the toolbar settings buttons should be enabled.
+     *
+     * @default true
+     */
+    enabled?: boolean;
+}
+
+export interface ViewFullscreenOptions {
+    /**
+     * Whether the view fullscreen button should be enabled.
+     *
+     * @default true
+     */
+    enabled?: boolean;
+}
+
+/**
+* Toolbar options.
+*/
+export interface Toolbars {
+    /**
+    * Options of the cell toolbar.
+    *
+    * When the cell toolbar is disabled, the Add Component button is not
+    * displayed.
+    */
+    cell?: CellEditToolbarOptions;
+    /**
+    * Options of the row toolbar.
+    */
+    row?: RowEditToolbarOptions;
+    /**
+    * Options of the sidebar.
+    */
+    sidebar?: SidebarPopupOptions;
+}
+
+/**
+* Tools options.
+*/
+export interface Tools {
+    /**
+    * Add Component button options.
+    */
+    addComponentBtn?: AddComponentBtn;
     /**
     * @internal
     */
-    export interface ContextPointer {
-        isVisible: boolean;
-        element: HTMLDOMElement;
-    }
+    contextMenu?: EditContextMenu;
+    /**
+    * @internal
+    */
+    contextButtonElement?: HTMLDOMElement;
+    /**
+    * @internal
+    */
+    standaloneEditToggle?: HTMLDOMElement;
+    /**
+    * @internal
+    */
+    container?: HTMLDOMElement;
 }
 
+/**
+* Add Component Button options.
+*/
+export interface AddComponentBtn {
+    /**
+     * Whether the Add Component button should be visible.
+     *
+     * Note that the Add Component button is always disabled when cell
+     * toolbars are disabled.
+     *
+     * @default true
+     *
+     */
+    enabled?: boolean;
+    /**
+     * URL to the Add Component button icon.
+     */
+    icon: string;
+}
+
+/**
+* @internal
+*/
+export interface ContextPointer {
+    isVisible: boolean;
+    element: HTMLDOMElement;
+}
 /* *
  *
  *  Default Export

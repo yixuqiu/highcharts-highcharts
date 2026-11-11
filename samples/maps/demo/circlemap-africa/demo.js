@@ -5,7 +5,7 @@ Highcharts.chart('container', {
     },
 
     title: {
-        text: 'Africa Real GDP Growth Forecasts for 2017',
+        text: 'Africa Real GDP Growth for 2023',
         align: 'left'
     },
 
@@ -43,6 +43,11 @@ Highcharts.chart('container', {
 
     colorAxis: {
         dataClasses: [{
+            to: 0,
+            color: '#ff9999',
+            name: 'Negative'
+        }, {
+            from: 0,
             to: 2,
             color: '#e8f5e9',
             name: 'Weak'
@@ -70,8 +75,10 @@ Highcharts.chart('container', {
     },
 
     plotOptions: {
+        tilemap: {
+            tileShape: 'circle'
+        },
         series: {
-            tileShape: 'circle',
             dataLabels: {
                 enabled: true,
                 format: '{point.iso-a3}',
@@ -83,6 +90,7 @@ Highcharts.chart('container', {
         }
     },
 
+    // https://tradingeconomics.com/country-list/gdp-annual-growth-rate?continent=africa
     series: [{
         data: [{
             id: 'ZW',
@@ -93,7 +101,7 @@ Highcharts.chart('container', {
             'iso-a2': 'ZW',
             x: 12,
             y: 1,
-            value: 1.7
+            value: 4.5
         }, {
             id: 'ZM',
             name: 'Zambia',
@@ -103,7 +111,7 @@ Highcharts.chart('container', {
             'iso-a2': 'ZM',
             x: 11,
             y: 2,
-            value: 3.2
+            value: 8
         }, {
             id: 'MG',
             name: 'Madagascar',
@@ -113,7 +121,7 @@ Highcharts.chart('container', {
             'iso-a2': 'MG',
             x: 17,
             y: 2,
-            value: 4.6
+            value: 4
         }, {
             id: 'MW',
             name: 'Malawi',
@@ -123,7 +131,7 @@ Highcharts.chart('container', {
             'iso-a2': 'MW',
             x: 12,
             y: 2,
-            value: 3.7
+            value: 1.5
         }, {
             id: 'MZ',
             name: 'Mozambique',
@@ -133,7 +141,7 @@ Highcharts.chart('container', {
             'iso-a2': 'MZ',
             x: 13,
             y: 2,
-            value: 5.5
+            value: 3.2
         }, {
             id: 'BI',
             name: 'Burundi',
@@ -143,7 +151,7 @@ Highcharts.chart('container', {
             'iso-a2': 'BI',
             x: 10,
             y: 2,
-            value: 2
+            value: 2.8
         }, {
             id: 'TZ',
             name: 'United Republic of Tanzania',
@@ -153,7 +161,7 @@ Highcharts.chart('container', {
             'iso-a2': 'TZ',
             x: 13,
             y: 3,
-            value: 6.9
+            value: 4.6
         }, {
             id: 'RW',
             name: 'Rwanda',
@@ -163,7 +171,7 @@ Highcharts.chart('container', {
             'iso-a2': 'RW',
             x: 11,
             y: 3,
-            value: 6.6
+            value: 9.7
         }, {
             id: 'KE',
             name: 'Kenya',
@@ -173,7 +181,7 @@ Highcharts.chart('container', {
             'iso-a2': 'KE',
             x: 12,
             y: 3,
-            value: 6.4
+            value: 5
         }, {
             id: 'UG',
             name: 'Uganda',
@@ -183,7 +191,7 @@ Highcharts.chart('container', {
             'iso-a2': 'UG',
             x: 10,
             y: 3,
-            value: 5.8
+            value: 6.6
         }, {
             id: 'SO',
             name: 'Somalia',
@@ -193,7 +201,7 @@ Highcharts.chart('container', {
             'iso-a2': 'SO',
             x: 17,
             y: 4,
-            value: 2.5
+            value: 2.8
         }, {
             id: 'ET',
             name: 'Ethiopia',
@@ -203,7 +211,7 @@ Highcharts.chart('container', {
             'iso-a2': 'ET',
             x: 12,
             y: 4,
-            value: 3.3
+            value: 7.9
         }, {
             id: 'SX',
             name: 'Somaliland',
@@ -223,7 +231,7 @@ Highcharts.chart('container', {
             'iso-a2': 'SS',
             x: 10,
             y: 4,
-            value: 3.5
+            value: -0.4
         }, {
             id: 'DJ',
             name: 'Djibouti',
@@ -233,7 +241,7 @@ Highcharts.chart('container', {
             'iso-a2': 'DJ',
             x: 14,
             y: 4,
-            value: 7
+            value: 5.7
         }, {
             id: 'ER',
             name: 'Eritrea',
@@ -243,7 +251,7 @@ Highcharts.chart('container', {
             'iso-a2': 'ER',
             x: 13,
             y: 5,
-            value: 3.3
+            value: 2.9
         }, {
             id: 'AO',
             name: 'Angola',
@@ -253,7 +261,7 @@ Highcharts.chart('container', {
             'iso-a2': 'AO',
             x: 9,
             y: 2,
-            value: 1.2
+            value: 4.6
         }, {
             id: 'CD',
             name: 'Democratic Republic of the Congo',
@@ -263,7 +271,7 @@ Highcharts.chart('container', {
             'iso-a2': 'CD',
             x: 8,
             y: 2,
-            value: 4.5
+            value: 6.2
         }, {
             id: 'GA',
             name: 'Gabon',
@@ -273,7 +281,7 @@ Highcharts.chart('container', {
             'iso-a2': 'GA',
             x: 8,
             y: 3,
-            value: 3
+            value: 2.3
         }, {
             id: 'GQ',
             name: 'Equatorial Guinea',
@@ -283,7 +291,7 @@ Highcharts.chart('container', {
             'iso-a2': 'GQ',
             x: 6,
             y: 3,
-            value: 5.8
+            value: -7
         }, {
             id: 'CG',
             name: 'Republic of Congo',
@@ -293,7 +301,7 @@ Highcharts.chart('container', {
             'iso-a2': 'CG',
             x: 9,
             y: 3,
-            value: 4.4
+            value: 3.2
         }, {
             id: 'CM',
             name: 'Cameroon',
@@ -303,7 +311,7 @@ Highcharts.chart('container', {
             'iso-a2': 'CM',
             x: 9,
             y: 4,
-            value: 5.5
+            value: 3.1
         }, {
             id: 'CF',
             name: 'Central African Republic',
@@ -313,7 +321,7 @@ Highcharts.chart('container', {
             'iso-a2': 'CF',
             x: 11,
             y: 4,
-            value: 4
+            value: 1
         }, {
             id: 'TD',
             name: 'Chad',
@@ -323,7 +331,7 @@ Highcharts.chart('container', {
             'iso-a2': 'TD',
             x: 13,
             y: 4,
-            value: 1.7
+            value: 4.1
         }, {
             id: 'SD',
             name: 'Sudan',
@@ -333,7 +341,7 @@ Highcharts.chart('container', {
             'iso-a2': 'SD',
             x: 11,
             y: 5,
-            value: 3.5
+            value: -12
         }, {
             id: 'EH',
             name: 'Western Sahara',
@@ -353,7 +361,7 @@ Highcharts.chart('container', {
             'iso-a2': 'DZ',
             x: 6,
             y: 5,
-            value: 2.3
+            value: 3.4
         }, {
             id: 'LY',
             name: 'Libya',
@@ -366,7 +374,7 @@ Highcharts.chart('container', {
             'iso-a2': 'LY',
             x: 10,
             y: 5,
-            value: 19.3
+            value: 12.6
         }, {
             id: 'EG',
             name: 'Egypt',
@@ -376,7 +384,7 @@ Highcharts.chart('container', {
             'iso-a2': 'EG',
             x: 12,
             y: 5,
-            value: 3.2
+            value: 2.3
         }, {
             id: 'MA',
             name: 'Morocco',
@@ -386,7 +394,7 @@ Highcharts.chart('container', {
             'iso-a2': 'MA',
             x: 4,
             y: 5,
-            value: 3.7
+            value: 2.5
         }, {
             id: 'TN',
             name: 'Tunisia',
@@ -396,7 +404,7 @@ Highcharts.chart('container', {
             'iso-a2': 'TN',
             x: 8,
             y: 5,
-            value: 1.9
+            value: 0.2
         }, {
             id: 'ZA',
             name: 'South Africa',
@@ -406,7 +414,7 @@ Highcharts.chart('container', {
             'iso-a2': 'ZA',
             x: 9,
             y: 1,
-            value: 1.2
+            value: 0.5
         }, {
             id: 'LS',
             name: 'Lesotho',
@@ -416,7 +424,7 @@ Highcharts.chart('container', {
             'iso-a2': 'LS',
             x: 11,
             y: 1,
-            value: 2.5
+            value: 1.8
         }, {
             id: 'SZ',
             name: 'Swaziland',
@@ -426,7 +434,7 @@ Highcharts.chart('container', {
             'iso-a2': 'SZ',
             x: 13,
             y: 1,
-            value: 0.9
+            value: 4.8
         }, {
             id: 'NA',
             name: 'Namibia',
@@ -436,7 +444,7 @@ Highcharts.chart('container', {
             'iso-a2': 'NA',
             x: 8,
             y: 1,
-            value: 4
+            value: 4.7
         }, {
             id: 'BW',
             name: 'Botswana',
@@ -446,7 +454,7 @@ Highcharts.chart('container', {
             'iso-a2': 'BW',
             x: 10,
             y: 1,
-            value: 4.1
+            value: -5.3
         }, {
             id: 'LR',
             name: 'Liberia',
@@ -456,7 +464,7 @@ Highcharts.chart('container', {
             'iso-a2': 'LR',
             x: 2,
             y: 4,
-            value: 4
+            value: 4.7
         }, {
             id: 'TG',
             name: 'Togo',
@@ -466,7 +474,7 @@ Highcharts.chart('container', {
             'iso-a2': 'TG',
             x: 3,
             y: 4,
-            value: 5.5
+            value: 6.5
         }, {
             id: 'SL',
             name: 'Sierra Leone',
@@ -476,7 +484,7 @@ Highcharts.chart('container', {
             'iso-a2': 'SL',
             x: 0,
             y: 4,
-            value: 4
+            value: 3.4
         }, {
             id: 'CI',
             name: 'Ivory Coast',
@@ -486,7 +494,7 @@ Highcharts.chart('container', {
             'iso-a2': 'CI',
             x: 4,
             y: 4,
-            value: 8
+            value: 6.9
         }, {
             id: 'GH',
             name: 'Ghana',
@@ -496,7 +504,7 @@ Highcharts.chart('container', {
             'iso-a2': 'GH',
             x: 6,
             y: 4,
-            value: 6.3
+            value: 4.7
         }, {
             id: 'NG',
             name: 'Nigeria',
@@ -506,7 +514,7 @@ Highcharts.chart('container', {
             'iso-a2': 'NG',
             x: 7,
             y: 4,
-            value: 1.5
+            value: 3
         }, {
             id: 'SN',
             name: 'Senegal',
@@ -516,7 +524,7 @@ Highcharts.chart('container', {
             'iso-a2': 'SN',
             x: 1,
             y: 5,
-            value: 6.7
+            value: 2.3
         }, {
             id: 'GM',
             name: 'Gambia',
@@ -526,7 +534,7 @@ Highcharts.chart('container', {
             'iso-a2': 'GM',
             x: 1,
             y: 4,
-            value: 4
+            value: 5.6
         }, {
             id: 'GN',
             name: 'Guinea',
@@ -536,7 +544,7 @@ Highcharts.chart('container', {
             'iso-a2': 'GN',
             x: 9,
             y: 5,
-            value: 4
+            value: 5.9
         }, {
             id: 'BF',
             name: 'Burkina Faso',
@@ -546,7 +554,7 @@ Highcharts.chart('container', {
             'iso-a2': 'BF',
             x: 5,
             y: 5,
-            value: 4
+            value: 4.9
         }, {
             id: 'BJ',
             name: 'Benin',
@@ -556,7 +564,7 @@ Highcharts.chart('container', {
             'iso-a2': 'BJ',
             x: 5,
             y: 4,
-            value: 5.5
+            value: 6.5
         }, {
             id: 'GW',
             name: 'Guinea Bissau',
@@ -566,7 +574,7 @@ Highcharts.chart('container', {
             'iso-a2': 'GW',
             x: 7,
             y: 5,
-            value: 5.5
+            value: 4.5
         }, {
             id: 'ML',
             name: 'Mali',
@@ -576,7 +584,7 @@ Highcharts.chart('container', {
             'iso-a2': 'ML',
             x: 3,
             y: 5,
-            value: 4.8
+            value: 5.8
         }, {
             id: 'NE',
             name: 'Niger',
@@ -586,7 +594,7 @@ Highcharts.chart('container', {
             'iso-a2': 'NE',
             x: 8,
             y: 4,
-            value: 5.5
+            value: 2.1
         }, {
             id: 'MR',
             name: 'Mauritania',
@@ -596,7 +604,7 @@ Highcharts.chart('container', {
             'iso-a2': 'MR',
             x: -1,
             y: 5,
-            value: 4.3
+            value: 4.7
         }]
     }]
 });

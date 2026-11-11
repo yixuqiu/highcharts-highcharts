@@ -93,10 +93,6 @@
         libColor = 'rgba(240,190,50,0.80)',
         grnColor = 'rgba(90,200,90,0.80)';
 
-
-    // Compute max votes to find relative sizes of bubbles
-    const maxVotes = data.reduce((max, row) => Math.max(max, row[5]), 0);
-
     // Build the chart
     const chart = Highcharts.mapChart('container', {
 
@@ -143,10 +139,14 @@
             align: 'left'
         },
 
+        tooltip: {
+            headerFormat: '',
+            useHTML: true
+        },
+
         // Default options for the pies
         plotOptions: {
             pie: {
-                borderColor: 'rgba(255,255,255,0.4)',
                 borderWidth: 1,
                 clip: true,
                 dataLabels: {
@@ -183,17 +183,18 @@
                     }
                 }
             },
-            borderColor: '#FFF',
+            borderColor: 'var(--highcharts-background-color, white)',
             joinBy: ['name', 'id'],
             keys: [
                 'id', 'demVotes', 'repVotes', 'libVotes', 'grnVotes',
                 'sumVotes', 'value', 'pieOffset'
             ],
             tooltip: {
-                headerFormat: '',
                 pointFormatter() {
                     const hoverVotes = this.hoverVotes; // Used by pie only
-                    return '<b>' + this.id + ' votes</b><br/>' +
+                    return `
+                        <h4>${this.id} votes</h4>
+                        <table>` +
                         [
                             ['Democrats', this.demVotes, demColor],
                             ['Republicans', this.repVotes, repColor],
@@ -202,20 +203,35 @@
                         ]
                             .sort((a, b) => b[1] - a[1]) // Sort tooltip by
                             // most votes
-                            .map(
-                                line => '<span style="color:' + line[2] +
-                                // Colorized bullet
-                                '">\u25CF</span> ' +
-                                // Party and votes
-                                (line[0] === hoverVotes ? '<b>' : '') +
-                                line[0] + ': ' +
-                                Highcharts.numberFormat(line[1], 0) +
-                                (line[0] === hoverVotes ? '</b>' : '') +
-                                '<br/>'
+                            .map(line =>
+                                `<tr style="${
+                                    line[0] === hoverVotes ?
+                                        'font-weight: bold;' :
+                                        ''
+                                }">
+                                    <td>
+                                        <span style="color: ${line[2]}">
+                                            \u25CF
+                                        </span>
+                                        <span style="color:
+                                            var(--highcharts-neutral-color-60);
+                                        ">
+                                            ${line[0]}
+                                        </span>
+                                    </td>
+                                    <td style="text-align: right">
+                                        ${Highcharts.numberFormat(line[1], 0)}
+                                    </td>
+                                </tr>`
                             )
                             .join('') +
-                        '<hr/>Total: ' +
-                        Highcharts.numberFormat(this.sumVotes, 0);
+                        `<tr>
+                            <td colspan="2" style="text-align: right">
+                            <hr/>
+                            Total: ${Highcharts.numberFormat(this.sumVotes, 0)}
+                            </td>
+                        </tr>
+                        </table>`;
                 }
             }
         }, {
@@ -267,25 +283,21 @@
 
     // Add the pies after chart load, optionally with offset and connectors
     chart.series[0].points.forEach(state => {
+
         // Add the pie for this state
         chart.addSeries({
             type: 'pie',
             name: state.id,
+            borderRadius: 0,
+            borderWidth: 0.5,
             zIndex: 6, // Keep pies above connector lines
             minSize: 15,
             maxSize: 55,
             onPoint: {
                 id: state.id,
-                z: (() => {
-                    const mapView = chart.mapView,
-                        zoomFactor = mapView.zoom / mapView.minZoom;
-
-                    return Math.max(
-                        chart.chartWidth / 45 * zoomFactor, // Min size
-                        chart.chartWidth /
-                        11 * zoomFactor * state.sumVotes / maxVotes
-                    );
-                })()
+                minSize: 16,
+                maxSize: chart.chartWidth * 0.05,
+                z: (() => state.sumVotes)()
             },
             states: {
                 inactive: {

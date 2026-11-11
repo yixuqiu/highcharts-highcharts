@@ -461,8 +461,8 @@ QUnit.test('Show only one crosshair at the same time', function (assert) {
         'Crosshair should be visible for the first series (#12298)'
     );
     assert.strictEqual(
-        typeof series2.yAxis.crossLabel,
-        'undefined',
+        series2.yAxis.crossLabel.attr('visibility'),
+        'hidden',
         'Crosshair should not be visible for the second series  (#12298)'
     );
 });
@@ -661,6 +661,52 @@ QUnit.test(
             ),
             true,
             'Crosshair should has stroke-width attribute (#11246)'
+        );
+    }
+);
+
+QUnit.test(
+    'Crosshairs label should be correctly justified.',
+    function (assert) {
+        const chart = Highcharts.chart('container', {
+            xAxis: {
+                crosshair: true
+            },
+
+            tooltip: {
+                enabled: false
+            },
+            yAxis: {
+                title: '',
+                opposite: false,
+                crosshair: {
+                    label: {
+                        enabled: true,
+                        format: '{value:.2f}'
+                    }
+                },
+                labels: {
+                    align: 'left',
+                    format: '{value:.2f}',
+                    y: 6,
+                    x: 2
+                }
+            },
+
+            series: [
+                {
+                    data: [1, 2, 34, 23, 43, 3]
+                }
+            ]
+        });
+
+        chart.series[0].points[3].onMouseOver();
+
+        const yAxis = chart.yAxis[0];
+        assert.equal(
+            yAxis.crossLabel.x >= 0,
+            true,
+            'Crosshair label is justified'
         );
     }
 );

@@ -1,3 +1,8 @@
+Highcharts.setOptions({
+    chart: {
+        styledMode: true
+    }
+});
 const navigatorOptions = {
     xAxis: {
         labels: {
@@ -12,11 +17,9 @@ Dashboards.board('container', {
         connectors: [{
             id: 'Economy',
             type: 'CSV',
-            options: {
-                csv: document.getElementById('csv').innerHTML,
-                decimalPoint: '.',
-                itemDelimiter: ','
-            }
+            csv: document.getElementById('csv').innerHTML,
+            decimalPoint: '.',
+            itemDelimiter: ','
         }]
     },
     editMode: {
@@ -98,22 +101,30 @@ Dashboards.board('container', {
         }
     }, {
         renderTo: 'bottom',
-        type: 'DataGrid',
+        type: 'Grid',
         connector: {
             id: 'Economy'
         },
-        dataGridOptions: {
-            columns: {
-                Agriculture: {
-                    cellFormat: '{value:.1f}%'
-                },
-                Industry: {
-                    cellFormat: '{value:.1f}%'
-                },
-                Services: {
-                    cellFormat: '{value:.1f}%'
+        gridOptions: {
+            credits: {
+                enabled: false
+            },
+            columns: [{
+                id: 'Agriculture',
+                cells: {
+                    format: '{value:.1f}%'
                 }
-            }
+            }, {
+                id: 'Industry',
+                cells: {
+                    format: '{value:.1f}%'
+                }
+            }, {
+                id: 'Services',
+                cells: {
+                    format: '{value:.1f}%'
+                }
+            }]
         }
     }]
 });

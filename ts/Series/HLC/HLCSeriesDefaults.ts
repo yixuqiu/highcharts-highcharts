@@ -1,10 +1,12 @@
 /* *
  *
- *  (c) 2010-2024 Pawel Lysy
+ *  (c) 2010-2026 Highsoft AS
+ *  Author: Paweł Lysy
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  * */
 
@@ -24,6 +26,7 @@ import type HLCSeriesOptions from './HLCSeriesOptions';
  *
  * */
 
+
 /**
  * An HLC chart is a style of financial chart used to describe price
  * movements over time. It displays high, low and close values per
@@ -33,8 +36,7 @@ import type HLCSeriesOptions from './HLCSeriesOptions';
  *         HLC chart
  *
  * @extends      plotOptions.column
- * @excluding    borderColor, borderRadius, borderWidth, crisp, stacking,
- *               stack
+ * @excluding    borderColor, borderRadius, borderWidth, crisp, stack, stacking
  * @product      highstock
  * @optionparent plotOptions.hlc
  */
@@ -67,6 +69,20 @@ const HLCSeriesDefaults: HLCSeriesOptions = {
      */
 
     /**
+     * What type of legend symbol to render for this series. The default
+     * `hlc` shows two stems, each with a tick on the right representing the
+     * closing value.
+     *
+     * @sample {highstock} stock/plotoptions/financial-legend-symbols/
+     *         Financial series legend symbols
+     *
+     * @default   hlc
+     * @product   highstock
+     * @apioption plotOptions.hlc.legendSymbol
+     */
+    legendSymbol: 'hlc',
+
+    /**
      * The pixel width of the line/border. Defaults to `1`.
      *
      * @sample {highstock} stock/plotoptions/hlc-linewidth/
@@ -83,9 +99,9 @@ const HLCSeriesDefaults: HLCSeriesOptions = {
     tooltip: {
         pointFormat: '<span style="color:{point.color}">\u25CF</span> ' +
         '<b> {series.name}</b><br/>' +
-        'High: {point.high}<br/>' +
-        'Low: {point.low}<br/>' +
-        'Close: {point.close}<br/>'
+        '{series.chart.options.lang.stockHigh}: {point.high}<br/>' +
+        '{series.chart.options.lang.stockLow}: {point.low}<br/>' +
+        '{series.chart.options.lang.stockClose}: {point.close}<br/>'
     },
 
     /**
@@ -142,7 +158,6 @@ const HLCSeriesDefaults: HLCSeriesOptions = {
  * specified, it is inherited from [chart.type](#chart.type).
  *
  * @extends   series,plotOptions.hlc
- * @excluding dataParser, dataURL
  * @product   highstock
  * @apioption series.hlc
  */
@@ -189,6 +204,7 @@ const HLCSeriesDefaults: HLCSeriesOptions = {
  *    }]
  *    ```
  *
+ * @basic
  * @type      {Array<Array<(number|string),number,number>|Array<(number|string),number,number,number>|*>}
  * @extends   series.arearange.data
  * @excluding y, marker

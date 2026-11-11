@@ -27,7 +27,6 @@
                 type: 'treemap',
                 layoutAlgorithm: 'squarified',
                 allowDrillToNode: true,
-                turboThreshold: dataJson.length,
                 dataLabels: {
                     enabled: false
                 },
@@ -40,8 +39,7 @@
                             format: '{point.name} {point.value:.0f}%',
                             style: {
                                 fontSize: 18
-                            },
-                            zIndex: 9
+                            }
                         },
                         borderWidth: 3
                     },

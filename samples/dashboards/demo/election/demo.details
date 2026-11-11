@@ -1,13 +1,14 @@
 ---
 name: Election demo
 authors:
-  - Jomar Hønsi
+  - Jomar Hønsi, Sebastian Bochan
 requiresManualTesting: true
 js_wrap: b
+new_until: 2024-05-11
 tags:
-- Highcharts Dashboards demo
+  - Highcharts Dashboards demo
 categories:
-  - General:
-        priority: 2
+  - Advanced:
+        priority: 30
 use_png_thumbnail: true
 ...

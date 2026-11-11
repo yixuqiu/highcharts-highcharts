@@ -1,10 +1,11 @@
 /* *
  *
- *  (c) 2009-2024 Highsoft AS
+ *  (c) 2009-2026 Highsoft AS
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  *  Authors:
  *  - Sebastian Bochan
@@ -14,19 +15,23 @@
  *
  * */
 
+import type CellHTML from '../../Layout/CellHTML';
+import type { Options as EditToolbarOptions } from './EditToolbar';
+import type { Options as MenuItemOptions } from '../Menu/MenuItem';
+
+import type { Options as EditModeOptions } from '../EditMode';
+
 import EditMode from '../EditMode.js';
-import U from '../../../Core/Utilities.js';
-import Cell from '../../Layout/Cell.js';
+import Cell, { isCell } from '../../Layout/Cell.js';
 import EditGlobals from '../EditGlobals.js';
 import MenuItem from '../Menu/MenuItem.js';
 import EditToolbar from './EditToolbar.js';
 import GUIElement from '../../Layout/GUIElement.js';
-
+import H from '../../../Core/Globals.js';
 const {
-    merge,
-    fireEvent,
-    objectEach
-} = U;
+    isFirefox
+} = H;
+import { fireEvent, merge, objectEach } from '../../../Shared/Utilities.js';
 
 
 /**
@@ -38,7 +43,7 @@ class CellEditToolbar extends EditToolbar {
      *  Static Properties
      *
      * */
-    protected static readonly defaultOptions: CellEditToolbar.Options = {
+    protected static readonly defaultOptions: Options = {
         enabled: true,
         className: EditGlobals.classNames.editToolbar,
         outline: false,
@@ -51,10 +56,10 @@ class CellEditToolbar extends EditToolbar {
     };
 
     public static getItemsConfig(
-        options: EditMode.Options,
+        options: EditModeOptions,
         iconURLPrefix: string
-    ): MenuItem.Options[] {
-        const items: MenuItem.Options[] = [];
+    ): MenuItemOptions[] {
+        const items: MenuItemOptions[] = [];
 
         if (options.dragDrop?.enabled) {
             items.push({
@@ -63,11 +68,22 @@ class CellEditToolbar extends EditToolbar {
                 icon: iconURLPrefix + 'drag.svg',
                 events: {
                     onmousedown: function (this: MenuItem, e: any): void {
+                        // #22546, workaround for Firefox, where mouseenter
+                        // event is not fired when triggering it while dragging
+                        // another element.
+                        if (isFirefox) {
+                            e.preventDefault();
+                        }
+
                         const cellEditToolbar = this.menu
                             .parent as CellEditToolbar;
                         const dragDrop = cellEditToolbar.editMode.dragDrop;
 
-                        if (dragDrop && cellEditToolbar.cell) {
+                        if (
+                            dragDrop &&
+                            cellEditToolbar.cell &&
+                            isCell(cellEditToolbar.cell)
+                        ) {
                             dragDrop.onDragStart(e, cellEditToolbar.cell);
                         }
                     }
@@ -119,6 +135,28 @@ class CellEditToolbar extends EditToolbar {
             }
         });
 
+        if (options.viewFullscreen?.enabled) {
+            items.push({
+                id: 'viewFullscreen',
+                type: 'icon',
+                className: EditGlobals.classNames.viewFullscreen,
+                icon: iconURLPrefix + 'fullscreen.svg',
+                events: {
+                    click: function (this: MenuItem): void {
+                        const fullScreen =
+                            this.menu.parent.editMode.board.fullscreen;
+                        const container =
+                            this.menu.parent.cell.container.firstElementChild;
+
+                        if (fullScreen) {
+                            fullScreen.toggle(container);
+                        }
+                    }
+                }
+            });
+        }
+
+
         return items;
     }
 
@@ -145,6 +183,10 @@ class CellEditToolbar extends EditToolbar {
             )
         );
 
+        if (editMode.customHTMLMode) {
+            this.filterOptionsAvailableInCustomHTMLMode();
+        }
+
         this.menu.initItems({});
     }
 
@@ -153,8 +195,8 @@ class CellEditToolbar extends EditToolbar {
      *  Properties
      *
      * */
-    public cell?: Cell;
-    public editedCell?: Cell;
+    public cell?: Cell|CellHTML;
+    public editedCell?: Cell|CellHTML;
 
     /* *
      *
@@ -162,37 +204,59 @@ class CellEditToolbar extends EditToolbar {
      *
      * */
 
-    public showToolbar(cell: Cell): void {
-        const toolbar = this,
-            cellCnt = cell.container,
-            toolbarWidth = 30,
-            toolbarMargin = 10;
+    /**
+     * Show toolbar for given cell.
+     *
+     * @param cell
+     * Cell to show toolbar for.
+     */
+    public showToolbar(cell: Cell|CellHTML): void {
+        const toolbar = this;
+        const cellCnt = cell.container;
+        const toolbarWidth = 30;
+        const toolbarMargin = 10;
+        const cellToolbar = toolbar.editMode.cellToolbar;
 
-        let x, y;
+        if (!cellToolbar) {
+            return;
+        }
 
         if (
-            cellCnt &&
-            toolbar.editMode.isActive() &&
+            cellCnt && toolbar.editMode.isActive() &&
             !(toolbar.editMode.dragDrop || {}).isActive
         ) {
             const cellOffsets = GUIElement.getOffsets(
                 cell,
                 toolbar.editMode.board.container
             );
+            const x = cellOffsets.right - toolbarWidth - toolbarMargin;
+            const y = cellOffsets.top + toolbarMargin;
 
-            x = cellOffsets.right - toolbarWidth - toolbarMargin;
-            y = cellOffsets.top + toolbarMargin;
-
-            // Temp - activate all items.
             objectEach(toolbar.menu.items, (item): void => {
+                if (!cell.options?.editMode?.toolbarItems) {
+                    item.activate();
+                    return;
+                }
+                const toolbarItems = cell.options.editMode.toolbarItems;
+
+                if (
+                    toolbarItems[item.options.id as keyof typeof toolbarItems]
+                        ?.enabled === false
+                ) {
+                    item.deactivate();
+                    return;
+                }
+
                 item.activate();
             });
 
             toolbar.setPosition(x, y);
             toolbar.cell = cell;
             toolbar.refreshOutline();
+            cellToolbar.isVisible = true;
         } else if (toolbar.isVisible) {
             toolbar.hide();
+            cellToolbar.isVisible = false;
         }
     }
 
@@ -210,48 +274,101 @@ class CellEditToolbar extends EditToolbar {
         }
     }
 
+    /**
+     * When options icon is clicked, show sidebar with options.
+     */
     public onCellOptions(): void {
         const toolbar = this;
+        const editMode = toolbar.editMode;
 
-        if (toolbar.editMode.sidebar) {
-            toolbar.editMode.sidebar.show(toolbar.cell);
-
-            if (this.cell) {
-                this.cell.setHighlight();
-            }
+        if (!editMode.sidebar) {
+            return;
         }
+
+        editMode.sidebar.show(toolbar.cell);
+        toolbar.highlightCell();
     }
 
     public onCellDestroy(): void {
         const toolbar = this;
 
-        if (toolbar.cell) {
+        if (toolbar.cell && isCell(toolbar.cell)) {
             const row = toolbar.cell.row;
+            const board = toolbar.editMode.board;
+            const editMode = toolbar.editMode;
+            const cellId = toolbar.cell.id;
+
+            // Disable row highlight.
+            toolbar.cell.row.setHighlight();
 
             toolbar.resetEditedCell();
             toolbar.cell.destroy();
             toolbar.cell = void 0;
 
             // Hide row and cell toolbars.
-            toolbar.editMode.hideToolbars(['cell', 'row']);
+            editMode.hideToolbars(['cell', 'row']);
+
+            // Disable resizer.
+            editMode.resizer?.disableResizer();
 
             // Call cellResize dashboard event.
             if (row && row.cells && row.cells.length) {
-                fireEvent(toolbar.editMode.board, 'cellResize', {
+                fireEvent(board, 'cellResize', {
                     cell: row.cells[0]
                 });
                 fireEvent(row, 'cellChange', { cell: row.cells[0], row });
             }
+
+            fireEvent(editMode, 'layoutChanged', {
+                type: 'cellDestroyed',
+                target: cellId,
+                board: board
+            });
         }
     }
 
     public resetEditedCell(): void {
         this.editedCell = void 0;
     }
+
+    /**
+     * Filter options available in custom HTML mode, only settings available.
+     */
+    private filterOptionsAvailableInCustomHTMLMode(): void {
+        this.options.menu.items = this.options.menu.items?.filter(
+            (item): boolean => {
+                if (typeof item === 'string') {
+                    return false;
+                }
+
+                return item.id === 'settings';
+            }
+        );
+    }
+
+    /**
+     * Highlight cell and gray out the rest of the dashboard.
+     */
+    private highlightCell(): void {
+        const toolbar = this;
+
+        if (!toolbar.cell) {
+            return;
+        }
+
+        if (toolbar.cell.setHighlight) {
+            toolbar.cell.setHighlight();
+        } else {
+            toolbar.cell.container.classList.add(
+                EditGlobals.classNames.cellEditHighlight
+            );
+            toolbar.editMode.board.container.classList.add(
+                EditGlobals.classNames.dashboardCellEditHighlightActive
+            );
+        }
+    }
 }
 
-namespace CellEditToolbar {
-    export interface Options extends EditToolbar.Options {}
-}
+export interface Options extends EditToolbarOptions {}
 
 export default CellEditToolbar;

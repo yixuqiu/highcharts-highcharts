@@ -34,9 +34,11 @@ describe('Component events', () => {
   it('Update event should be triggered after sidebar update', () => {
     cy.get('.highcharts-dashboards-component').first().click({force: true});
     cy.get('.highcharts-dashboards-edit-toolbar-cell > .highcharts-dashboards-edit-toolbar-item:nth-child(2)').click();
-    cy.contains('Confirm').click();
+    cy.get('.highcharts-dashboards-edit-accordion-header-btn').eq(3).click();
+    cy.get('.highcharts-dashboards-edit-toggle-wrapper').eq(1).click();
 
     cy.get('#update').should('have.value', 'update');
+    cy.contains('Confirm').click();
   });
 
   it('Press ESC should close sidebar popup', () => {
@@ -50,6 +52,7 @@ describe('Component events', () => {
   });
 
   it('Press ESC should close confirmation popup', () => {
+    cy.get('.highcharts-title').eq(1).click({ force: true });
     cy.get('.highcharts-dashboards-edit-toolbar-cell > .highcharts-dashboards-edit-toolbar-item:nth-child(3)').click();
 
     cy.contains('Confirm').should('be.visible');
@@ -58,11 +61,30 @@ describe('Component events', () => {
     cy.contains('Confirm').should('not.be.visible');
   });
 
+  it('Press ESC should hide toolbar', () => {
+    cy.get('.highcharts-title').eq(0).click({ force: true });
+
+    cy.get('.highcharts-dashboards-edit-toolbar-cell').should('be.visible');
+    cy.get('body').type('{esc}', { force: true });
+
+    cy.get('.highcharts-dashboards-edit-toolbar-cell').should('not.be.visible');
+  });
+
   it('Unmount event should be triggered when removed component', () => {
+    cy.get('.highcharts-title').first().click({ force: true });
     cy.get('.highcharts-dashboards-edit-toolbar-cell > .highcharts-dashboards-edit-toolbar-item:nth-child(3)').click({force: true});
     cy.contains('Confirm').click({force: true});
 
     cy.get('#unmount').should('have.value', 'unmount');
+  });
+
+  it('Cell destroyed event triggered when its the last cell in the row', () => {
+    cy.get('.highcharts-title').first().click({ force: true });
+    cy.get('.highcharts-dashboards-edit-toolbar-cell > .highcharts-dashboards-edit-toolbar-item:nth-child(3)').click({ force: true });
+    cy.contains('Confirm').click({ force: true });
+
+    cy.get('#cellDestroyed').should('have.value', 'cellDestroyed');
+    cy.get('#rowDestroyed').should('have.value', 'rowDestroyed');
   });
 
   it('Disabling edit mode should be possible after removing component', () => {

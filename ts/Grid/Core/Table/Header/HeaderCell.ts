@@ -1,0 +1,439 @@
+/* *
+ *
+ *  Grid HeaderCell class
+ *
+ *  (c) 2020-2026 Highsoft AS
+ *
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
+ *
+ *
+ *  Authors:
+ *  - Dawid Draguła
+ *  - Sebastian Bochan
+ *
+ * */
+
+'use strict';
+
+
+/* *
+ *
+ *  Imports
+ *
+ * */
+
+import type { GroupedHeaderOptions } from '../../Options';
+import type { NoIdColumnOptions } from '../Column';
+import type CSSObject from '../../../../Core/Renderer/CSSObject';
+
+import Cell from '../Cell.js';
+import Column from '../Column';
+import Row from '../Row';
+import {
+    makeHTMLElement,
+    setHTMLContent,
+    createOptionsProxy,
+    resolveStyleValue,
+    mergeStyleValues
+} from '../../GridUtils.js';
+import ColumnSorting from '../Actions/ColumnSorting.js';
+import Globals from '../../Globals.js';
+import TableHeader from './TableHeader.js';
+import ColumnToolbar from './ColumnToolbar/ColumnToolbar.js';
+import { fireEvent, isString } from '../../../../Shared/Utilities.js';
+
+/* *
+ *
+ *  Class
+ *
+ * */
+
+/**
+ * Represents a cell in the data grid header.
+ */
+class HeaderCell extends Cell {
+
+    /* *
+    *
+    *  Properties
+    *
+    * */
+
+    /**
+     * The HTML element of the header cell content.
+     */
+    public headerContent?: HTMLElement;
+
+    /**
+     * The container element of the header cell.
+     */
+    public container?: HTMLDivElement;
+
+    /**
+     * Reference to options taken from the header settings, that will override
+     * the column options.
+     * @internal
+     */
+    public readonly superColumnOptions: Partial<NoIdColumnOptions> = {};
+
+    /**
+     * List of columns that are subordinated to the header cell.
+     */
+    public readonly columns: Column[] = [];
+
+    /**
+     * Content value of the header cell.
+     */
+    public override value: string = '';
+
+    /**
+     * The table header that this header cell belongs to.
+     */
+    public tableHeader: TableHeader;
+
+    /**
+     * The toolbar of the header cell.
+     */
+    toolbar?: ColumnToolbar;
+
+    /**
+     * Key used by the header row to reuse the cell.
+     */
+    public headerCellKey?: string;
+
+    /**
+     * Column resize handle rendered inside this header cell.
+     */
+    private resizeHandle?: HTMLElement;
+
+
+    /* *
+    *
+    *  Constructor
+    *
+    * */
+
+    /**
+     * Constructs a cell in the data grid header.
+     *
+     * @param row
+     * The row of the cell.
+     *
+     * @param column
+     * The column of the cell.
+     *
+     * @param columnsTree
+     * If the cell is a wider than one column, this property contains the
+     * structure of the columns that are subordinated to the header cell.
+     */
+    constructor(
+        row: Row,
+        column?: Column,
+        columnsTree?: GroupedHeaderOptions[]
+    ) {
+        super(row, column);
+        const header = this.row.viewport.header;
+        if (!header) {
+            throw new Error('No header found.');
+        }
+        this.tableHeader = header;
+
+        this.syncColumns(column, columnsTree);
+    }
+
+    /* *
+    *
+    *  Methods
+    *
+    * */
+
+    /**
+     * Init element.
+     */
+    public override init(): HTMLTableCellElement {
+        const elem = document.createElement('th', {});
+        elem.classList.add(Globals.getClassName('headerCell'));
+        elem.setAttribute('role', 'columnheader');
+        return elem;
+    }
+
+    /**
+     * Render the cell container.
+     */
+    public override async render(): Promise<void> {
+        const { column } = this;
+        const options = createOptionsProxy(
+            this.superColumnOptions,
+            column?.options ?? this.row.viewport.grid.options?.columnDefaults
+        );
+        const headerCellOptions = options.header || {};
+        const headerValue = column ?
+            headerCellOptions.formatter?.call(column) : void 0;
+
+        // Only a format or a formatter is an opt-in to HTML, a column id
+        // coming from the data source is rendered as text.
+        let isCustomHeader = true;
+
+        if (headerValue) {
+            this.value = headerValue.toString();
+        } else if (isString(headerCellOptions.format)) {
+            this.value = column ?
+                column.format(headerCellOptions.format) :
+                headerCellOptions.format;
+        } else {
+            this.value = column?.id || '';
+            isCustomHeader = false;
+        }
+
+        // Render content of th element
+        if (!this.htmlElement.parentElement) {
+            this.row.htmlElement.appendChild(this.htmlElement);
+        }
+
+        // Create flex container for header content and icons
+        const container = this.container = makeHTMLElement('div', {
+            className: Globals.getClassName('headerCellContainer')
+        }, this.htmlElement);
+
+        this.headerContent = makeHTMLElement('span', {
+            className: Globals.getClassName('headerCellContent')
+        }, container);
+
+        // Render the header cell element content.
+        if (isCustomHeader) {
+            setHTMLContent(this.headerContent, this.value);
+        } else {
+            this.headerContent.innerText = this.value;
+        }
+
+        this.htmlElement.setAttribute('scope', 'col');
+
+        if (this.superColumnOptions.className) {
+            this.htmlElement.classList.add(
+                ...this.superColumnOptions.className.split(/\s+/g)
+            );
+        }
+
+        if (column) {
+            this.htmlElement.setAttribute('data-column-id', column.id);
+            this.htmlElement.setAttribute('aria-label', column.id);
+
+            // Add user column classname
+            column.applyClassNames(this.htmlElement);
+
+            // Add resizing
+            this.resizeHandle = column.viewport.columnsResizer
+                ?.renderColumnDragHandles(
+                    column,
+                    this
+                );
+
+            // Add toolbar
+            this.toolbar = new ColumnToolbar(column);
+            this.toolbar.add();
+
+            // Add sorting
+            this.initColumnSorting();
+        }
+
+        // Set alignment in column cells based on column data type
+        this.htmlElement.classList[
+            column?.dataType === 'number' ? 'add' : 'remove'
+        ](Globals.getClassName('rightAlign'));
+
+        // Add custom class name from column options
+        this.setCustomClassName(options.header?.className);
+
+        this.setCustomStyles(this.getColumnStyles());
+
+        fireEvent(this, 'afterRender', { column });
+
+        return Promise.resolve();
+    }
+
+    /**
+     * Returns merged header styles from defaults and current column options.
+     */
+    private getColumnStyles(): (CSSObject | undefined) {
+        const { column } = this;
+        const { grid } = this.row.viewport;
+
+        if (!column) {
+            const options = createOptionsProxy(
+                this.superColumnOptions,
+                grid.options?.columnDefaults
+            );
+            return {
+                ...resolveStyleValue(options.style),
+                ...resolveStyleValue(options.header?.style)
+            };
+        }
+
+        const rawColumnOptions = grid.columnPolicy
+            .getIndividualColumnOptions(column.id);
+
+        return {
+            ...mergeStyleValues(
+                column,
+                grid.options?.columnDefaults?.style,
+                rawColumnOptions?.style
+            ),
+            ...mergeStyleValues(
+                column,
+                grid.options?.columnDefaults?.header?.style,
+                rawColumnOptions?.header?.style
+            )
+        };
+    }
+
+    public override reflow(): void {
+        const th = this.htmlElement;
+
+        if (!th) {
+            return;
+        }
+
+        let width = 0;
+
+        for (const column of this.columns) {
+            width += column.getWidth() || 0;
+        }
+
+        // Set the width of the column. Max width is needed for the
+        // overflow: hidden to work.
+        th.style.width = th.style.maxWidth = width + 'px';
+        this.toolbar?.reflow();
+    }
+
+    /**
+     * Synchronizes the columns represented by this header cell.
+     *
+     * @param column
+     * The direct column represented by the cell.
+     *
+     * @param columnsTree
+     * The grouped header tree represented by the cell.
+     */
+    public syncColumns(
+        column?: Column,
+        columnsTree?: GroupedHeaderOptions[]
+    ): void {
+        if (this.column?.header === this && this.column !== column) {
+            delete this.column.header;
+        }
+
+        this.column = column;
+        this.columns.length = 0;
+
+        if (column) {
+            column.header = this;
+            this.columns.push(column);
+        } else if (columnsTree) {
+            const vp = this.row.viewport;
+            const columnIds = vp.grid.getColumnIds(columnsTree, false);
+
+            for (let i = 0, iEnd = columnIds.length; i < iEnd; ++i) {
+                const column = vp.getColumn(columnIds[i]);
+
+                if (column && vp.isColumnRendered(column.index)) {
+                    this.columns.push(column);
+                }
+            }
+        }
+    }
+
+    public override onKeyDown(e: KeyboardEvent): void {
+        if (!this.column || e.target !== this.htmlElement) {
+            return;
+        }
+
+        if (e.key === 'Enter') {
+            this.toolbar?.focus({
+                preventScroll: true
+            });
+            e.preventDefault();
+            return;
+        }
+
+        super.onKeyDown(e);
+    }
+
+    public override onClick(e: MouseEvent): void {
+        const { column } = this;
+
+        if (
+            !column ||
+            !this.htmlElement.contains(e.target as Node) ||
+            this.toolbar?.container?.contains(e.target as Node) ||
+            column.viewport.columnsResizer?.isResizing
+        ) {
+            return;
+        }
+
+        const grid = column.viewport.grid;
+
+        // Toggle sort only when clicking header text/area, not toolbar icons
+        if (grid.columnPolicy.isColumnSortingEnabled(column.id)) {
+            column.sorting?.toggle(e);
+        }
+
+        fireEvent(this, 'click', {
+            originalEvent: e,
+            column
+        });
+    }
+
+    /**
+     * Add sorting option to the column.
+     */
+    private initColumnSorting(): void {
+        const { column } = this;
+        if (!column) {
+            return;
+        }
+
+        column.sorting = new ColumnSorting(
+            column,
+            this.htmlElement
+        );
+    }
+
+    /**
+     * Check if the cell is part of the last cell in the header.
+     */
+    public isLastColumn(): boolean {
+        const vp = this.row.viewport;
+
+        const renderedColumns = vp.getRenderedColumns();
+        const lastViewportColumn = renderedColumns[renderedColumns.length - 1];
+        const lastCellColumn = this.columns?.[this.columns.length - 1];
+
+        return lastViewportColumn === lastCellColumn;
+    }
+
+    public override destroy(): void {
+        const columnsResizer = this.column?.viewport.columnsResizer;
+
+        if (this.resizeHandle && columnsResizer) {
+            columnsResizer.removeHandle(this.resizeHandle);
+            delete this.resizeHandle;
+        }
+
+        this.toolbar?.destroy();
+        if (this.column?.header === this) {
+            delete this.column.header;
+        }
+        super.destroy();
+    }
+}
+
+
+/* *
+ *
+ *  Default Export
+ *
+ * */
+
+export default HeaderCell;

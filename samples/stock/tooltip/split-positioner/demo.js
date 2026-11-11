@@ -9,9 +9,18 @@
 
         tooltip: {
             shape: 'square',
-            headerShape: 'callout',
+            header: {
+                borderColor: 'var(--highcharts-neutral-color-40)',
+                borderWidth: 1,
+                shape: 'callout'
+            },
             borderWidth: 0,
             shadow: false,
+            /*
+            Positioner callback. Note that this is much simpler since Highcharts
+            v12.2, when the `tooltip.fixed` and `tooltip.position` options were
+            introduced.
+            */
             positioner: function (width, height, point) {
                 const chart = this.chart;
                 let position;
@@ -27,7 +36,7 @@
                                 chart.chartWidth - width - chart.marginRight
                             )
                         ),
-                        y: point.plotY
+                        y: point.plotY + 10
                     };
                 } else {
                     position = {

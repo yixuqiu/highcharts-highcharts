@@ -1,9 +1,16 @@
+---
+description: >-
+  Load the Debugger module to display Highcharts error messages directly on a
+  chart, and learn how to turn those messages off using the
+  chart.displayErrors configuration option.
+---
+
 Debugger module
 ===
 
 The debugger module is an easy and quick way to display error messages on the chart. This is a very simple tool that can improve the process of chart creation and debugging.
 
-<iframe style="width: 100%; height: 450px; border: none;" src=https://www.highcharts.com/samples/embed/highcharts/chart/display-errors allow="fullscreen"></iframe>
+<iframe style="width: 100%; height: 450px; border: none;" src="https://www.highcharts.com/samples/embed/highcharts/chart/display-errors" allow="fullscreen"></iframe>
 
 Installation
 ------------
@@ -20,12 +27,13 @@ To stop displaying errors on the chart, set `chart.displayErrors` property to `f
 Use Cases
 ---------
 
-    
+```js
     {
         chart: {
             displayErrors: false
         }
     }
+```
 
 API documentation
 -----------------

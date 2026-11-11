@@ -1,12 +1,14 @@
 /* *
  *
- *  (c) 2010-2024 Paweł Dalek
+ *  (c) 2010-2026 Highsoft AS
+ *  Author: Paweł Dalek
  *
  *  Volume Weighted Average Price (VWAP) indicator for Highcharts Stock
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  * */
 
@@ -19,6 +21,7 @@
  * */
 
 import type Chart from '../../../Core/Chart/Chart';
+import type { IndicatorLinkedSeriesBase } from '../IndicatorBase';
 import type IndicatorValuesObject from '../IndicatorValuesObject';
 import type LineSeries from '../../../Series/Line/LineSeries';
 import type {
@@ -27,14 +30,10 @@ import type {
 } from './VWAPOptions';
 import type VWAPPoint from './VWAPPoint';
 
+import SMAIndicator from '../SMA/SMAIndicator.js';
 import SeriesRegistry from '../../../Core/Series/SeriesRegistry.js';
-const { sma: SMAIndicator } = SeriesRegistry.seriesTypes;
-import U from '../../../Core/Utilities.js';
-const {
-    error,
-    isArray,
-    merge
-} = U;
+import { isArray, merge } from '../../../Shared/Utilities.js';
+import { error } from '../../../Core/Utilities.js';
 
 /* *
  *
@@ -45,7 +44,6 @@ const {
 /**
  * The Volume Weighted Average Price (VWAP) series type.
  *
- * @private
  * @class
  * @name Highcharts.seriesTypes.vwap
  *
@@ -64,15 +62,16 @@ class VWAPIndicator extends SMAIndicator {
      *
      * This series requires `linkedTo` option to be set.
      *
-     * @sample stock/indicators/vwap
+     * @sample {highstock} stock/indicators/vwap
      *         Volume Weighted Average Price indicator
      *
      * @extends      plotOptions.sma
      * @since        6.0.0
      * @product      highstock
-     * @requires     stock/indicators/indicators
-     * @requires     stock/indicators/vwap
+     * @requires     indicators/indicators
+     * @requires     indicators/vwap
      * @optionparent plotOptions.vwap
+     * @internal
      */
     public static defaultOptions: VWAPOptions = merge(SMAIndicator.defaultOptions, {
         /**
@@ -106,8 +105,9 @@ class VWAPIndicator extends SMAIndicator {
      *
      * */
 
+    /** @internal */
     public getValues<TLinkedSeries extends LineSeries>(
-        series: TLinkedSeries,
+        series: TLinkedSeries&IndicatorLinkedSeriesBase,
         params: VWAPParamsOptions
     ): (IndicatorValuesObject<TLinkedSeries>|undefined) {
         const indicator = this,
@@ -153,7 +153,7 @@ class VWAPIndicator extends SMAIndicator {
      * Main algorithm used to calculate Volume Weighted Average Price (VWAP)
      * values
      *
-     * @private
+     * @internal
      *
      * @param {boolean} isOHLC
      * Says if data has OHLC format
@@ -174,6 +174,7 @@ class VWAPIndicator extends SMAIndicator {
      * @return {Object}
      * Object contains computed VWAP
      **/
+    /** @internal */
     public calculateVWAPValues<TLinkedSeries extends LineSeries>(
         isOHLC: boolean,
         xValues: Array<number>,
@@ -181,8 +182,8 @@ class VWAPIndicator extends SMAIndicator {
         volumeSeries: TLinkedSeries,
         period: number
     ): IndicatorValuesObject<TLinkedSeries> {
-        const volumeValues: Array<number> = (volumeSeries.yData as any),
-            volumeLength: number = (volumeSeries.xData as any).length,
+        const volumeValues: Array<number> = volumeSeries.getColumn('y'),
+            volumeLength: number = volumeValues.length,
             pointsLength: number = xValues.length,
             cumulativePrice: Array<number> = [],
             cumulativeVolume: Array<number> = [],
@@ -288,9 +289,8 @@ export default VWAPIndicator;
  * @extends   series,plotOptions.vwap
  * @since     6.0.0
  * @product   highstock
- * @excluding dataParser, dataURL
- * @requires  stock/indicators/indicators
- * @requires  stock/indicators/vwap
+ * @requires  indicators/indicators
+ * @requires  indicators/vwap
  * @apioption series.vwap
  */
 

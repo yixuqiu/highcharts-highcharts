@@ -1,8 +1,9 @@
 /* *
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  * */
 
@@ -13,18 +14,15 @@
  *  Imports
  *
  * */
-
+import type { IndicatorLinkedSeriesBase } from '../IndicatorBase';
 import type IndicatorValuesObject from '../IndicatorValuesObject';
 import type LineSeries from '../../../Series/Line/LineSeries';
 import type { CMOOptions, CMOParamsOptions } from './CMOOptions';
 import type CMOPoint from './CMOPoint';
 
+import SMAIndicator from '../SMA/SMAIndicator.js';
 import SeriesRegistry from '../../../Core/Series/SeriesRegistry.js';
-const {
-    sma: SMAIndicator
-} = SeriesRegistry.seriesTypes;
-import U from '../../../Core/Utilities.js';
-const { isNumber, merge } = U;
+import { isNumber, merge } from '../../../Shared/Utilities.js';
 
 /* *
  *
@@ -35,7 +33,6 @@ const { isNumber, merge } = U;
 /**
  * The CMO series type.
  *
- * @private
  * @class
  * @name Highcharts.seriesTypes.cmo
  *
@@ -50,19 +47,20 @@ class CMOIndicator extends SMAIndicator {
      * */
 
     /**
-     * Chande Momentum Oscilator (CMO) technical indicator. This series
+     * Chande Momentum Oscillator (CMO) technical indicator. This series
      * requires the `linkedTo` option to be set and should be loaded after
      * the `stock/indicators/indicators.js` file.
      *
-     * @sample stock/indicators/cmo
+     * @sample {highstock} stock/indicators/cmo
      *         CMO indicator
      *
      * @extends      plotOptions.sma
      * @since 9.1.0
      * @product      highstock
-     * @requires     stock/indicators/indicators
-     * @requires     stock/indicators/cmo
+     * @requires     indicators/indicators
+     * @requires     indicators/cmo
      * @optionparent plotOptions.cmo
+     * @internal
      */
     public static defaultOptions: CMOOptions = merge(
         SMAIndicator.defaultOptions,
@@ -90,8 +88,9 @@ class CMOIndicator extends SMAIndicator {
      *
      * */
 
+    /** @internal */
     public getValues<TLinkedSeries extends LineSeries>(
-        series: TLinkedSeries,
+        series: TLinkedSeries&IndicatorLinkedSeriesBase,
         params: CMOParamsOptions
     ): IndicatorValuesObject<TLinkedSeries> | undefined {
         const period = params.period as any,
@@ -229,9 +228,8 @@ export default CMOIndicator;
  * @extends   series,plotOptions.cmo
  * @since 9.1.0
  * @product   highstock
- * @excluding dataParser, dataURL
- * @requires  stock/indicators/indicators
- * @requires  stock/indicators/cmo
+ * @requires  indicators/indicators
+ * @requires  indicators/cmo
  * @apioption series.cmo
  */
 

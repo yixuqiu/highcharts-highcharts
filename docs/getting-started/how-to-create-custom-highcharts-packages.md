@@ -1,3 +1,10 @@
+---
+description: >-
+  Create a custom Highcharts package by selecting ES modules in a master file.
+  Build JavaScript bundles and optional declarations, then load the resulting
+  package in a web page.
+---
+
 Creating custom Highcharts packages
 ===================================
 
@@ -17,7 +24,7 @@ repository and click on "Code" and select "Download ZIP". Once the zip file is
 downloaded, unpack it to a desired location.
 
 The following steps require Node.js, which you can download and install from the
-[Node.js website](https://nodejs.org/en/). Highcharts supports the TSL variant.
+[Node.js website](https://nodejs.org/en/). Highcharts supports the LTS variant.
 
 When Node.js is installed, open you command line, shell, or terminal, and go to
 the unpacked folder `highcharts-master`. There you have to run `npm install` to
@@ -40,7 +47,8 @@ ES modules like this:
  *
  * (c) 2009-2024 Highcharts AS
  *
- * License: www.highcharts.com/license
+ * A commercial license may be required depending on use.
+ * See www.highcharts.com/license
  */
 'use strict';
 import Highcharts from '../Core/Globals.js';
@@ -91,7 +99,7 @@ If you like to have declarations in addition to the new package file
 Use your custom package file
 ----------------------------
 
-According to our [installation](./installation.md) guide you can reference your
+According to our [installation](https://www.highcharts.com/docs/getting-started/installation.md) guide you can reference your
 custom package file either as an ES6 module...
 
 ```html
@@ -99,7 +107,7 @@ custom package file either as an ES6 module...
     <body>
         <div id="container"></div>
         <script type="module">
-            import Highcharts from './es-modules/masters/custom.src.js';
+            import Highcharts from './esm/custom.js';
             Highcharts.chart('container', {
                 series: [{
                     type: 'line',

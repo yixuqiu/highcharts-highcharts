@@ -1,10 +1,11 @@
 /* *
  *
- *  (c) 2009-2024 Highsoft AS
+ *  (c) 2009-2026 Highsoft AS
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  *  Authors:
  *  - Sebastian Bochan
@@ -25,15 +26,10 @@
 import type MenuItem from './Menu/MenuItem.js';
 import type CSSObject from '../../Core/Renderer/CSSObject';
 import type EditMode from './EditMode.js';
+import type { LangAccessibilityOptions, LangOptions } from './EditGlobals';
 
 import EditGlobals from './EditGlobals.js';
-import U from '../../Core/Utilities.js';
-const {
-    merge,
-    createElement,
-    defined
-} = U;
-
+import { createElement, defined, find, merge } from '../../Shared/Utilities.js';
 
 /* *
  *
@@ -45,7 +41,7 @@ const {
  * Function to create a context button.
  * @internal
  *
- * @param parentElement
+ * @param parentNode
  * The element to which the new element should be appended.
  *
  * @param editMode
@@ -137,6 +133,7 @@ function renderCollapseHeader(
         onchange,
         isEnabled,
         isNested,
+        isStandalone,
         lang
     } = options;
 
@@ -145,12 +142,18 @@ function renderCollapseHeader(
         {
             className:
                 EditGlobals.classNames[
-                    isNested ? 'accordionNestedWrapper' : 'accordionContainer'
-                ] + ' ' + EditGlobals.classNames.collapsableContentHeader
+                    (isNested ? 'accordionNestedWrapper' : 'accordionContainer')
+                ] + ' ' +
+                (
+                    isStandalone ?
+                        EditGlobals.classNames.accordionStandaloneWrapper : ''
+                ) + ' ' + EditGlobals.classNames.collapsableContentHeader
         },
         {},
         parentElement
     );
+
+
     const header = createElement(
         'div',
         {
@@ -160,12 +163,21 @@ function renderCollapseHeader(
         accordion
     );
 
-    const headerBtn = createElement(
-        'button',
-        { className: EditGlobals.classNames.accordionHeaderBtn },
-        {},
-        header
-    );
+    let headerBtn;
+
+    if (!isStandalone || showToggle) {
+        headerBtn = createElement(
+            isStandalone && showToggle ? 'span' : 'button',
+            {
+                className: EditGlobals.classNames[
+                    isStandalone ?
+                        'accordionHeaderWrapper' : 'accordionHeaderBtn'
+                ]
+            },
+            {},
+            header
+        );
+    }
 
     createElement(
         'span',
@@ -176,7 +188,7 @@ function renderCollapseHeader(
         headerBtn
     );
 
-    if (showToggle) {
+    if (showToggle && header) {
         renderToggle(header, {
             enabledOnOffLabels: true,
             id: name,
@@ -187,32 +199,39 @@ function renderCollapseHeader(
         });
     }
 
-    const headerIcon = createElement(
-        'span',
-        {
-            className:
-                EditGlobals.classNames.accordionHeaderIcon + ' ' +
+    if (!isStandalone) {
+        const headerIcon = createElement(
+            'span',
+            {
+                className:
+                    EditGlobals.classNames.accordionHeaderIcon + ' ' +
+                    EditGlobals.classNames.collapsedElement
+            },
+            {},
+            headerBtn
+        );
+
+        headerBtn?.addEventListener('click', function (): void {
+            content.classList.toggle(EditGlobals.classNames.hiddenElement);
+            headerIcon?.classList.toggle(
                 EditGlobals.classNames.collapsedElement
-        },
-        {},
-        headerBtn
-    );
+            );
+        });
+    }
 
     const content = createElement(
         'div',
         {
             className:
                 EditGlobals.classNames.accordionContent + ' ' +
-                EditGlobals.classNames.hiddenElement
+                (isStandalone ?
+                    EditGlobals.classNames.standaloneElement :
+                    EditGlobals.classNames.hiddenElement
+                )
         },
         {},
         accordion
     );
-
-    headerBtn.addEventListener('click', function (): void {
-        content.classList.toggle(EditGlobals.classNames.hiddenElement);
-        headerIcon.classList.toggle(EditGlobals.classNames.collapsedElement);
-    });
 
     return { outerElement: accordion, content: content };
 }
@@ -272,7 +291,7 @@ function renderSelect(
     );
 
     const iconURL = (
-        U.find(
+        find(
             options.selectOptions,
             (item): boolean => item.name === options.value
         ) || {}
@@ -425,7 +444,19 @@ function renderToggle(
     const lang = options.lang,
         value = options.value,
         title = options.title || options.name,
-        langKey = options.langKey as keyof EditGlobals.LangAccessibilityOptions;
+        langKey = options.langKey as keyof LangAccessibilityOptions;
+
+    if (options.isNested) {
+        const labeledToggleWrapper = createElement(
+            'div',
+            {
+                className: EditGlobals.classNames.labeledToggleWrapper
+            },
+            {},
+            parentElement
+        );
+        parentElement = labeledToggleWrapper;
+    }
 
     const toggleContainer = createElement(
         'button',
@@ -442,7 +473,7 @@ function renderToggle(
 
     if (title) {
         renderText(
-            toggleContainer,
+            options.isNested ? parentElement : toggleContainer,
             { title }
         );
     }
@@ -512,11 +543,8 @@ function renderToggle(
  * @param parentElement
  * The element to which the new element should be appended
  *
- * @param text
- * Text to be displayed
- *
- * @param callback
- * Callback function to be fired on the click
+ * @param options
+ * Text options.
  *
  * @returns text Element
  */
@@ -551,11 +579,8 @@ function renderText(
  * @param parentElement
  * The element to which the new element should be appended.
  *
- * @param icon
- * Icon URL
- *
- * @param callback
- * Callback function
+ * @param options
+ * Icon options.
  *
  * @returns
  * Icon Element
@@ -868,18 +893,20 @@ export interface ToggleFormFieldOptions {
     onchange?: (value: boolean) => void;
     id: string;
     name: string;
-    lang: EditGlobals.LangOptions;
+    lang: LangOptions;
     langKey?: string;
+    isNested?: boolean;
 }
 
 export interface NestedHeaderFormFieldOptions {
     name: string;
     showToggle?: boolean;
+    isStandalone?: boolean;
     onchange?: (value: boolean) => void;
     isEnabled?: boolean;
     isNested?: boolean;
     iconsURLPrefix?: string;
-    lang: EditGlobals.LangOptions;
+    lang: LangOptions;
 }
 
 export type RendererElement = (

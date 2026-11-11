@@ -1,10 +1,11 @@
 /* *
  *
- *  (c) 2009-2024 Highsoft AS
+ *  (c) 2009-2026 Highsoft AS
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  *  Authors:
  *  - Sophie Bremer
@@ -21,17 +22,16 @@
  * */
 
 
-import type DataEvent from './DataEvent';
 import type {
-    DataPoolOptions,
-    DataPoolConnectorOptions
-} from './DataPoolOptions.js';
-import type DataTable from './DataTable.js';
+    DataEventCallback,
+    DataEventEmitter
+} from './DataEvent';
+import type DataConnectorType from './Connectors/DataConnectorType';
+import type { DataConnectorTypeOptions } from './Connectors/DataConnectorType';
+import type DataPoolOptions from './DataPoolOptions';
 
 import DataConnector from './Connectors/DataConnector.js';
-import DataPoolDefaults from './DataPoolDefaults.js';
-import U from '../Core/Utilities.js';
-
+import { addEvent, fireEvent, merge } from '../Shared/Utilities.js';
 
 /* *
  *
@@ -46,11 +46,10 @@ import U from '../Core/Utilities.js';
  * @class
  * @name Data.DataPool
  *
- * @param {Data.DataPoolOptions} options
+ * @param {DataPoolOptions} options
  * Pool options with all connectors.
  */
-class DataPool implements DataEvent.Emitter {
-
+class DataPool implements DataEventEmitter<Event> {
 
     /* *
      *
@@ -58,31 +57,9 @@ class DataPool implements DataEvent.Emitter {
      *
      * */
 
-
-    /**
-     * Semantic version string of the DataPool class.
-     * @internal
-     */
-    public static readonly version: string = '1.0.0';
-
-
-    /* *
-     *
-     *  Constructor
-     *
-     * */
-
-
-    public constructor(
-        options: (DataPoolOptions|undefined) = DataPoolDefaults
-    ) {
-        options.connectors = (options.connectors || []);
-
-        this.connectors = {};
-        this.options = options;
-        this.waiting = {};
-    }
-
+    protected static readonly defaultOptions: DataPoolOptions = {
+        connectors: []
+    };
 
     /* *
      *
@@ -90,19 +67,14 @@ class DataPool implements DataEvent.Emitter {
      *
      * */
 
-
     /**
      * Internal dictionary with the connectors and their IDs.
-     * @private
      */
-    protected readonly connectors: Record<string, DataConnector>;
+    protected readonly connectors: Record<string, DataConnectorType>;
 
 
     /**
      * Pool options with all connectors.
-     *
-     * @name Data.DataPool#options
-     * @type {Data.DataPoolOptions}
      */
     public readonly options: DataPoolOptions;
 
@@ -110,14 +82,24 @@ class DataPool implements DataEvent.Emitter {
     /**
      * Internal dictionary with the promise resolves waiting for connectors to
      * be done loading.
-     * @private
      */
-    protected readonly waiting: Record<string, Array<[Function, Function]>>;
-
+    protected readonly waiting: Record<string, [Function, Function][]>;
 
     /* *
      *
-     *  Functions
+     *  Constructor
+     *
+     * */
+
+    public constructor(options?: DataPoolOptions) {
+        this.options = merge(DataPool.defaultOptions, options);
+        this.connectors = {};
+        this.waiting = {};
+    }
+
+    /* *
+     *
+     *  Methods
      *
      * */
 
@@ -125,15 +107,13 @@ class DataPool implements DataEvent.Emitter {
     /**
      * Emits an event on this data pool to all registered callbacks of the given
      * event.
-     * @private
      *
-     * @param {DataTable.Event} e
+     * @param {DataTableEvent} e
      * Event object with event information.
      */
-    public emit<E extends DataEvent>(e: E): void {
-        U.fireEvent(this, e.type, e);
+    public emit(e: Event): void {
+        fireEvent(this, e.type, e);
     }
-
 
     /**
      * Loads the connector.
@@ -143,16 +123,14 @@ class DataPool implements DataEvent.Emitter {
      * @param {string} connectorId
      * ID of the connector.
      *
-     * @return {Promise<Data.DataConnector>}
+     * @return {Promise<Data.DataConnectorType>}
      * Returns the connector.
      */
-    public getConnector(
-        connectorId: string
-    ): Promise<DataConnector> {
+    public getConnector(connectorId: string): Promise<DataConnectorType> {
         const connector = this.connectors[connectorId];
 
         // Already loaded
-        if (connector) {
+        if (connector?.loaded) {
             return Promise.resolve(connector);
         }
 
@@ -165,7 +143,7 @@ class DataPool implements DataEvent.Emitter {
             const connectorOptions = this.getConnectorOptions(connectorId);
 
             if (!connectorOptions) {
-                throw new Error(`Connector not found. (${connectorId})`);
+                throw new Error(`Connector '${connectorId}' not found.`);
             }
 
             // eslint-disable-next-line @typescript-eslint/no-floating-promises
@@ -219,12 +197,12 @@ class DataPool implements DataEvent.Emitter {
      * @param {string} connectorId
      * ID of the connector.
      *
-     * @return {DataPoolConnectorOptions|undefined}
+     * @return {DataConnectorTypeOptions | undefined}
      * Returns the options of the connector, or `undefined` if not found.
      */
     protected getConnectorOptions(
         connectorId: string
-    ): (DataPoolConnectorOptions|undefined) {
+    ): DataConnectorTypeOptions | undefined {
         const connectors = this.options.connectors;
 
         for (let i = 0, iEnd = connectors.length; i < iEnd; ++i) {
@@ -232,26 +210,6 @@ class DataPool implements DataEvent.Emitter {
                 return connectors[i];
             }
         }
-    }
-
-
-    /**
-     * Loads the connector table.
-     *
-     * @function Data.DataPool#getConnectorTable
-     *
-     * @param {string} connectorId
-     * ID of the connector.
-     *
-     * @return {Promise<Data.DataTable>}
-     * Returns the connector table.
-     */
-    public getConnectorTable(
-        connectorId: string
-    ): Promise<DataTable> {
-        return this
-            .getConnector(connectorId)
-            .then((connector): DataTable => connector.table);
     }
 
 
@@ -272,41 +230,44 @@ class DataPool implements DataEvent.Emitter {
     }
 
     /**
-     * Creates and loads the connector.
+     * Instantiates the connector class for the given options and loads its
+     * data.
      *
      * @private
      *
      * @param {Data.DataPoolConnectorOptions} options
      * Options of connector.
      *
-     * @return {Promise<Data.DataConnector>}
+     * @return {Promise<Data.DataConnectorType>}
      * Returns the connector.
      */
     protected loadConnector(
-        options: DataPoolConnectorOptions
-    ): Promise<DataConnector> {
+        options: DataConnectorTypeOptions
+    ): Promise<DataConnectorType> {
         return new Promise((resolve, reject): void => {
-
-            this.emit<DataPool.Event>({
+            this.emit({
                 type: 'load',
                 options
             });
 
-            const ConnectorClass = DataConnector.types[options.type];
+            const ConnectorClass =
+                DataConnector.types[options.type] as Class<DataConnectorType>;
 
             if (!ConnectorClass) {
                 throw new Error(`Connector type not found. (${options.type})`);
             }
 
-            const connector = new ConnectorClass(options.options);
+            const connector = this.connectors[options.id] =
+                new ConnectorClass(options);
 
             // eslint-disable-next-line @typescript-eslint/no-floating-promises
             connector
                 .load()
-                .then((connector): void => {
-                    this.connectors[options.id] = connector;
+                .then(({ converter }): void => {
+                    connector.converter = converter;
+                    connector.loaded = true;
 
-                    this.emit<DataPool.Event>({
+                    this.emit({
                         type: 'afterLoad',
                         options
                     });
@@ -314,6 +275,16 @@ class DataPool implements DataEvent.Emitter {
                     resolve(connector);
                 })['catch'](reject);
         });
+    }
+
+    /**
+     * Cancels all data connectors pending requests.
+     */
+    public cancelPendingRequests(): void {
+        const { connectors } = this;
+        for (const connectorKey of Object.keys(connectors)) {
+            connectors[connectorKey].stopPolling();
+        }
     }
 
 
@@ -331,46 +302,74 @@ class DataPool implements DataEvent.Emitter {
      * @return {Function}
      * Function to unregister callback from the event.
      */
-    public on<E extends DataEvent>(
-        type: E['type'],
-        callback: DataEvent.Callback<this, E>
+    public on<T extends Event['type']>(
+        type: T,
+        callback: DataEventCallback<this, Extract<Event, {
+            type: T
+        }>>
     ): Function {
-        return U.addEvent(this, type, callback);
+        return addEvent(this, type, callback);
     }
+
+
+    public setConnectorOptions(
+        options: DataConnectorTypeOptions,
+        update?: boolean
+    ): void;
+
+    public setConnectorOptions(
+        options: DataConnectorTypeOptions,
+        update: true
+    ): Promise<void>;
 
 
     /**
      * Sets connector options under the specified `options.id`.
      *
-     * @param {Data.DataPoolConnectorOptions} options
+     * @param {object} options
      * Connector options to set.
+     *
+     * @param {boolean} [update]
+     * Whether to update the existing connector with the new options and reload
+     * it (`true`) or replace it with a new connector instance (`false`).
      */
-    public setConnectorOptions(
-        options: DataPoolConnectorOptions
-    ): void {
-        const connectors = this.options.connectors,
-            instances = this.connectors;
+    public async setConnectorOptions(
+        options: DataConnectorTypeOptions,
+        update?: boolean
+    ): Promise<void> {
+        const connectorsOptions = this.options.connectors;
+        const connectorsInstances = this.connectors;
 
-        this.emit<DataPool.Event>({
+        this.emit({
             type: 'setConnectorOptions',
             options
         });
 
-        for (let i = 0, iEnd = connectors.length; i < iEnd; ++i) {
-            if (connectors[i].id === options.id) {
-                connectors.splice(i, 1);
+        for (let i = 0, iEnd = connectorsOptions.length; i < iEnd; ++i) {
+            if (connectorsOptions[i].id === options.id) {
+                connectorsOptions.splice(i, 1);
                 break;
             }
         }
 
-        if (instances[options.id]) {
-            instances[options.id].stopPolling();
-            delete instances[options.id];
+        let existingConnector: DataConnectorType | undefined =
+            connectorsInstances[options.id];
+
+        if (existingConnector) {
+            if (update) {
+                await existingConnector.update(options, true);
+            } else {
+                existingConnector.stopPolling();
+                existingConnector = void 0;
+                delete connectorsInstances[options.id];
+            }
         }
 
-        connectors.push(options);
+        if (!existingConnector) {
+            connectorsOptions.push(options);
+        }
 
-        this.emit<DataPool.Event>({
+        this.emit({
             type: 'afterSetConnectorOptions',
             options
         });
@@ -382,29 +381,16 @@ class DataPool implements DataEvent.Emitter {
 
 /* *
  *
- *  Class Namespace
+ *  Declarations
  *
  * */
 
-
-namespace DataPool {
-
-
-    /* *
-     *
-     *  Declarations
-     *
-     * */
-
-    export interface Event {
-        type: (
-            |'load'|'afterLoad'
-            |'setConnectorOptions'|'afterSetConnectorOptions'
-        );
-        options: DataPoolConnectorOptions;
-    }
-
-
+export interface Event {
+    type: (
+        'load' | 'afterLoad' | 'setConnectorOptions' |
+        'afterSetConnectorOptions'
+    );
+    options: DataConnectorTypeOptions;
 }
 
 

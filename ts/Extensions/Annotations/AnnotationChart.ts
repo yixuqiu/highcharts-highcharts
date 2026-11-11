@@ -1,10 +1,12 @@
 /* *
  *
- *  (c) 2009-2024 Highsoft, Black Label
+ *  (c) 2009-2026 Highsoft AS
+ *  Author: Highsoft, Black Label
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  * */
 
@@ -22,20 +24,21 @@ import type {
 } from './AnnotationOptions';
 import type AnnotationSeries from './AnnotationSeries';
 import type Chart from '../../Core/Chart/Chart';
+import type { DeepPartial } from '../../Shared/Types';
 import type NavigationBindings from './NavigationBindings';
 import type Pointer from '../../Core/Pointer';
 import type SVGElement from '../../Core/Renderer/SVG/SVGElement';
 
 import Annotation from './Annotation.js';
-import U from '../../Core/Utilities.js';
-const {
+import {
     addEvent,
     erase,
     find,
     fireEvent,
-    pick,
+    isArray,
+    isObject,
     wrap
-} = U;
+} from '../../Shared/Utilities.js';
 
 /* *
  *
@@ -43,20 +46,92 @@ const {
  *
  * */
 
+declare module '../../Core/Chart/ChartBase'{
+    interface ChartBase {
+
+        /* *
+        *
+        *  Properties
+        *
+        * */
+
+        /** @internal */
+        annotations?: Array<Annotation>;
+
+        /** @internal */
+        controlPointsGroup?: SVGElement;
+
+        /** @internal */
+        navigationBindings?: NavigationBindings;
+
+        /** @internal */
+        plotBoxClip?: SVGElement;
+
+        /* *
+        *
+        *  Functions
+        *
+        * */
+
+        /**
+         * Add an annotation to the chart after render time.
+         *
+         * @sample highcharts/annotations/add-annotation/
+         *         Add annotation
+         *
+         * @function Highcharts.Chart#addAnnotation
+         *
+         * @param  {Highcharts.AnnotationsOptions} options
+         *         The annotation options for the new, detailed annotation.
+         *
+         * @param {boolean} [redraw]
+         *
+         * @return {Highcharts.Annotation}
+         *         The newly generated annotation.
+         *
+         * @requires modules/annotations
+         */
+        addAnnotation(
+            options: DeepPartial<AnnotationOptions>,
+            redraw?: boolean
+        ): Annotation;
+
+        /** @internal */
+        drawAnnotations(): void;
+
+        /** @internal */
+        initAnnotation(options: AnnotationOptions): Annotation;
+
+        /**
+         * Remove an annotation from the chart.
+         *
+         * @function Highcharts.Chart#removeAnnotation
+         *
+         * @param {number|string|Highcharts.Annotation} idOrAnnotation
+         *        The annotation's id or direct annotation object.
+         */
+        removeAnnotation(idOrAnnotation: (number|string|Annotation)): void;
+    }
+}
+
 declare class AnnotationChart extends Chart {
+    /** @internal */
     annotations: Array<Annotation>;
+
+    /** @internal */
     controlPointsGroup: SVGElement;
+
+    /** @internal */
     navigationBindings: NavigationBindings;
+
+    /** @internal */
     options: ChartOptions;
+
+    /** @internal */
     plotBoxClip: SVGElement;
+
+    /** @internal */
     series: Array<AnnotationSeries>;
-    addAnnotation(
-        userOptions: AnnotationOptions,
-        redraw?: boolean
-    ): Annotation;
-    drawAnnotations(): void;
-    initAnnotation(userOptions: AnnotationOptions): Annotation;
-    removeAnnotation(idOrAnnotation: (number|string|Annotation)): void;
 }
 
 /* *
@@ -83,14 +158,14 @@ declare class AnnotationChart extends Chart {
  */
 function chartAddAnnotation(
     this: AnnotationChart,
-    userOptions: AnnotationOptions,
+    options: AnnotationOptions,
     redraw?: boolean
 ): Annotation {
-    const annotation = this.initAnnotation(userOptions);
+    const annotation = this.initAnnotation(options);
 
     this.options.annotations.push(annotation.options);
 
-    if (pick(redraw, true)) {
+    if (redraw ?? true) {
         annotation.redraw();
         annotation.graphic.attr({
             opacity: 1
@@ -100,9 +175,7 @@ function chartAddAnnotation(
     return annotation;
 }
 
-/**
- * @private
- */
+/** @internal */
 function chartCallback(
     this: Chart
 ): void {
@@ -143,7 +216,8 @@ function chartCallback(
                 {}).columnHeaderFormatter,
             // If second row doesn't have xValues
             // then it is a title row thus multiple level header is in use.
-            multiLevelHeaders = !event.dataRows[1].xValues,
+            // The row is missing altogether when the chart has no data, #25090.
+            multiLevelHeaders = !event.dataRows[1]?.xValues,
             annotationHeader = (
                 chart.options.lang &&
                 chart.options.lang.exportData &&
@@ -170,25 +244,13 @@ function chartCallback(
                 return s;
             },
             startRowLength = event.dataRows[0].length,
-            annotationSeparator = (
-                chart.options.exporting &&
-                chart.options.exporting.csv &&
-                chart.options.exporting.csv.annotations &&
-                chart.options.exporting.csv.annotations.itemDelimiter
-            ),
-            joinAnnotations = (
-                chart.options.exporting &&
-                chart.options.exporting.csv &&
-                chart.options.exporting.csv.annotations &&
-                chart.options.exporting.csv.annotations.join
-            );
+            annotationSeparator = chart.options.exporting?.csv?.annotations
+                ?.itemDelimiter,
+            joinAnnotations = chart.options.exporting?.csv?.annotations?.join;
 
         annotations.forEach((annotation): void => {
 
-            if (
-                annotation.options.labelOptions &&
-                annotation.options.labelOptions.includeInDataExport
-            ) {
+            if (annotation.options.labelOptions?.includeInDataExport) {
 
                 annotation.labels.forEach((label): void => {
                     if (label.options.text) {
@@ -288,9 +350,7 @@ function chartCallback(
     });
 }
 
-/**
- * @private
- */
+/** @internal */
 function chartDrawAnnotations(
     this: AnnotationChart
 ): void {
@@ -337,25 +397,32 @@ function chartRemoveAnnotation(
 }
 
 /**
- * Create lookups initially
- * @private
+ * Create lookups initially.
+ * @internal
  */
 function onChartAfterInit(
     this: Chart
 ): void {
-    const chart = this as AnnotationChart;
+    const chart = this as AnnotationChart,
+        annotationsOption = this.options.annotations,
+        annotationsUserOption = this.userOptions.annotations;
 
     chart.annotations = [];
 
-    if (!this.options.annotations) {
+    if (!isArray(this.options.annotations)) {
         this.options.annotations = [];
+    }
+
+    if (
+        isObject(annotationsUserOption, true) &&
+        isObject(annotationsOption, true)
+    ) {
+        this.options.annotations.push(annotationsOption);
     }
 
 }
 
-/**
- * @private
- */
+/** @internal */
 function wrapPointerOnContainerMouseDown(
     this: Annotation,
     proceed: Function
@@ -371,9 +438,7 @@ function wrapPointerOnContainerMouseDown(
  *
  * */
 
-/**
- * @private
- */
+/** @internal */
 namespace AnnotationChart {
 
     /* *
@@ -382,9 +447,7 @@ namespace AnnotationChart {
      *
      * */
 
-    /**
-     * @private
-     */
+    /** @internal */
     export function compose(
         AnnotationClass: typeof Annotation,
         ChartClass: typeof Chart,

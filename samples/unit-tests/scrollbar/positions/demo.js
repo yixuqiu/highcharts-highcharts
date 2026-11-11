@@ -297,11 +297,16 @@ QUnit.test('Overlapping scrollbars', assert => {
 
 QUnit.test('Positioning the scrollbar (opposite), #16017.', function (assert) {
     const chart = Highcharts.chart('container', {
+        chart: {
+            style: {
+                fontFamily: 'Helvetica, Arial, sans-serif'
+            }
+        },
         xAxis: {
             min: 0,
             max: 5,
             scrollbar: {
-                enabled: true,
+                enabled: false,
                 opposite: false
             }
         },
@@ -310,6 +315,8 @@ QUnit.test('Positioning the scrollbar (opposite), #16017.', function (assert) {
             data: [4, 3, 5, 6, 2, 3, 4, 3, 5, 6, 2]
         }]
     });
+    const initialAxisLeft = chart.xAxis[0].left;
+    chart.xAxis[0].update({ scrollbar: { enabled: true } });
 
     assert.strictEqual(
         chart.xAxis[0].scrollbar.x,
@@ -318,8 +325,8 @@ QUnit.test('Positioning the scrollbar (opposite), #16017.', function (assert) {
     );
     assert.close(
         chart.xAxis[0].left,
-        52,
-        3, // Firefox
+        initialAxisLeft + 20,
+        Highcharts.isFirefox ? 4.1 : 1,
         'When scrollbar on the left, the axis should have an additional margin.'
     );
 });

@@ -2,13 +2,14 @@
  *
  *  This module implements sunburst charts in Highcharts.
  *
- *  (c) 2016-2024 Highsoft AS
+ *  (c) 2016-2026 Highsoft AS
  *
- *  Authors: Jon Arild Nygard
+ *  Authors: Jon Arild Nygård
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  * */
 
@@ -24,21 +25,19 @@ import type SunburstPointOptions from './SunburstPointOptions';
 import type SunburstSeries from './SunburstSeries';
 import type SVGElement from '../../Core/Renderer/SVG/SVGElement';
 
-import SeriesRegistry from '../../Core/Series/SeriesRegistry.js';
-const {
-    series: { prototype: { pointClass: Point } },
-    seriesTypes: {
-        treemap: { prototype: { pointClass: TreemapPoint } }
-    }
-} = SeriesRegistry;
+import Series from '../../Core/Series/Series.js';
+import TreemapSeries from '../Treemap/TreemapSeries.js';
 import SunburstNode from './SunburstNode';
-import U from '../../Core/Utilities.js';
-const {
-    correctFloat,
-    extend,
-    pInt
-} = U;
+import { correctFloat, extend, pInt } from '../../Shared/Utilities.js';
 
+/* *
+ *
+ *  Constants
+ *
+ * */
+
+const Point = Series.prototype.pointClass;
+const TreemapPoint = TreemapSeries.prototype.pointClass;
 
 /* *
  *
@@ -54,22 +53,30 @@ class SunburstPoint extends TreemapPoint {
      *
      * */
 
+    /** @internal */
     public dataLabelPath?: SVGElement;
 
+    /** @internal */
     public innerArcLength?: number;
 
+    /** @internal */
     public outerArcLength?: number;
 
+    /** @internal */
     public node!: SunburstNode;
 
     public options!: SunburstPointOptions;
 
+    /** @internal */
     public series!: SunburstSeries;
 
+    /** @internal */
     public shapeExisting!: SunburstNode.NodeValuesObject;
 
+    /** @internal */
     public sliced?: boolean;
 
+    /** @internal */
     public shapeType!: ('arc'|'circle'|'path'|'rect'|'text');
 
     /* *
@@ -78,6 +85,7 @@ class SunburstPoint extends TreemapPoint {
      *
      * */
 
+    /** @internal */
     public getDataLabelPath(
         label: SVGElement
     ): SVGElement {
@@ -141,6 +149,7 @@ class SunburstPoint extends TreemapPoint {
         return this.dataLabelPath;
     }
 
+    /** @internal */
     public isValid(): boolean {
         return true;
     }
@@ -154,7 +163,9 @@ class SunburstPoint extends TreemapPoint {
  * */
 
 interface SunburstPoint {
+    /** @internal */
     setState: typeof Point.prototype.setState;
+    /** @internal */
     setVisible: typeof TreemapPoint.prototype.setVisible;
 }
 

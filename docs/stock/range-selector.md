@@ -1,3 +1,10 @@
+---
+description: >-
+  Configure preset date-range buttons and manual date inputs, position or
+  float the selector, adapt buttons for narrow layouts, control data grouping,
+  preserve grouping, or handle custom button clicks.
+---
+
 Range selector
 ================
 
@@ -86,6 +93,56 @@ Responsive
 
 By default the range selector buttons will collapse into a dropdown when there is not enough room to show everything in a single row, this behaviour can be controlled using the `dropdown` option. More info on this can be found in the [API docs](https://api.highcharts.com/highstock/rangeSelector.dropdown)
 
+
+Data grouping
+-------------
+
+Range Selector buttons can control **data grouping** - the granularity of data applied when a certain range is selected. This allows each button to specify how the displayed data range should be grouped. See a live example in the [Range Selector demo](https://jsfiddle.net/gh/get/library/pure/highcharts/highcharts/tree/master/samples/stock/demo/rangeselector-datagrouping/).
+
+```js
+rangeSelector: {
+  buttons: [{
+    type: 'month',
+    count: 3,
+    text: 'Day',
+    dataGrouping: {
+      forced: true,
+      units: [['day', [1]]]
+    }
+  }, {
+    type: 'year',
+    count: 1,
+    text: 'Week',
+    dataGrouping: {
+      forced: true,
+      units: [['week', [1]]]
+    }
+  }, {
+    type: 'all',
+    text: 'Month',
+    dataGrouping: {
+      forced: true,
+      units: [['month', [1]]]
+    }
+  }]
+}
+```
+
+More information about general data grouping behavior can be found in the [Data grouping](https://www.highcharts.com/docs/stock/data-grouping) page.
+
+You can also enable the `preserveDataGrouping` option to keep the data grouping for selected range active when the chart extremes change through other interactions, such as zooming or moving navigator. By default, this option is disabled, causing data grouping to reset whenever the visible range moves outside the selected range. See the full option reference at the [API docs](https://api.highcharts.com/highstock/rangeSelector.preserveDataGrouping).
+
+Default selected button
+-----------------------
+
+Use `rangeSelector.selected` to choose which button is active on first render: a 0-based index into the buttons. The default buttons are 1m, 3m, 6m, YTD, 1y and All, so `selected: 1` selects 3m. You don't need to define `buttons` for this.
+
+```js
+rangeSelector: {
+    selected: 1
+},
+```
+
 Custom button click event
 -------------------------
 
@@ -123,5 +180,36 @@ rangeSelector: {
 	}]
 },
 ```
+
+Custom button click event with custom range
+-------------------------------------------
+
+Returning `false` from a button's `events.click` handler cancels its default range, so a button can show a fixed date range with `setExtremes`. Here `chart` is the chart instance returned by `Highcharts.stockChart()`:
+
+```js
+rangeSelector: {
+	buttons: [{
+		type: 'day',
+		count: 7,
+		text: '7d'
+	}, {
+		text: 'Q1 2020',
+		events: {
+			click: function () {
+				chart.xAxis[0].setExtremes(
+					Date.UTC(2020, 0, 1),
+					Date.UTC(2020, 2, 31)
+				);
+				return false;
+			}
+		}
+	}, {
+		type: 'all',
+		text: 'All'
+	}]
+},
+```
+
+Setting `buttons` replaces the default buttons, so only the buttons you list are shown.
 
 See the [API reference](https://api.highcharts.com/highstock/rangeSelector) for the rangeSelector option for more information on how to set up the range selector tool.

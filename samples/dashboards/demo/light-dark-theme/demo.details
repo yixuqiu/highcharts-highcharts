@@ -1,11 +1,12 @@
 ---
 name: Light/dark theme detection
 authors:
-  - Karol Kolodziej
+  - Karol Kołodziej
 js_wrap: b
 tags:
   - Highcharts Dashboards demo
 categories:
-  - General
+  - Basic:
+        priority: 60
 use_png_thumbnail: true
 ...

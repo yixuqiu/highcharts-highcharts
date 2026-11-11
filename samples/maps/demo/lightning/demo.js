@@ -62,7 +62,7 @@ const getInitialData = time => ualf.slice(
 
 const displayTime = time => {
     document.getElementById('report-time').innerText = Highcharts.dateFormat(
-        '%B %e, %Y %H:%M',
+        '%[BeYHM]',
         time
     );
 };
@@ -163,7 +163,6 @@ const displayTime = time => {
             name: 'Lightning strike',
             id: 'lightnings',
             type: 'mapbubble',
-            turboThreshold: Infinity,
             animation: false,
             data: getInitialData(currentTime),
             tooltip: {
@@ -327,7 +326,7 @@ const displayTime = time => {
     };
     setUpInputs();
     // eslint-disable-next-line no-underscore-dangle
-    if (!window.__karma__) { // CI tests
+    if (!window.__karma__ && !window.HCVisualSetup) { // CI tests & Playwright
         // Wait a bit for Visual review tool
         setTimeout(() => play(), 100);
     }

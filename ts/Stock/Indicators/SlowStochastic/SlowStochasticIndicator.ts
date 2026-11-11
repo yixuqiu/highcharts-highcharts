@@ -1,8 +1,9 @@
 /* *
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  * */
 
@@ -22,16 +23,10 @@ import type {
 } from './SlowStochasticOptions';
 import type SlowStochasticPoint from './SlowStochasticPoint';
 
+import SMAIndicator from '../SMA/SMAIndicator.js';
+import StochasticIndicator from '../Stochastic/StochasticIndicator.js';
 import SeriesRegistry from '../../../Core/Series/SeriesRegistry.js';
-const {
-    sma: SMAIndicator,
-    stochastic: StochasticIndicator
-} = SeriesRegistry.seriesTypes;
-import U from '../../../Core/Utilities.js';
-const {
-    extend,
-    merge
-} = U;
+import { extend, merge } from '../../../Shared/Utilities.js';
 
 /* *
  *
@@ -42,7 +37,6 @@ const {
 /**
  * The Slow Stochastic series type.
  *
- * @private
  * @class
  * @name Highcharts.seriesTypes.slowstochastic
  *
@@ -61,16 +55,17 @@ class SlowStochasticIndicator extends StochasticIndicator {
      * to be set and should be loaded after `stock/indicators/indicators.js`
      * and `stock/indicators/stochastic.js` files.
      *
-     * @sample stock/indicators/slow-stochastic
+     * @sample {highstock} stock/indicators/slow-stochastic
      *         Slow Stochastic oscillator
      *
      * @extends      plotOptions.stochastic
      * @since        8.0.0
      * @product      highstock
-     * @requires     stock/indicators/indicators
-     * @requires     stock/indicators/stochastic
-     * @requires     stock/indicators/slowstochastic
+     * @requires     indicators/indicators
+     * @requires     indicators/stochastic
+     * @requires     indicators/slow-stochastic
      * @optionparent plotOptions.slowstochastic
+     * @internal
      */
     public static defaultOptions: SlowStochasticOptions = merge(StochasticIndicator.defaultOptions, {
         params: {
@@ -100,6 +95,7 @@ class SlowStochasticIndicator extends StochasticIndicator {
      *
      * */
 
+    /** @internal */
     public getValues <TLinkedSeries extends LineSeries>(
         series: TLinkedSeries,
         params: SlowStochasticParamsOptions
@@ -211,9 +207,9 @@ export default SlowStochasticIndicator;
  * @extends   series,plotOptions.slowstochastic
  * @since     8.0.0
  * @product   highstock
- * @requires  stock/indicators/indicators
- * @requires  stock/indicators/stochastic
- * @requires  stock/indicators/slowstochastic
+ * @requires  indicators/indicators
+ * @requires  indicators/stochastic
+ * @requires  indicators/slow-stochastic
  * @apioption series.slowstochastic
  */
 

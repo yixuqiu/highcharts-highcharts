@@ -1,10 +1,12 @@
 /* *
  *
- *  (c) 2010-2024 Pawel Lysy
+ *  (c) 2010-2026 Highsoft AS
+ *  Author: Paweł Lysy
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  * */
 
@@ -17,22 +19,22 @@
  * */
 
 import type HLCSeriesOptions from './HLCSeriesOptions';
+import type Legend from '../../Core/Legend/Legend';
 import type { StatesOptionsKey } from '../../Core/Series/StatesOptions';
 import type SVGAttributes from '../../Core/Renderer/SVG/SVGAttributes';
-import type SVGElement from '../../Core/Renderer/SVG/SVGElement';
 import type SVGPath from '../../Core/Renderer/SVG/SVGPath';
+import SVGRenderer from '../../Core/Renderer/SVG/SVGRenderer';
+import type Series from '../../Core/Series/Series';
 
 import HLCPoint from './HLCPoint.js';
 import HLCSeriesDefaults from './HLCSeriesDefaults.js';
+import ColumnSeries from '../Column/ColumnSeries.js';
 import SeriesRegistry from '../../Core/Series/SeriesRegistry.js';
-const {
-    column: ColumnSeries
-} = SeriesRegistry.seriesTypes;
-import U from '../../Core/Utilities.js';
-const {
-    extend,
-    merge
-} = U;
+import FinancialSymbols from '../FinancialSymbols.js';
+
+import D from '../../Core/Defaults.js';
+import { crisp, extend, merge } from '../../Shared/Utilities.js';
+const { defaultOptions } = D;
 
 /* *
  *
@@ -43,11 +45,8 @@ const {
 /**
  * The hlc series type.
  *
- * @private
  * @class
  * @name Highcharts.seriesTypes.hlc
- *
- * @augments Highcharts.Series
  */
 class HLCSeries extends ColumnSeries {
 
@@ -57,6 +56,16 @@ class HLCSeries extends ColumnSeries {
      *
      * */
 
+    /** @internal */
+    public static compose(
+        _SeriesClass: typeof Series,
+        LegendClass: typeof Legend,
+        SVGRendererClass: typeof SVGRenderer
+    ): void {
+        FinancialSymbols.compose(LegendClass, SVGRendererClass);
+    }
+
+    /** @internal */
     public static defaultOptions: HLCSeriesOptions = merge(
         ColumnSeries.defaultOptions,
         HLCSeriesDefaults
@@ -74,6 +83,7 @@ class HLCSeries extends ColumnSeries {
 
     public points!: Array<HLCPoint>;
 
+    /** @internal */
     public yData!: Array<Array<number>>;
 
     /* *
@@ -85,9 +95,16 @@ class HLCSeries extends ColumnSeries {
     /**
      * Extend the path if close is not between high and low.
      *
-     * @param {SVGPath} path the path array of the point
+     * @param {SVGPath} path
+     * the path array of the point
+     *
      * @param {number} halfStrokeWidth
-     * @param {number} value value of the point to which the stem should be extended
+     * half of the stroke width
+     *
+     * @param {number} value
+     * value of the point to which the stem should be extended
+     *
+     * @internal
      */
     protected extendStem(
         path: SVGPath,
@@ -115,20 +132,17 @@ class HLCSeries extends ColumnSeries {
     }
 
     /**
-     * Function to create SVGPath of the point based on the
-     * plot positions of this point.
-     * @private
+     * Function to create SVGPath of the point based on the plot positions of
+     * this point.
+     * @internal
      */
-    protected getPointPath(point: HLCPoint, graphic: SVGElement): SVGPath {
+    protected getPointPath(point: HLCPoint): SVGPath {
         // Crisp vector coordinates
-        const strokeWidth = graphic.strokeWidth(),
-            series = point.series,
-            crispCorr = (strokeWidth % 2) / 2,
+        const series = point.series,
+            strokeWidth = series.borderWidth,
             // #2596:
-            crispX = Math.round(point.plotX as any) - crispCorr,
+            crispX = crisp(point.plotX || 0, strokeWidth),
             halfWidth = Math.round((point.shapeArgs as any).width / 2);
-
-        let plotClose = point.plotClose;
 
         // The vertical stem
         const path: SVGPath = [
@@ -138,7 +152,7 @@ class HLCSeries extends ColumnSeries {
 
         // Close
         if (point.close !== null) {
-            plotClose = Math.round(point.plotClose) + crispCorr;
+            const plotClose = crisp(point.plotClose, strokeWidth);
             path.push(
                 ['M', crispX, plotClose],
                 ['L', crispX + halfWidth, plotClose]
@@ -149,53 +163,8 @@ class HLCSeries extends ColumnSeries {
         return path;
     }
 
-
     /**
-     * Draw single point
-     * @private
-     */
-    public drawSinglePoint(point: HLCPoint): void {
-        const series = point.series,
-            chart = series.chart;
-
-        let path: SVGPath,
-            graphic = point.graphic;
-
-        if (typeof point.plotY !== 'undefined') {
-
-            // Create and/or update the graphic
-            if (!graphic) {
-                point.graphic = graphic = chart.renderer.path()
-                    .add(series.group);
-            }
-
-            if (!chart.styledMode) {
-                graphic.attr(
-                    series.pointAttribs(
-                        point,
-                        (point.selected && 'select') as any
-                    )
-                ); // #3897
-            }
-
-            // Crisp vector coordinates
-            path = series.getPointPath(point, graphic);
-            graphic[!graphic ? 'attr' : 'animate']({ d: path })
-                .addClass(point.getClassName(), true);
-
-        }
-    }
-
-    /**
-     * Draw the data points
-     * @private
-     */
-    public drawPoints(): void {
-        this.points.forEach(this.drawSinglePoint);
-    }
-
-    /**
-     * @private
+     * @internal
      * @function Highcharts.seriesTypes.hlc#init
      */
     public init(): void {
@@ -206,11 +175,11 @@ class HLCSeries extends ColumnSeries {
 
     /**
      * Postprocess mapping between options and SVG attributes
-     * @private
+     * @internal
      */
     public pointAttribs(
-        point: HLCPoint,
-        state: StatesOptionsKey
+        point?: HLCPoint,
+        state?: StatesOptionsKey
     ): SVGAttributes {
         const attribs = super.pointAttribs.call(
             this,
@@ -218,11 +187,14 @@ class HLCSeries extends ColumnSeries {
             state
         );
 
-        delete attribs.fill;
+        if (point) {
+            delete attribs.fill;
+        }
 
         return attribs;
     }
 
+    /** @internal */
     public toYData(point: HLCPoint): Array<number> {
         // Return a plain array for speedy calculation
         return [point.high, point.low, point.close];
@@ -231,7 +203,7 @@ class HLCSeries extends ColumnSeries {
     /**
      * Translate data points from raw values x and y to plotX and plotY
      *
-     * @private
+     * @internal
      * @function Highcharts.seriesTypes.hlc#translate
      */
     public translate(): void {
@@ -241,13 +213,18 @@ class HLCSeries extends ColumnSeries {
             translated = names.map(
                 (name: string): string =>
                     `plot${name.charAt(0).toUpperCase() + name.slice(1)}`
-            );
+            ),
+            lineWidth = series.options.lineWidth ?? 1;
         translated.push('yBottom');
         names.push('low');
         super.translate.apply(series);
 
+        series.borderWidth = lineWidth;
+
         // Do the translation
-        series.points.forEach(function (point): void {
+        series.points.concat(
+            series.condemnedPoints as Array<HLCPoint>
+        ).forEach((point): void => {
             names.forEach(
                 function (name: string, i: number): void {
                     let value = (point as any)[name];
@@ -260,8 +237,20 @@ class HLCSeries extends ColumnSeries {
                     }
                 });
 
-            // Align the tooltip to the high value to avoid covering the
-            // point
+            // The data label box
+            const {
+                x = 0,
+                y = 0,
+                width = 0,
+                height = 0
+            } = point.shapeArgs || {};
+            point.dlBox = { x, y, width, height };
+
+            // The new shape args overwrite those of ColumnSeries
+            point.shapeType = 'path';
+            point.shapeArgs = { d: series.getPointPath(point) };
+
+            // Align the tooltip to the high value to avoid covering the point
             (point.tooltipPos as any)[1] =
                 (point.plotHigh as any) + yAxis.pos - series.chart.plotTop;
         });
@@ -277,12 +266,12 @@ class HLCSeries extends ColumnSeries {
 
 interface HLCSeries {
     pointClass: typeof HLCPoint;
-    pointAttrToOptions: Record<string, string>;
 }
 extend(HLCSeries.prototype, {
     pointClass: HLCPoint,
     animate: null as any, // Disable animation
     directTouch: false,
+    keysAffectYAxis: ['low', 'high'],
     pointArrayMap: ['high', 'low', 'close'],
     pointAttrToOptions: {
         stroke: 'color',
@@ -290,6 +279,57 @@ extend(HLCSeries.prototype, {
     },
     pointValKey: 'close'
 });
+
+
+// Extend default lang options with OHLC terms
+const HLCDefaultLangOptions = {
+    stockOpen: 'Open',
+    stockHigh: 'High',
+    stockLow: 'Low',
+    stockClose: 'Close'
+};
+
+extend(
+    defaultOptions.lang,
+    HLCDefaultLangOptions
+);
+
+declare module '../../Core/Options' {
+    interface LangOptions {
+        /**
+         * The tooltip label for a point's opening value, used in the
+         * default `pointFormat` of the `ohlc` series.
+         *
+         * @default 'Open'
+         * @product highstock
+         */
+        stockOpen?: string;
+        /**
+         * The tooltip label for a point's highest value, used in the
+         * default `pointFormat` of the `hlc` and `ohlc` series.
+         *
+         * @default 'High'
+         * @product highstock
+         */
+        stockHigh?: string;
+        /**
+         * The tooltip label for a point's lowest value, used in the
+         * default `pointFormat` of the `hlc` and `ohlc` series.
+         *
+         * @default 'Low'
+         * @product highstock
+         */
+        stockLow?: string;
+        /**
+         * The tooltip label for a point's closing value, used in the
+         * default `pointFormat` of the `hlc` and `ohlc` series.
+         *
+         * @default 'Close'
+         * @product highstock
+         */
+        stockClose?: string;
+    }
+}
 
 /* *
  *

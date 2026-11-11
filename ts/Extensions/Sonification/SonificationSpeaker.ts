@@ -1,31 +1,97 @@
 /* *
  *
- *  (c) 2009-2024 Øystein Moseng
+ *  (c) 2009-2026 Highsoft AS
+ *  Author: Øystein Moseng
  *
  *  Class representing a speech synthesis voice.
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  * */
 
 'use strict';
-
-import U from '../../Core/Utilities.js';
-const {
-    pick
-} = U;
-
 namespace SonificationSpeaker {
+    /**
+     * Configuration for a SonificationSpeaker.
+     *
+     * @requires modules/sonification
+     */
     export interface SpeakerOptions {
+        /**
+         * Name of the voice synthesis to use. If not found, reverts to the
+         * default voice for the language chosen.
+         *
+         */
         name?: string;
+        /**
+         * The language of the voice synthesis.
+         *
+         * @default "en-US"
+         *
+         */
         language?: string;
+        /**
+         * The pitch modifier of the voice. Set higher for a higher
+         * voice pitch.
+         *
+         * @default 1
+         *
+         */
         pitch?: number;
+        /**
+         * The speech rate modifier.
+         *
+         * @default 1
+         *
+         */
         rate?: number;
+        /**
+         * The speech volume, from 0 to 1.
+         *
+         * @default 1
+         *
+         */
         volume?: number;
     }
 }
+
+/**
+ * Novelty voice names on macOS to skip. Unintelligible at sonification
+ * rates. Matched on the name before the first parenthesis.
+ * @internal
+ */
+const excludedVoices: string[] = [
+    'Albert',
+    'Bad News',
+    'Bahh',
+    'Bells',
+    'Boing',
+    'Bubbles',
+    'Cellos',
+    'Eddy',
+    'Flo',
+    'Fred',
+    'Good News',
+    'Grandma',
+    'Grandpa',
+    'Jester',
+    'Junior',
+    'Kathy',
+    'Organ',
+    'Ralph',
+    'Reed',
+    'Rocko',
+    'Sandy',
+    'Shelley',
+    'Superstar',
+    'Trinoids',
+    'Whisper',
+    'Wobble',
+    'Zarvox'
+];
 
 
 /**
@@ -45,9 +111,13 @@ namespace SonificationSpeaker {
  *        Configuration for the speaker
  */
 class SonificationSpeaker {
+    /** @internal */
     private synthesis: SpeechSynthesis;
+    /** @internal */
     private voice?: SpeechSynthesisVoice;
+    /** @internal */
     private scheduled: number[];
+    /** @internal */
     private masterVolume = 1;
 
     constructor(private options: SonificationSpeaker.SpeakerOptions) {
@@ -79,9 +149,10 @@ class SonificationSpeaker {
             utterance.rate = options && options.rate || this.options.rate || 1;
             utterance.pitch = options && options.pitch ||
                 this.options.pitch || 1;
-            utterance.volume = pick(
-                options && options.volume,
-                this.options.volume, 1
+            utterance.volume = (
+                (options && options.volume) ??
+                this.options.volume ??
+                1
             ) * this.masterVolume;
 
             this.synthesis.speak(utterance);
@@ -123,7 +194,7 @@ class SonificationSpeaker {
 
     /**
      * Stop speech and release any used resources
-     * @private
+     * @internal
      */
     destroy(): void {
         // Ran on TimelineChannel.destroy
@@ -147,7 +218,7 @@ class SonificationSpeaker {
 
     /**
      * Set the active synthesis voice for the speaker.
-     * @private
+     * @internal
      */
     private setVoice(): void {
         if (this.synthesis) {
@@ -155,20 +226,34 @@ class SonificationSpeaker {
                 lang = this.options.language || 'en-US',
                 voices = this.synthesis.getVoices(),
                 len = voices.length;
-            let langFallback;
+            let defaultForLang,
+                langFallback,
+                anyForLang,
+                voiceName;
             for (let i = 0; i < len; ++i) {
                 if (name && voices[i].name === name) {
                     this.voice = voices[i];
                     return;
                 }
-                if (!langFallback && voices[i].lang === lang) {
+                if (voices[i].lang !== lang) {
+                    continue;
+                }
+                voiceName = voices[i].name.split('(')[0].trim();
+                anyForLang ||= voices[i];
+                if (voices[i].default) {
+                    defaultForLang ||= voices[i];
+                }
+                if (
+                    !langFallback &&
+                    !excludedVoices.includes(voiceName)
+                ) {
                     langFallback = voices[i];
                     if (!name) {
                         break;
                     }
                 }
             }
-            this.voice = langFallback;
+            this.voice = defaultForLang || langFallback || anyForLang;
         }
     }
 }

@@ -1,0 +1,17 @@
+{
+    "compilerOptions": {
+        "typeRoots": ["./globals.d.ts", "../node_modules/@types"],
+        "module": "nodenext",
+        "resolveJsonModule": true,
+        "allowImportingTsExtensions": true,
+        "allowJs": true,
+        "noEmit": true,
+        "strict": false,
+        "paths": {
+            "~/*": ["./*"],
+            "~code/*": ["../code/*"],
+            "~ts/*": ["../ts/*"]
+        }
+    },
+    "include": ["./**/*.ts", "./**/*.mts", "./**/*.js"]
+}

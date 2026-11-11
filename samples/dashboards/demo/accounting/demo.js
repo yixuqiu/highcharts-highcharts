@@ -1,3 +1,12 @@
+Highcharts.setOptions({
+    chart: {
+        styledMode: true
+    },
+    lang: {
+        locale: 'en-us'
+    }
+});
+
 const currentMonth = Date.UTC(2023, 9);
 const revTarget = 105;
 const costTarget = 89;
@@ -12,10 +21,8 @@ const commonGaugeOptions = {
     },
     pane: {
         startAngle: -90,
-        endAngle: 89.9,
-        background: null,
-        center: ['50%', '64%'],
-        size: '110%'
+        endAngle: 90,
+        background: null
     },
     yAxis: {
         visible: true,
@@ -40,7 +47,6 @@ const commonGaugeOptions = {
                 radius: 5
             },
             dataLabels: {
-                useHTML: true,
                 format: '${y}M'
             }
         }
@@ -78,17 +84,6 @@ const commonColumnOptions = {
             <span class="highcharts-color-{colorIndex}">&#9679;</span>&nbsp;
             {series.name}: {(divide y 1000000):.2f}M
         `
-    },
-    plotOptions: {
-        column: {
-            point: {
-                events: {
-                    click: () => {
-                        togglePopup(true);
-                    }
-                }
-            }
-        }
     }
 };
 
@@ -97,36 +92,34 @@ const board = Dashboards.board('container', {
         connectors: [{
             type: 'CSV',
             id: 'data',
-            options: {
-                csv: document.getElementById('csv').innerHTML,
-                dataModifier: {
-                    type: 'Math',
-                    columnFormulas: [{
-                        column: 'Result', // I
-                        formula: 'D1-C1'
-                    }, {
-                        column: 'AccResult', // J
-                        formula: 'SUM(I$1:I1)'
-                    }, {
-                        column: 'CostPredA', // K
-                        formula: 'AVERAGE(E1,G1)'
-                    }, {
-                        column: 'RevPredA', // L
-                        formula: 'AVERAGE(F1, H1)'
-                    }, {
-                        column: 'AccResPredP', // M
-                        formula: 'J1+SUM(F$1:F1)-SUM(E$1:E1)'
-                    }, {
-                        column: 'AccResPredO', // N
-                        formula: 'J1+SUM(H$1:H1)-SUM(G$1:G1)'
-                    }, {
-                        column: 'ResPredA', // O
-                        formula: 'L1-K1'
-                    }, {
-                        column: 'AccResPredA', // P
-                        formula: 'J1+SUM(O$1:O1)'
-                    }]
-                }
+            csv: document.getElementById('csv').innerHTML,
+            dataModifier: {
+                type: 'Math',
+                columnFormulas: [{
+                    column: 'Result', // I
+                    formula: 'D1-C1'
+                }, {
+                    column: 'AccResult', // J
+                    formula: 'SUM(I$1:I1)'
+                }, {
+                    column: 'CostPredA', // K
+                    formula: 'AVERAGE(E1,G1)'
+                }, {
+                    column: 'RevPredA', // L
+                    formula: 'AVERAGE(F1, H1)'
+                }, {
+                    column: 'AccResPredP', // M
+                    formula: 'J1+SUM(F$1:F1)-SUM(E$1:E1)'
+                }, {
+                    column: 'AccResPredO', // N
+                    formula: 'J1+SUM(H$1:H1)-SUM(G$1:G1)'
+                }, {
+                    column: 'ResPredA', // O
+                    formula: 'L1-K1'
+                }, {
+                    column: 'AccResPredA', // P
+                    formula: 'J1+SUM(O$1:O1)'
+                }]
             }
         }]
     },
@@ -477,7 +470,7 @@ const board = Dashboards.board('container', {
 }, true);
 
 board.then(res => {
-    const table = res.dataPool.connectors.data.table.modified.columns;
+    const table = res.dataPool.connectors.data.getTable().getModified().columns;
 
     const revKPI = res.mountedComponents[0].component;
     const revForecast = res.mountedComponents[1].component;
@@ -553,103 +546,3 @@ board.then(res => {
         ) / (revTarget - costTarget) * 100)
     });
 });
-
-/**
- * Popup
- */
-
-const popup = document.getElementById('popup');
-
-popup.addEventListener('click', e => {
-    if (e.target === popup || e.target.className === 'close') {
-        togglePopup(false);
-    }
-});
-
-document.addEventListener('keydown', e => {
-    if (e.key === 'Escape' && popup.style.display !== 'none') {
-        popup.style.display = 'none';
-    }
-});
-
-async function togglePopup(open) {
-    if (!open) {
-        popup.style.display = 'none';
-        return;
-    }
-    popup.style.display = 'flex';
-
-    popup.children[0].children['datagrid-container'].innerHTML = '';
-
-    const formatNumbers = function () {
-        return Highcharts.isNumber(this.value) ? `$${(
-            this.value / 1e6
-        ).toFixed(2)}M` : '-';
-    };
-
-    // eslint-disable-next-line no-new
-    new DataGrid.DataGrid('datagrid-container', {
-        dataTable: (await board).dataPool.connectors.data.table,
-        editable: false,
-        columns: {
-            Date: {
-                cellFormatter: function () {
-                    return this.value ? (
-                        new Date(this.value)
-                            .toISOString()
-                            .substring(0, 10)
-                    ) : '?';
-                }
-            },
-            Budget: {
-                show: true,
-                cellFormatter: formatNumbers
-            },
-            Cost: {
-                show: true,
-                cellFormatter: formatNumbers
-            },
-            Revenue: {
-                show: true,
-                cellFormatter: formatNumbers
-            },
-            Result: {
-                show: true,
-                cellFormatter: formatNumbers
-            },
-            CostPredP: {
-                show: false
-            },
-            RevPredP: {
-                show: false
-            },
-            CostPredO: {
-                show: false
-            },
-            RevPredO: {
-                show: false
-            },
-            AccResult: {
-                show: false
-            },
-            CostPredA: {
-                show: false
-            },
-            RevPredA: {
-                show: false
-            },
-            AccResPredP: {
-                show: false
-            },
-            AccResPredO: {
-                show: false
-            },
-            ResPredA: {
-                show: false
-            },
-            AccResPredA: {
-                show: false
-            }
-        }
-    });
-}

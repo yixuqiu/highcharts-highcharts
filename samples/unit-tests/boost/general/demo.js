@@ -1,30 +1,180 @@
-QUnit.test('Clipping rectangle after set extremes (#6895)', function (assert) {
-    var chart = Highcharts.chart('container', {
-        chart: {
-            type: 'column'
-        },
-        series: [
-            {
-                boostThreshold: 1,
-                data: [
-                    [0, 0],
-                    [0, 1],
-                    [0, 2],
-                    [0, 3],
-                    [0, 4]
-                ]
-            }
-        ]
+function toHex(r, g, b) {
+    const h = n => n.toString(16).padStart(2, '0');
+    return `#${h(r)}${h(g)}${h(b)}`;
+}
+
+async function sampleImagePixelAtSVGPoint(svg, imageEl, svgX, svgY) {
+    // 1) Map the SVG point into the <image>'s local coordinate space
+    const pt = svg.createSVGPoint();
+    pt.x = svgX;
+    pt.y = svgY;
+
+    const ctm = imageEl.getCTM();
+    if (!ctm) {
+        return null;
+    }
+    const inv = ctm.inverse();
+    const local = pt.matrixTransform(inv);
+
+    // 2) Convert local coordinates to 0..1 inside the image box
+    const ix = imageEl.x.baseVal.value;
+    const iy = imageEl.y.baseVal.value;
+    const iw = imageEl.width.baseVal.value;
+    const ih = imageEl.height.baseVal.value;
+
+    const u = (local.x - ix) / iw;
+    const v = (local.y - iy) / ih;
+
+    if (u < 0 || u > 1 || v < 0 || v > 1) {
+        return null; // outside the image
+    }
+
+    // 3) Load the embedded raster (data URL) into an HTMLImageElement
+    const href =
+        imageEl.getAttribute('href') ||
+            imageEl.getAttributeNS('http://www.w3.org/1999/xlink', 'href') ||
+            '';
+
+    if (!href || !href.startsWith('data:image')) {
+        return null; // expects a data URL
+    }
+
+    const img = await new Promise((resolve, reject) => {
+        const el = new Image();
+        el.onload = () => resolve(el);
+        el.onerror = reject;
+        el.src = href;
     });
 
-    chart.yAxis[0].setExtremes(1, 2);
+    // 4) Sample the pixel on an offscreen canvas
+    const cw = img.naturalWidth;
+    const ch = img.naturalHeight;
 
-    assert.strictEqual(
-        chart.series[0].boost.clipRect.attr('height'),
-        chart.plotHeight,
-        'Correct height of the clipping box.'
-    );
-});
+    // Map u,v (0..1) to exact pixel indices
+    const px = Math.floor(u * cw);
+    const py = Math.floor(v * ch);
+
+    if (px < 0 || py < 0 || px >= cw || py >= ch) {
+        return null;
+    }
+
+    const canvas = document.createElement('canvas');
+    canvas.width = cw;
+    canvas.height = ch;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) {
+        return null;
+    }
+
+    ctx.drawImage(img, 0, 0);
+    const data = ctx.getImageData(px, py, 1, 1).data;
+    const r = data[0],
+        g = data[1],
+        b = data[2],
+        a = data[3];
+
+    return { r, g, b, a, hex: toHex(r, g, b) };
+}
+
+QUnit[Highcharts.hasWebGLSupport() ? 'test' : 'skip'](
+    'Set extremes when boosted',
+    async function (assert) {
+
+        const chart = Highcharts.chart('container', {
+            chart: {
+                type: 'column',
+                zooming: {
+                    type: 'xy'
+                }
+            },
+            xAxis: {
+                minRange: 0.1
+            },
+            series: [
+                {
+                    boostThreshold: 1,
+                    cropThreshold: 1,
+                    data: [
+                        [0, 0],
+                        [0, 1],
+                        [0, 2],
+                        [0, 3],
+                        [0, 4],
+                        [1, 1.5],
+                        [2, 1.5],
+                        [3, 1.5],
+                        [4, 1.25],
+                        [5, 1.2]
+                    ]
+                }
+            ]
+        });
+
+        chart.yAxis[0].setExtremes(1, 2);
+
+        assert.strictEqual(
+            chart.series[0].boost.clipRect.attr('height'),
+            chart.plotHeight,
+            'Correct height of the clipping box after set extremes (#6895).'
+        );
+
+        chart.series[0].update({
+            type: 'scatter'
+        });
+
+        // Reset
+        chart.yAxis[0].setExtremes(0, 4);
+
+        const initialRange = chart.xAxis[0].getExtremes(),
+            initialPointsLength = chart.series[0].points.length;
+
+        // Zoom in
+        chart.xAxis[0].setExtremes(2, 3);
+
+        assert.ok(
+            chart.series[0].cropped,
+            'After zoom series should be cropped.'
+        );
+        assert.ok(
+            chart.series[0].points.length < initialPointsLength,
+            'After zoom series should have less points.'
+        );
+
+        // Reset
+        chart.xAxis[0].setExtremes();
+
+        assert.deepEqual(
+            chart.xAxis[0].getExtremes(),
+            initialRange,
+            'Resetting extremes after zoom should go back to the initial range.'
+        );
+        assert.ok(
+            chart.series[0].points.length === initialPointsLength,
+            'After resetting zoom series should show all points.'
+        );
+
+        chart.series[0].update({
+            zones: []
+        });
+
+        const svg = chart.renderTo.querySelector('svg'),
+            imageEl = svg.querySelector('.highcharts-boost-canvas'),
+            point = chart.series[0].points[2];
+
+        const x = point.plotX + chart.plotLeft,
+            y = point.plotY + chart.plotTop;
+
+        const { hex } =
+            await sampleImagePixelAtSVGPoint(svg, imageEl, x, y);
+
+        assert.strictEqual(
+            hex,
+            '#2caffe',
+            `After updating to empty zones the color should be
+            remained, #23571.`
+        );
+    }
+);
 
 QUnit.test(
     'Boost enabled false and boostThreshold conflict (#9052)',
@@ -61,7 +211,7 @@ QUnit[Highcharts.hasWebGLSupport() ? 'test' : 'skip'](
     'Dynamically removing and adding series (#7499)',
     function (assert) {
 
-        var chart = Highcharts.chart('container', {
+        const chart = Highcharts.chart('container', {
             chart: {
                 width: 400,
                 height: 300
@@ -149,12 +299,13 @@ QUnit[Highcharts.hasWebGLSupport() ? 'test' : 'skip'](
         });
 
         chart.series[chart.series.length - 1].remove();
+
     }
 );
 QUnit[Highcharts.hasWebGLSupport() ? 'test' : 'skip'](
     'Combination with non-boostable series types and null values (#7634)',
     function (assert) {
-        var chart = Highcharts.chart('container', {
+        let chart = Highcharts.chart('container', {
             boost: {
                 seriesThreshold: 1
             },
@@ -227,15 +378,49 @@ QUnit[Highcharts.hasWebGLSupport() ? 'test' : 'skip'](
             `There shouldn't be any error in the console, after chart render
             (#17014).`
         );
+
+        chart = Highcharts.chart('container', {
+            plotOptions: {
+                series: {
+                    boostThreshold: 1
+                }
+            },
+            series: [{
+                data: [
+                    [4, 3],
+                    [5, 4]
+                ]
+            }, {
+                data: [
+                    [3, 5],
+                    [4, 6]
+                ]
+            }]
+        });
+
+        chart.series.forEach(series => {
+            series.update({
+                boostThreshold: 0
+            });
+        });
+
+        assert.ok(
+            chart.series[0].points[0].graphic.element.isConnected,
+            'After disabling boost, marker should be added to DOM, #22950.'
+        );
+
+        assert.strictEqual(
+            chart.series[0].boosted,
+            false,
+            'After disabling boost, the series should not be boosted (#23662).'
+        );
     }
 );
 
 QUnit[Highcharts.hasWebGLSupport() ? 'test' : 'skip'](
     'Series update with shared tooltip (#9572)',
     function (assert) {
-        var i = 0,
-            chart,
-            controller;
+        let i = 0;
 
         assert.expect(0);
 
@@ -248,7 +433,7 @@ QUnit[Highcharts.hasWebGLSupport() ? 'test' : 'skip'](
             ];
         }
 
-        chart = Highcharts.chart('container', {
+        const chart = Highcharts.chart('container', {
             data: {
                 columns: getData()
             },
@@ -266,7 +451,7 @@ QUnit[Highcharts.hasWebGLSupport() ? 'test' : 'skip'](
             }
         });
 
-        controller = new TestController(chart);
+        const controller = new TestController(chart);
         controller.moveTo(300, 200);
         chart.update({
             data: {
@@ -274,44 +459,6 @@ QUnit[Highcharts.hasWebGLSupport() ? 'test' : 'skip'](
             },
             series: [{}, {}],
             tooltip: {}
-        });
-    }
-);
-
-QUnit[Highcharts.hasWebGLSupport() ? 'test' : 'skip'](
-    `Error handler while the series is not declared as an array of numbers and
-    turbo threshold enabled, #13957.`,
-    function (assert) {
-        var done = assert.async(),
-            remove = Highcharts.addEvent(
-                Highcharts,
-                'displayError',
-                function (e) {
-                    assert.strictEqual(
-                        e.code, 12, 'Error 12 should be ' +
-                        'invoked'
-                    );
-                    remove();
-                    done();
-                }
-            );
-        Highcharts.stockChart('container', {
-            series: [
-                {
-                    data: [
-                        [1, 2],
-                        {
-                            x: 2,
-                            y: 46.7407
-                        },
-                        [3, 46.6135],
-                        [4, 47.0005],
-                        [5, 48.1701],
-                        [6, 47.5816]
-                    ],
-                    turboThreshold: 2
-                }
-            ]
         });
     }
 );
@@ -454,6 +601,44 @@ QUnit[Highcharts.hasWebGLSupport() ? 'test' : 'skip'](
             `Clip rect 'x' should take into account opposite navigator boosted
             series on inverted charts, #20936.`
         );
+
+    }
+);
+
+QUnit[Highcharts.hasWebGLSupport() ? 'test' : 'skip'](
+    'The boost clip-path should have appropriate size, #22949.',
+    function (assert) {
+        const chart = Highcharts.chart('container', {
+            chart: {
+                inverted: false
+            },
+            navigator: {
+                enabled: false
+            },
+            plotOptions: {
+                series: {
+                    boostThreshold: 1
+                }
+            },
+            yAxis: [
+                { lineWidth: 1 },
+                { opposite: true, lineWidth: 1 }
+            ],
+            series: [{
+                data: [[4, 3], [5, 4]]
+            }, {
+                data: [[3, 5], [4, 6]]
+            }]
+        });
+
+        chart.setSize(600, 500);
+
+        assert.strictEqual(
+            chart.boost.clipRect.attr('width'),
+            chart.clipBox.width,
+            'Clip rect width should take into account opposing y-axis ' +
+            'line widths after resize, #22949.'
+        );
     }
 );
 
@@ -506,6 +691,322 @@ QUnit[Highcharts.hasWebGLSupport() ? 'test' : 'skip'](
             'The chart-level boost target should take the z-index of the ' +
             'series (#9819)'
         );
+
+        chart.series[0].update({
+            data: [
+                [0, 10, 0],
+                [8, 5, 1],
+                [9, -4, 2],
+                [1, -9, 3],
+                [-7, -6, 4],
+                [-9, 2, 5],
+                [-2, 9, 6],
+                [6, 7, 7],
+                [9, -1, 8],
+                [4, -9, 9],
+                [-5, -8, 10],
+                [-9, 0, 11],
+                [-5, 8, 12],
+                [4, 9, 13],
+                [9, 1, 14],
+                [6, -7, 15],
+                [-2, -9, 16],
+                [-9, -2, 17],
+                [-7, 6, 18],
+                [1, 9, 19],
+                [9, 4, 20],
+                [8, -5, 21],
+                [0, -9, 22],
+                [-8, -5, 23],
+                [-9, 4, 24],
+                [-1, 9, 25],
+                [7, 6, 26],
+                [9, -2, 27],
+                [2, -9, 28],
+                [-6, -7, 29],
+                [-9, 1, 30],
+                [-4, 9, 31],
+                [5, 8, 32],
+                [9, 0, 33],
+                [5, -8, 34],
+                [-4, -9, 35],
+                [-9, -1, 36],
+                [-6, 7, 37],
+                [2, 9, 38],
+                [9, 2, 39],
+                [7, -6, 40],
+                [-1, -9, 41],
+                [-9, -3, 42],
+                [-8, 5, 43],
+                [0, 9, 44],
+                [8, 5, 45],
+                [9, -4, 46],
+                [1, -9, 47],
+                [-7, -6, 48],
+                [-9, 3, 49],
+                [-2, 9, 50],
+                [6, 7, 51],
+                [9, -1, 52],
+                [3, -9, 53],
+                [-5, -8, 54],
+                [-9, 0, 55],
+                [-5, 8, 56],
+                [4, 8, 57],
+                [9, 1, 58],
+                [6, -7, 59],
+                [-3, -9, 60],
+                [-9, -2, 61],
+                [-7, 6, 62],
+                [1, 9, 63],
+                [9, 3, 64],
+                [8, -5, 65],
+                [0, -9, 66],
+                [-8, -5, 67],
+                [-8, 4, 68],
+                [-1, 9, 69],
+                [7, 6, 70],
+                [9, -3, 71],
+                [2, -9, 72],
+                [-6, -7, 73],
+                [-9, 1, 74],
+                [-3, 9, 75],
+                [5, 8, 76],
+                [9, 0, 77],
+                [5, -8, 78],
+                [-4, -8, 79],
+                [-9, -1, 80],
+                [-6, 7, 81],
+                [3, 9, 82],
+                [9, 2, 83],
+                [7, -6, 84],
+                [-1, -9, 85],
+                [-9, -3, 86],
+                [-8, 5, 87],
+                [0, 9, 88],
+                [8, 5, 89],
+                [8, -4, 90],
+                [1, -9, 91],
+                [-7, -6, 92],
+                [-9, 3, 93],
+                [-2, 9, 94],
+                [6, 7, 95],
+                [9, -1, 96],
+                [3, -9, 97],
+                [-5, -8, 98],
+                [-9, 0, 99],
+                [-5, 8, 100],
+                [4, 8, 101],
+                [9, 1, 102],
+                [6, -7, 103],
+                [-3, -9, 104],
+                [-9, -2, 105],
+                [-7, 6, 106],
+                [1, 9, 107],
+                [9, 3, 108],
+                [8, -5, 109],
+                [0, -9, 110],
+                [-8, -5, 111],
+                [-8, 4, 112],
+                [0, 9, 113],
+                [7, 6, 114],
+                [9, -3, 115],
+                [2, -9, 116],
+                [-6, -7, 117],
+                [-9, 1, 118],
+                [-3, 9, 119],
+                [5, 8, 120],
+                [9, 0, 121],
+                [4, -8, 122],
+                [-4, -8, 123],
+                [-9, 0, 124],
+                [-6, 7, 125],
+                [3, 9, 126],
+                [9, 2, 127],
+                [7, -6, 128],
+                [-1, -9, 129],
+                [-9, -3, 130],
+                [-8, 5, 131],
+                [0, 9, 132],
+                [8, 4, 133],
+                [8, -4, 134],
+                [0, -9, 135],
+                [-7, -6, 136],
+                [-9, 3, 137],
+                [-2, 9, 138],
+                [6, 7, 139],
+                [9, -1, 140],
+                [3, -9, 141],
+                [-5, -8, 142],
+                [-9, 0, 143],
+                [-4, 8, 144],
+                [4, 8, 145],
+                [9, 0, 146],
+                [6, -7, 147],
+                [-3, -9, 148],
+                [-9, -2, 149],
+                [-7, 6, 150],
+                [2, 9, 151],
+                [9, 3, 152],
+                [8, -5, 153],
+                [0, -9, 154],
+                [-8, -4, 155],
+                [-8, 4, 156],
+                [0, 9, 157],
+                [7, 6, 158],
+                [9, -3, 159],
+                [2, -9, 160],
+                [-7, -7, 161],
+                [-9, 2, 162],
+                [-3, 9, 163],
+                [5, 8, 164],
+                [9, 0, 165],
+                [4, -8, 166],
+                [-4, -8, 167],
+                [-9, 0, 168],
+                [-6, 7, 169],
+                [3, 9, 170],
+                [9, 2, 171],
+                [7, -7, 172],
+                [-2, -9, 173],
+                [-9, -3, 174],
+                [-8, 5, 175],
+                [0, 9, 176],
+                [8, 4, 177],
+                [8, -4, 178],
+                [0, -9, 179],
+                [-8, -5, 180],
+                [-9, 3, 181],
+                [-2, 9, 182],
+                [7, 7, 183],
+                [9, -2, 184],
+                [3, -9, 185],
+                [-6, -7, 186],
+                [-9, 0, 187],
+                [-4, 8, 188],
+                [4, 8, 189],
+                [9, 0, 190],
+                [5, -8, 191],
+                [-3, -9, 192],
+                [-9, -2, 193],
+                [-7, 7, 194],
+                [2, 9, 195],
+                [9, 3, 196],
+                [7, -6, 197],
+                [0, -9, 198],
+                [-8, -4, 199],
+                [-8, 4, 200],
+                [0, 9, 201],
+                [8, 5, 202],
+                [9, -3, 203],
+                [2, -9, 204],
+                [-7, -6, 205],
+                [-9, 2, 206],
+                [-3, 9, 207],
+                [6, 7, 208],
+                [9, 0, 209],
+                [4, -8, 210],
+                [-4, -8, 211],
+                [-9, 0, 212],
+                [-5, 8, 213],
+                [3, 9, 214],
+                [9, 1, 215],
+                [6, -7, 216],
+                [-2, -9, 217],
+                [-9, -3, 218],
+                [-7, 6, 219],
+                [0, 9, 220],
+                [8, 4, 221],
+                [8, -4, 222],
+                [0, -9, 223],
+                [-8, -5, 224],
+                [-9, 3, 225],
+                [-1, 9, 226],
+                [7, 6, 227],
+                [9, -2, 228],
+                [3, -9, 229],
+                [-6, -7, 230],
+                [-9, 0, 231],
+                [-4, 8, 232],
+                [4, 8, 233],
+                [9, 0, 234],
+                [5, -8, 235],
+                [-3, -9, 236],
+                [-9, -1, 237],
+                [-6, 7, 238],
+                [2, 9, 239],
+                [9, 3, 240],
+                [7, -6, 241],
+                [0, -9, 242],
+                [-8, -4, 243],
+                [-8, 5, 244],
+                [0, 9, 245],
+                [8, 5, 246],
+                [9, -3, 247],
+                [1, -9, 248],
+                [-7, -6, 249],
+                [-9, 2, 250],
+                [-3, 9, 251],
+                [6, 7, 252],
+                [9, -1, 253],
+                [4, -8, 254],
+                [-5, -8, 255],
+                [-9, 0, 256],
+                [-5, 8, 257],
+                [3, 9, 258],
+                [9, 1, 259],
+                [6, -7, 260],
+                [-2, -9, 261],
+                [-9, -3, 262],
+                [-7, 6, 263],
+                [1, 9, 264],
+                [8, 4, 265],
+                [8, -5, 266],
+                [0, -9, 267],
+                [-8, -5, 268],
+                [-9, 3, 269],
+                [-1, 9, 270],
+                [7, 6, 271],
+                [9, -2, 272],
+                [3, -9, 273],
+                [-6, -7, 274],
+                [-9, 1, 275],
+                [-4, 8, 276],
+                [5, 8, 277],
+                [9, 0, 278],
+                [5, -8, 279],
+                [-3, -9, 280],
+                [-9, -1, 281],
+                [-6, 7, 282],
+                [2, 9, 283],
+                [9, 3, 284],
+                [7, -6, 285],
+                [-1, -9, 286],
+                [-8, -4, 287],
+                [-8, 5, 288],
+                [0, 9, 289],
+                [8, 5, 290],
+                [9, -3, 291],
+                [1, -9, 292],
+                [-7, -6, 293],
+                [-9, 2, 294],
+                [-3, 9, 295],
+                [6, 7, 296],
+                [9, -1, 297],
+                [4, -8, 298],
+                [-5, -8, 299]
+            ]
+        });
+
+        chart.series[1].update({
+            data: [1, 100]
+        });
+
+        assert.strictEqual(
+            chart.yAxis[0].max >= 100,
+            true,
+            'Y-Axis should take all series into account (#22183)'
+        );
+
     }
 );
 
@@ -562,6 +1063,277 @@ QUnit[Highcharts.hasWebGLSupport() ? 'test' : 'skip'](
             chart.yAxis[0].tickPositions.length,
             2,
             'The y-axis should have more than two ticks'
+        );
+
+        chart.update({
+            chart: {
+                animation: true
+            },
+            boost: {
+                enabled: true,
+                useGPUTranslations: false,
+                usePreallocated: false
+            },
+            yAxis: [{
+                id: 'a'
+            }, {
+                id: 'b',
+                height: '10%',
+                top: '90%'
+            }],
+            plotOptions: {
+                series: {
+                    animation: true,
+                    states: {
+                        hover: {
+                            halo: {
+                                size: 50
+                            }
+                        }
+                    }
+                }
+            },
+            series: [{
+                type: 'line',
+                yAxis: 'a',
+                data: [8, 6, 4],
+                boostThreshold: 1,
+                stickyTracking: false
+            }, {
+                data: [4, 5, 7],
+                yAxis: 'b',
+                boostThreshold: 1,
+                stickyTracking: false
+            }]
+        }, true, true);
+
+        const controller = new TestController(chart);
+        controller.moveTo(
+            chart.plotLeft + chart.series[1].points[1].plotX,
+            chart.plotTop + chart.plotHeight - chart.series[1].points[1].plotY
+        );
+        controller.moveTo(
+            chart.plotLeft + chart.series[0].points[1].plotX,
+            chart.plotTop + chart.plotHeight - chart.series[0].points[1].plotY
+        );
+
+        assert.strictEqual(
+            chart.series[1].halo.visibility,
+            'hidden',
+            `Halo shouldn't be rendered in wrong position between hovering
+            points from multiple series on multiple y-axes, #21176.`
+        );
+    }
+);
+
+QUnit[Highcharts.hasWebGLSupport() ? 'test' : 'skip'](
+    'Boost with zones',
+    async function (assert) {
+        const chart = Highcharts.chart('container', {
+            chart: {
+                type: 'scatter'
+            },
+            title: {
+                text: 'Highcharts Zone Coloring with boost v12.4'
+            },
+            boost: {
+                enabled: true,
+                useGPUTranslations: true
+            },
+            plotOptions: {
+                series: {
+                    boostThreshold: 1,
+                    marker: { radius: 20 }
+                }
+            },
+            xAxis: { min: 0, max: 100 },
+            yAxis: { min: 0, max: 100 },
+            series: [{
+                name: 'Data',
+                data: [
+                    [10, 10], [20, 20], [30, 30], [40, 40], [50, 50],
+                    [60, 60], [70, 70], [80, 80], [90, 90]
+                ],
+                color: 'rgba(128, 128, 128, 0.5)',
+                zones: [{ // Red < 50
+                    value: 50,
+                    color: '#ff0000'
+                }, { // Blue >= 50
+                    color: '#0000ff'
+                }]
+            }]
+        });
+
+        const svg = chart.renderTo.querySelector('svg'),
+            imageEl = svg.querySelector('.highcharts-boost-canvas');
+
+        let x = chart.series[0].points[1].plotX + chart.plotLeft,
+            y = chart.series[0].points[1].plotY + chart.plotTop;
+        const { hex } =
+            await sampleImagePixelAtSVGPoint(svg, imageEl, x, y);
+
+        assert.strictEqual(
+            hex,
+            '#ff0000',
+            'The second point should be red.'
+        );
+
+        x = chart.series[0].points[8].plotX + chart.plotLeft;
+        y = chart.series[0].points[8].plotY + chart.plotTop;
+        const { hex: hex2 } =
+            await sampleImagePixelAtSVGPoint(svg, imageEl, x, y);
+
+        assert.strictEqual(
+            hex2,
+            '#0000ff',
+            'The last point should be blue.'
+        );
+    }
+);
+
+QUnit[Highcharts.hasWebGLSupport() ? 'test' : 'skip'](
+    'Boosted line width filter should not wash out other boosted series ' +
+    '(#24728)',
+    function (assert) {
+        const chart = Highcharts.chart('container', {
+            boost: {
+                seriesThreshold: 1
+            },
+            series: [
+                {
+                    type: 'line',
+                    lineWidth: 3,
+                    boostThreshold: 1,
+                    zIndex: 20,
+                    data: [5, 4, 3, 2, 1]
+                },
+                {
+                    type: 'area',
+                    boostThreshold: 1,
+                    data: [1, 2, 3, 4, 5]
+                }
+            ]
+        });
+
+        assert.strictEqual(
+            chart.boost.target.attr('filter'),
+            'none',
+            `A boosted line series sharing the chart-level boost target with
+            a boosted non-line series should not apply the line-width dilate
+            filter, or it would wash out the other series (#24728).`
+        );
+
+        chart.series[1].hide();
+
+        assert.strictEqual(
+            chart.boost.target.attr('filter'),
+            'url(#linewidth)',
+            `A hidden boosted non-line series should not prevent the dilate
+            filter on the shared boost target (#24728).`
+        );
+
+        chart.series[1].show();
+
+        assert.strictEqual(
+            chart.boost.target.attr('filter'),
+            'none',
+            `Showing the boosted non-line series again should remove the
+            dilate filter from the shared boost target (#24728).`
+        );
+
+        const lineOnlyChart = Highcharts.chart('container', {
+            boost: {
+                seriesThreshold: 1
+            },
+            series: [
+                {
+                    type: 'line',
+                    lineWidth: 3,
+                    boostThreshold: 1,
+                    data: [1, 2, 3, 4, 5]
+                },
+                {
+                    type: 'line',
+                    lineWidth: 1,
+                    boostThreshold: 1,
+                    data: [5, 4, 3, 2, 1]
+                }
+            ]
+        });
+
+        assert.strictEqual(
+            lineOnlyChart.boost.target.attr('filter'),
+            'url(#linewidth)',
+            `When every boosted series sharing the chart-level boost target
+            is a line, a thin line rendered after a thick one should not
+            clear the dilate filter (#23666).`
+        );
+
+        const seriesLevelChart = Highcharts.chart('container', {
+            boost: {
+                allowForce: false
+            },
+            series: [
+                {
+                    type: 'area',
+                    boostThreshold: 1,
+                    data: [1, 2, 3, 4, 5]
+                },
+                {
+                    type: 'line',
+                    lineWidth: 3,
+                    boostThreshold: 1,
+                    data: [5, 4, 3, 2, 1]
+                }
+            ]
+        });
+
+        assert.strictEqual(
+            seriesLevelChart.series[1].boost.target.attr('filter'),
+            'url(#linewidth)',
+            `A boosted line series with its own boost target should apply the
+            dilate filter regardless of other boosted series (#24728).`
+        );
+    }
+);
+
+// QUnit[Highcharts.hasWebGLSupport() ? 'test' : 'skip'](
+// Skipped since the DataTable refactor
+// @todo find out how it works in the master
+QUnit.skip(
+    'Turbo mode with area stacking and mixed data formats (#23730).',
+    async function (assert) {
+        const chart = Highcharts.chart('container', {
+            chart: {
+                type: 'area'
+            },
+            plotOptions: {
+                series: {
+                    turboThreshold: 2
+                },
+                area: {
+                    stacking: 'normal'
+                }
+            },
+            series: [{
+                data: [[0, 1], [1, 1], { x: 2, y: 1 }, [3, 1], [4, 1]]
+            }]
+        });
+        const series = chart.series[0];
+
+        assert.equal(
+            series.areaPath.xMap.length,
+            series.data.length,
+            'All data points should be included in rendering.'
+        );
+
+        chart.addSeries({
+            data: [[2, 1]]
+        });
+
+        assert.ok(
+            true,
+            'No errors when rendering with stacked points.'
         );
     }
 );

@@ -1,0 +1,10 @@
+@import url("https://code.highcharts.com/grid-lite/css/grid-lite.css");
+
+#container {
+    height: 250px;
+    padding: 8px;
+}
+
+#cellContextMenuResult {
+    width: 320px;
+}

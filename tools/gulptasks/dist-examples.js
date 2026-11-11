@@ -4,11 +4,10 @@
 
 /* eslint no-use-before-define: 0 */
 
+const Babel = require('@babel/core');
 const Gulp = require('gulp');
 const Path = require('path');
-const { readFileSync } = require('node:fs');
-
-const { getGitIgnoreMeProperties } = require('./lib/uploadS3.js');
+const { createDemoIndexContent } = require('./lib/demoIndex.js');
 
 /* *
  *
@@ -23,21 +22,6 @@ const TARGET_DIRECTORY = Path.join('build', 'dist');
 const TEMPLATE_FILE = Path.join(SOURCE_DIRECTORY, 'template-example.htm');
 
 const URL_REPLACEMENT = 'src="../../code/';
-const logLib = require('../libs/log');
-
-function getDemoBuildPath() {
-    const config = getGitIgnoreMeProperties();
-    let value;
-    if (config) {
-        value = config['demos.path'];
-    }
-
-    if (!value || !value.length) {
-        logLib.message('git-ignore-me-properties is missing demos.path, trying default ./tmp/demo');
-        value = 'tmp/demo';
-    }
-    return value;
-}
 
 /**
  * Creates an index page from the supplied options
@@ -59,36 +43,45 @@ function indexTemplate(options) {
             * {
                 font-family: sans-serif;
             }
-            ul.nav > li > div {
+            body {
+                margin: 1rem 1.5rem;
+            }
+            .sidebar-category-list,
+            .sidebar-demo-list {
+                list-style: none;
+                padding-left: 0;
+                margin-left: 0;
+            }
+            .sidebar-category-group {
+                margin: 0 0 1rem 0;
+            }
+            .sidebar-category {
                 font-size: 1.5em;
                 font-weight: bold;
                 margin: 1em 0 0.3em 0;
             }
-            ul.nav > li {
-                list-style: none;
-                display: black
-            }
-            div > ul > li {
-                padding-bottom: 0.5em;
-            }
-            ul ul {
-                list-style-type: initial;
+            .sidebar-demo-list {
                 padding-left: 1.25em;
                 font-size: 1.15em;
             }
-            li button.sidebar-category {
-                border: none;
-                background: none;
-                padding: 0;
-                margin: 1rem 0 0.5rem 0;
-                font-size: 1.4rem;
+            .sidebar-demo-list > li {
+                padding-bottom: 0.5em;
             }
-            li a {
+            a {
                 text-decoration: none;
                 color: #6065c8;
             }
-            li a:hover {
+            a:hover {
                 text-decoration: underline;
+            }
+            @media (prefers-color-scheme: dark) {
+                body {
+                    background-color: #141414;
+                    color: #ddd;
+                }
+                a {
+                    color: #2caffe;
+                }
             }
         </style>
     </head>
@@ -142,10 +135,13 @@ function assembleSample(template, variables) {
  * @param {string} template
  *        Template string
  *
+ * @param {string} demoIndexProductPath
+ *        Demo index product path
+ *
  * @return {Promise<void>}
  *         Promise to keep
  */
-async function createExamples(title, sourcePath, targetPath, template) {
+async function createExamples(title, sourcePath, targetPath, template, demoIndexProductPath) {
 
     const FS = require('fs');
     const FSLib = require('../libs/fs');
@@ -160,7 +156,7 @@ async function createExamples(title, sourcePath, targetPath, template) {
         let path;
 
         const content = [
-            'html', 'css', 'js'
+            'html', 'css', 'js', 'ts'
         ].reduce(
             (obj, ext) => {
                 path = Path.join(directoryPath, 'demo.' + ext);
@@ -173,6 +169,14 @@ async function createExamples(title, sourcePath, targetPath, template) {
             },
             { title }
         );
+
+        if (content.ts) {
+            content.js = '/* eslint-disable */\n' +
+                Babel.transformSync(content.ts, {
+                    presets: ['@babel/preset-typescript'],
+                    filename: Path.join(directoryPath, 'demo.ts')
+                }).code;
+        }
 
         const sample = assembleSample(template, content);
 
@@ -188,45 +192,16 @@ async function createExamples(title, sourcePath, targetPath, template) {
         );
     });
 
-    function getLocalSidebar(path) {
-        const sidebarPath =
-            Path.join(getDemoBuildPath(), `${path === 'highcharts' ? '' : `/${path}`}/sidebar.html`);
-        try {
-            const file = readFileSync(sidebarPath,
-                'utf-8');
-            return file;
-
-        } catch {
-            throw new Error(`Could not find ${sidebarPath}
-  If demos are built elsewhere, the path can be specified in git-ignore-me.properties by the demos.path property.`);
-        }
-    }
-
-    LogLib.success('Created', targetPath);
-
-    let localsidebar;
-    try {
-        localsidebar = getLocalSidebar(
-            sourcePath
-                .replaceAll('samples/', '')
-                .replaceAll('/demo', '')
-        );
-    } catch (e) {
-        LogLib.warn(e);
-        LogLib.warn('Missing sidebar.html, using empty file');
-        localsidebar = '';
-    }
-
-    LogLib.success('Created', targetPath);
-    const indexContent = localsidebar
-        .replaceAll('style="display:none;"', '') // remove hidden style
-        .replace(/(?!href= ")(\.\/.+?)(?=")/gu, 'examples\/$1\/index.html'); // replace links
+    const indexContent = createDemoIndexContent({
+        productPath: demoIndexProductPath,
+        sourcePath
+    });
 
     // eslint-disable-next-line node/no-unsupported-features/node-builtins
     return FS.promises.writeFile(
         Path.join(targetPath, '..', 'index.html'),
         indexTemplate({ title, content: indexContent })
-    );
+    ).then(() => LogLib.success('Created', targetPath));
 }
 
 /**
@@ -275,28 +250,60 @@ function convertURLToLocal(str) {
  */
 function distExamples() {
     const FS = require('fs');
+    const argv = require('yargs').argv;
+    const distProduct = argv.product || 'Highcharts';
 
     return new Promise((resolve, reject) => {
 
         const promises = [];
-        const samplesSubfolder = {
-            highcharts: {
-                path: ['highcharts', 'demo'],
-                title: 'Highcharts'
-            },
-            highstock: {
-                path: ['stock', 'demo'],
-                title: 'Highstock'
-            },
-            highmaps: {
-                path: ['maps', 'demo'],
-                title: 'Highmaps'
-            },
-            gantt: {
-                path: ['gantt', 'demo'],
-                title: 'Highcharts Gantt'
-            }
-        };
+        let samplesSubfolder = {};
+
+        if (distProduct === 'Highcharts') {
+            samplesSubfolder = {
+                highcharts: {
+                    path: ['highcharts', 'demo'],
+                    title: 'Highcharts',
+                    demoIndexProductPath: 'highcharts'
+                },
+                highstock: {
+                    path: ['stock', 'demo'],
+                    title: 'Highstock',
+                    demoIndexProductPath: 'stock'
+                },
+                highmaps: {
+                    path: ['maps', 'demo'],
+                    title: 'Highmaps',
+                    demoIndexProductPath: 'maps'
+                },
+                gantt: {
+                    path: ['gantt', 'demo'],
+                    title: 'Highcharts Gantt',
+                    demoIndexProductPath: 'gantt'
+                }
+            };
+        } else if (distProduct === 'Grid') {
+            samplesSubfolder = {
+                'grid-lite': {
+                    path: ['grid-lite', 'demo'],
+                    title: 'Highcharts Grid Lite',
+                    demoIndexProductPath: 'grid-lite'
+                },
+                'grid-pro': {
+                    path: ['grid-pro', 'demo'],
+                    title: 'Highcharts Grid Pro',
+                    demoIndexProductPath: 'grid-pro'
+                }
+            };
+        } else if (distProduct === 'Dashboards') {
+            samplesSubfolder = {
+                dashboards: {
+                    path: ['dashboards', 'demo'],
+                    title: 'Highcharts Dashboards',
+                    demoIndexProductPath: 'dashboards'
+                }
+            };
+        }
+
         const template = FS
             .readFileSync(TEMPLATE_FILE)
             .toString();
@@ -310,7 +317,8 @@ function distExamples() {
                         SOURCE_DIRECTORY, ...samplesSubfolder[product].path
                     ),
                     Path.join(TARGET_DIRECTORY, product, 'examples'),
-                    template
+                    template,
+                    samplesSubfolder[product].demoIndexProductPath
                 ));
             });
 
@@ -322,7 +330,3 @@ function distExamples() {
 }
 
 Gulp.task('dist-examples', distExamples);
-
-module.exports = {
-    getDemoBuildPath
-};

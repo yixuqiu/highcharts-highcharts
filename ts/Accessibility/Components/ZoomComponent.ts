@@ -1,12 +1,14 @@
 /* *
  *
- *  (c) 2009-2024 Øystein Moseng
+ *  (c) 2009-2026 Highsoft AS
+ *  Author: Øystein Moseng
  *
  *  Accessibility component for chart zoom.
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  * */
 
@@ -35,11 +37,7 @@ const { unhideChartElementFromAT } = CU;
 import HU from '../Utils/HTMLUtilities.js';
 const { getFakeMouseEvent } = HU;
 import KeyboardNavigationHandler from '../KeyboardNavigationHandler.js';
-import U from '../../Core/Utilities.js';
-const {
-    attr,
-    pick
-} = U;
+import { attr } from '../../Shared/Utilities.js';
 
 
 /* *
@@ -49,9 +47,7 @@ const {
  * */
 
 
-/**
- * @private
- */
+/** @internal */
 function chartHasMapZoom(
     chart: MapChart
 ): boolean {
@@ -73,9 +69,10 @@ function chartHasMapZoom(
 /**
  * The ZoomComponent class
  *
- * @private
  * @class
  * @name Highcharts.ZoomComponent
+ *
+ * @internal
  */
 class ZoomComponent extends AccessibilityComponent {
 
@@ -138,11 +135,7 @@ class ZoomComponent extends AccessibilityComponent {
     }
 
 
-    /**
-     * @private
-     * @param {Highcharts.HTMLDOMElement|Highcharts.SVGDOMElement} button
-     * @param {string} labelFormatKey
-     */
+    /** @internal */
     public setMapNavButtonAttrs(
         button: DOMElementType,
         labelFormatKey: string
@@ -213,12 +206,7 @@ class ZoomComponent extends AccessibilityComponent {
     }
 
 
-    /**
-     * @private
-     * @param {Highcharts.SVGElement} buttonEl
-     * @param {string} buttonProp
-     * @param {string} label
-     */
+    /** @internal */
     public createZoomProxyButton(
         buttonEl: SVGElement,
         buttonProp: ('drillUpProxyButton'|'resetZoomProxyButton'),
@@ -235,8 +223,9 @@ class ZoomComponent extends AccessibilityComponent {
 
     /**
      * Get keyboard navigation handler for map zoom.
-     * @private
      * @return {Highcharts.KeyboardNavigationHandler} The module object
+     *
+     * @internal
      */
     public getMapZoomNavigation(): KeyboardNavigationHandler {
         const keys = this.keyCodes,
@@ -287,10 +276,11 @@ class ZoomComponent extends AccessibilityComponent {
 
     /**
      * Arrow key panning for maps.
-     * @private
      * @param {Highcharts.KeyboardNavigationHandler} keyboardNavigationHandler The handler context.
      * @param {number} keyCode Key pressed.
      * @return {number} Response code
+     *
+     * @internal
      */
     public onMapKbdArrow(
         keyboardNavigationHandler: KeyboardNavigationHandler,
@@ -325,10 +315,9 @@ class ZoomComponent extends AccessibilityComponent {
 
 
     /**
-     * @private
-     * @param {Highcharts.KeyboardNavigationHandler} keyboardNavigationHandler
-     * @param {global.KeyboardEvent} event
      * @return {number} Response code
+     *
+     * @internal
      */
     public onMapKbdTab(
         keyboardNavigationHandler: KeyboardNavigationHandler,
@@ -364,9 +353,10 @@ class ZoomComponent extends AccessibilityComponent {
 
     /**
      * Called on map button click.
-     * @private
      * @param {Highcharts.KeyboardNavigationHandler} keyboardNavigationHandler The handler context object
      * @return {number} Response code
+     *
+     * @internal
      */
     public onMapKbdClick(
         keyboardNavigationHandler: KeyboardNavigationHandler
@@ -379,10 +369,7 @@ class ZoomComponent extends AccessibilityComponent {
     }
 
 
-    /**
-     * @private
-     * @param {number} direction
-     */
+    /** @internal */
     public onMapNavInit(
         direction: number
     ): void {
@@ -402,9 +389,10 @@ class ZoomComponent extends AccessibilityComponent {
      * Get keyboard navigation handler for a simple chart button. Provide the
      * button reference for the chart, and a function to call on click.
      *
-     * @private
      * @param {string} buttonProp The property on chart referencing the button.
      * @return {Highcharts.KeyboardNavigationHandler} The module object
+     *
+     * @internal
      */
     public simpleButtonNavigation(
         buttonProp: string,
@@ -440,7 +428,7 @@ class ZoomComponent extends AccessibilityComponent {
                         this: KeyboardNavigationHandler
                     ): void {
                         const res = onClick(this, chart);
-                        return pick(res, this.response.success);
+                        return (res ?? this.response.success);
                     }
                 ]
             ],
@@ -506,4 +494,5 @@ class ZoomComponent extends AccessibilityComponent {
  * */
 
 
+/** @internal */
 export default ZoomComponent;

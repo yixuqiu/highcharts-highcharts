@@ -2,11 +2,13 @@
  *
  *  X-range series module
  *
- *  (c) 2010-2024 Torstein Honsi, Lars A. V. Cabrera
+ *  (c) 2010-2026 Highsoft AS
+ *  Author: Torstein Hønsi, Lars A. V. Cabrera
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  * */
 
@@ -21,12 +23,7 @@
 import type XRangePoint from './XRangePoint';
 import type XRangeSeriesOptions from './XRangeSeriesOptions';
 
-import U from '../../Core/Utilities.js';
-const {
-    correctFloat,
-    isNumber,
-    isObject
-} = U;
+import { isObject, isNumber, correctFloat } from '../../Shared/Utilities.js';
 
 /* *
  *
@@ -60,7 +57,8 @@ const XRangeSeriesDefaults: XRangeSeriesOptions = {
     /**
      * A partial fill for each point, typically used to visualize how much
      * of a task is performed. The partial fill object can be set either on
-     * series or point level.
+     * series or point level. When set as a number, works as
+     * `{ amount: number }`.
      *
      * @sample {highcharts} highcharts/demo/x-range
      *         X-range with partial fill
@@ -73,20 +71,9 @@ const XRangeSeriesDefaults: XRangeSeriesOptions = {
      * The fill color to be used for partial fills. Defaults to a darker
      * shade of the point color.
      *
-     * @type      {Highcharts.ColorString|Highcharts.GradientColorObject|Highcharts.PatternObject}
+     * @type      {Highcharts.ColorType}
      * @product   highcharts highstock gantt
      * @apioption plotOptions.xrange.partialFill.fill
-     */
-
-    /**
-     * A partial fill for each point, typically used to visualize how much
-     * of a task is performed. See [completed](series.gantt.data.completed).
-     *
-     * @sample gantt/demo/progress-indicator
-     *         Gantt with progress indicator
-     *
-     * @product   gantt
-     * @apioption plotOptions.gantt.partialFill
      */
 
     /**
@@ -97,7 +84,7 @@ const XRangeSeriesDefaults: XRangeSeriesOptions = {
 
     dataLabels: {
         formatter: function (): (string|undefined) {
-            let amount = (this.point as XRangePoint).partialFill;
+            let amount = (this as XRangePoint).partialFill;
 
             if (isObject(amount)) {
                 amount = (amount as any).amount;
@@ -115,7 +102,7 @@ const XRangeSeriesDefaults: XRangeSeriesOptions = {
 
     tooltip: {
 
-        headerFormat: '<span style="font-size: 0.8em">{point.x} - {point.x2}</span><br/>',
+        headerFormat: '<span style="font-size: 0.8em">{ucfirst point.x} - {point.x2}</span><br/>',
 
         pointFormat: '<span style="color:{point.color}">\u25CF</span> {series.name}: <b>{point.yCategory}</b><br/>'
     },
@@ -180,6 +167,7 @@ export default XRangeSeriesDefaults;
  * @sample {highcharts} highcharts/series/data-array-of-objects/
  *         Config objects
  *
+ * @basic
  * @declare   Highcharts.XrangePointOptionsObject
  * @type      {Array<*>}
  * @extends   series.line.data
@@ -246,7 +234,7 @@ export default XRangeSeriesDefaults;
  * The fill color to be used for partial fills. Defaults to a darker shade
  * of the point color.
  *
- * @type      {Highcharts.ColorString|Highcharts.GradientColorObject|Highcharts.PatternObject}
+ * @type      {Highcharts.ColorType}
  * @product   highcharts highstock gantt
  * @apioption series.xrange.data.partialFill.fill
  */

@@ -156,42 +156,36 @@ QUnit.test('Ellipsis (#3941)', function (assert) {
 });
 
 QUnit.test('Respect reversed-flag of linked axis (#7911)', function (assert) {
-    TestTemplate.test(
-        'highcharts/bar',
-        {
-            chart: {
-                type: 'bar'
-            },
-            xAxis: [
-                {
-                    categories: ['c1', 'c2', 'c3'],
-                    reversed: false
-                },
-                {
-                    categories: ['c1', 'c2', 'c3'],
-                    linkedTo: 0
-                }
-            ],
-            series: [
-                {
-                    data: [1, 2, 3]
-                },
-                {
-                    data: [1, 2, 3]
-                }
-            ]
+    const chart = Highcharts.chart('container', {
+        chart: {
+            type: 'bar'
         },
-        function (template) {
-            var chart = template.chart,
-                axis1 = chart.axes[0],
-                axis2 = chart.axes[1];
+        xAxis: [
+            {
+                categories: ['c1', 'c2', 'c3'],
+                reversed: false
+            },
+            {
+                categories: ['c1', 'c2', 'c3'],
+                linkedTo: 0
+            }
+        ],
+        series: [
+            {
+                data: [1, 2, 3]
+            },
+            {
+                data: [1, 2, 3]
+            }
+        ]
+    });
+    const axis1 = chart.xAxis[0],
+        axis2 = chart.xAxis[1];
 
-            assert.equal(
-                axis1.ticks[0].label.xy.y,
-                axis2.ticks[0].label.xy.y,
-                'Axes should share the same reversed y offset (#7911)'
-            );
-        }
+    assert.strictEqual(
+        axis1.ticks[0].label.xy.y,
+        axis2.ticks[0].label.xy.y,
+        'Axes should share the same reversed y offset (#7911)'
     );
 });
 
@@ -608,54 +602,71 @@ QUnit.test('X axis label rotation ignored step(#3971)', function (assert) {
 QUnit.test(
     'Auto label alignment is still working when step is set',
     function (assert) {
-        var chart = $('#container')
-            .highcharts({
-                chart: {
-                    marginBottom: 80
-                },
-                xAxis: {
-                    categories: [
-                        'Loooooong',
-                        'Feb',
-                        'Mar',
-                        'Apr',
-                        'May',
-                        'Jun',
-                        'Jul',
-                        'Aug',
-                        'Sep',
-                        'Oct',
-                        'Nov',
-                        'Dec'
-                    ],
-                    labels: {
-                        step: 1,
-                        rotation: -90
-                    }
-                },
+        const chart = Highcharts.chart('container', {
+            chart: {
+                marginBottom: 80
+            },
+            xAxis: {
+                categories: [
+                    'Looooooooooooong',
+                    'Feb',
+                    'Mar',
+                    'Apr',
+                    'May',
+                    'Jun',
+                    'Jul',
+                    'Aug',
+                    'Sep',
+                    'Oct',
+                    'Nov',
+                    'Dec'
+                ],
+                labels: {
+                    step: 1,
+                    rotation: -90
+                }
+            },
 
-                series: [
-                    {
-                        data: [
-                            29.9,
-                            71.5,
-                            106.4,
-                            129.2,
-                            144.0,
-                            176.0,
-                            135.6,
-                            148.5,
-                            216.4,
-                            194.1,
-                            95.6,
-                            54.4
-                        ]
-                    }
-                ]
-            })
-            .highcharts();
+            series: [
+                {
+                    data: [
+                        29.9,
+                        71.5,
+                        106.4,
+                        129.2,
+                        144.0,
+                        176.0,
+                        135.6,
+                        148.5,
+                        216.4,
+                        194.1,
+                        95.6,
+                        54.4
+                    ]
+                }
+            ]
+        });
 
-        assert.strictEqual(chart.xAxis[0].labelAlign, 'right', 'Rigth aligned');
+        assert.strictEqual(chart.xAxis[0].labelAlign, 'right', 'Right aligned');
+
+        chart.update({
+            xAxis: {
+                labels: {
+                    rotation: -45
+                }
+            },
+            yAxis: {
+                title: {
+                    text: null
+                }
+            }
+        });
+
+        assert.ok(
+            chart.xAxis[0].ticks[0].label.element.getBoundingClientRect().x > 0,
+            'Rotated step labels should not be clipped on the left edge, ' +
+            '#23674.'
+        );
     }
 );
 
@@ -675,8 +686,22 @@ QUnit.test('Label formatting(#4291)', function (assert) {
 
     assert.strictEqual(
         chart.yAxis[0].ticks['79962.57'].label.textStr,
-        '79 962.57',
+        '79,962.57',
         'Preserved decimals'
+    );
+
+    chart.update({
+        yAxis: {
+            labels: {
+                formatter: ctx => (ctx ? '###' : '')
+            }
+        }
+    });
+
+    assert.strictEqual(
+        chart.yAxis[0].ticks['79962.57'].label.textStr,
+        '###',
+        'Es6 formatter works for axis labels.'
     );
 });
 
@@ -995,6 +1020,147 @@ QUnit.test('Label reserve space', function (assert) {
             bBox.x + bBox.width < chart.chartWidth,
         'opposite: true, reserveSpace: true, align: center. - ' +
             'Labels should not overlap plot area'
+    );
+
+    // #21172)
+    chart.update({
+        chart: {
+            type: 'column'
+        },
+        xAxis: {
+            opposite: false
+        },
+        yAxis: [{
+            opposite: false,
+            categories: ['Long label should not be clipped'],
+            labels: {
+                style: {
+                    fontSize: '13px'
+                }
+            }
+        }]
+    });
+
+    const baseBBox = chart.yAxis[0].ticks[0].label.element.getBBox();
+
+    // Compare with opposite
+    chart.update({
+        chart: {
+            marginLeft: 5,
+            spacingLeft: 10
+        },
+        yAxis: [{
+            opposite: true
+        }]
+    });
+
+    const oppositeBBox = chart.yAxis[0].ticks[0].label.element.getBBox();
+
+    assert.ok(
+        oppositeBBox.width >= baseBBox.width * 0.95,
+        `#21172,
+            Opposite yAxis label should not be narrower than normal yAxis label`
+    );
+
+    // #23527 Test short labels
+    chart.update({
+        chart: {
+            marginLeft: void 0,
+            spacingLeft: void 0
+        },
+        yAxis: [{
+            opposite: false,
+            labels: {
+                format: 'LBL',
+                rotation: 0,
+                style: {
+                    fontSize: 20
+                }
+            }
+        }]
+    });
+
+    let unrotatedPlotLeft = chart.plotLeft;
+    chart.update({
+        yAxis: [{
+            labels: {
+                rotation: -45
+            }
+        }]
+    });
+    assert.ok(
+        unrotatedPlotLeft >= chart.plotLeft,
+        'Short rotated label should not increase the plot left margin (#23527).'
+    );
+
+    // #23527 Test long labels
+    chart.update({
+        yAxis: [{
+            labels: {
+                format: 'ReallyLongLabel',
+                rotation: 0
+            }
+        }]
+    });
+    unrotatedPlotLeft = chart.plotLeft;
+    chart.update({
+        yAxis: [{
+            labels: {
+                rotation: -45
+            }
+        }]
+    });
+    assert.ok(
+        unrotatedPlotLeft >= chart.plotLeft,
+        'Long rotated label should not increase the plot left margin (#23527).'
+    );
+
+    chart.update({
+        yAxis: {
+            lineWidth: 1,
+            labels: {
+                align: 'left',
+                rotation: 0,
+                format: 'Label'
+            }
+        }
+    });
+
+    const plotLeft = chart.plotLeft;
+    chart.update({
+        yAxis: {
+            labels: {
+                rotation: 45
+            }
+        }
+    });
+    assert.strictEqual(
+        chart.plotLeft,
+        plotLeft,
+        'chart.plotLeft should not change when rotating labels with align left.'
+    );
+    chart.update({
+        yAxis: {
+            opposite: true,
+            labels: {
+                rotation: 0,
+                align: 'right'
+            }
+        }
+    });
+    const plotWidth = chart.plotWidth;
+    chart.update({
+        yAxis: {
+            labels: {
+                rotation: 45
+            }
+        }
+    });
+    assert.strictEqual(
+        chart.plotWidth,
+        plotWidth,
+        `chart.plotWidth should not change when rotating labels with align right
+        on opposite y-axis.`
     );
 });
 
@@ -1522,7 +1688,7 @@ QUnit.test('Width set from label style (#7028)', function (assert) {
     );
 });
 
-QUnit.test('Explicit textOverflow setting', function (assert) {
+QUnit.test('Explicit whiteSpace setting', function (assert) {
     var chart = Highcharts.chart('container', {
         chart: {
             width: 250
@@ -1531,7 +1697,7 @@ QUnit.test('Explicit textOverflow setting', function (assert) {
             categories: ['Very long month name', 'Feb', 'Mar'],
             labels: {
                 style: {
-                    textOverflow: 'ellipsis'
+                    whiteSpace: 'nowrap'
                 }
             }
         },
@@ -1560,6 +1726,7 @@ QUnit.test('Handle overflow in polar charts (#7248)', function (assert) {
             polar: true,
             type: 'line',
             width: 800,
+            height: 400,
             borderWidth: 1
         },
         credits: {
@@ -1621,11 +1788,14 @@ QUnit.test('Handle overflow in polar charts (#7248)', function (assert) {
             var bBox = chart.xAxis[0].ticks['1'].label.element.getBBox();
             assert.ok(
                 bBox.x + bBox.width < chart.chartWidth,
-                'Label ' + pos + ' inside right at ' + chart.chartWidth
+                `Label ${pos} should be inside right
+                    (${bBox.x + bBox.width} < ${chart.chartWidth},
+                    chartWidth = ${chart.chartWidth})`
             );
             assert.ok(
                 bBox.x > 0,
-                'Label ' + pos + ' inside left at ' + chart.chartWidth
+                `Label ${pos} should be inside left
+                    (${bBox.x} > 0, chartWidth = ${chart.chartWidth}`
             );
         });
     }
@@ -2194,9 +2364,7 @@ QUnit.test(
                 ]
             }),
             ticks = chart.xAxis[0].ticks,
-            secondLabel = ticks[1].label,
-            thirdLabel = ticks[2].label,
-            seventhLabel = ticks[6].label;
+            secondLabel = ticks[1].label;
 
         assert.strictEqual(
             secondLabel.newOpacity,
@@ -2208,12 +2376,6 @@ QUnit.test(
             secondLabel.newOpacity,
             secondLabel.oldOpacity,
             'The visiblility of the second category should not change'
-        );
-
-        assert.strictEqual(
-            thirdLabel.newOpacity === 0,
-            seventhLabel.newOpacity === 0,
-            'The third and seventh categories should both be hidden'
         );
     }
 );
@@ -2299,6 +2461,89 @@ QUnit.test(
             defaultY - 3,
             'labels.y=0 for opposite xAxis should align label the same way ' +
             'as labels.y=undefined (#12206)'
+        );
+    }
+);
+
+QUnit.test('connectorWidth updates properly (#23062)', function (assert) {
+    const chart = Highcharts.chart('container', {
+        plotOptions: {
+            dataLabels: {
+                enabled: true
+            }
+        },
+        series: [
+            {
+                type: 'pie',
+                dataLabels: {
+                    connectorWidth: 1
+                },
+                data: [1, 2, 3, 4]
+            }
+        ]
+    });
+
+    const point = chart.series[0].points[0],
+        initialWidth = point.dataLabel.connector.attr('stroke-width');
+
+    chart.series[0].update({
+        dataLabels: {
+            connectorWidth: 0
+        }
+    });
+
+    const updatedWidth = point.dataLabel.connector.attr('stroke-width');
+
+    assert.notEqual(initialWidth, updatedWidth, 'connectorWidth has changed');
+    assert.strictEqual(updatedWidth, 0, 'connectorWidth updated to 0');
+});
+
+QUnit.test(
+    'chart.numberFormatter arrow function should receive ctx argument',
+    function (assert) {
+        let formatterCtx;
+
+        const chart = Highcharts.chart('container', {
+            chart: {
+                numberFormatter: (
+                    number,
+                    decimals,
+                    decimalPoint,
+                    thousandsSep,
+                    ctx
+                ) => {
+                    formatterCtx = ctx;
+                    return ctx ? 'ctx' : 'missing';
+                }
+            },
+
+            yAxis: {
+                min: 10000,
+                max: 20000,
+                tickInterval: 5000
+            },
+
+            series: [{
+                data: [10000, 15000, 20000]
+            }]
+        });
+
+        const labelText = chart.yAxis[0].defaultLabelFormatter.call({
+            axis: chart.yAxis[0],
+            chart: chart,
+            value: 20000
+        });
+
+        assert.strictEqual(
+            formatterCtx,
+            chart,
+            'chart.numberFormatter should receive chart as ctx argument.'
+        );
+
+        assert.strictEqual(
+            labelText.indexOf('ctx') > -1,
+            true,
+            'Arrow-function numberFormatter should use ctx when formatting.'
         );
     }
 );

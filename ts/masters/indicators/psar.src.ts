@@ -1,14 +1,18 @@
+// SPDX-License-Identifier: LicenseRef-Highcharts
 /**
  * @license Highstock JS v@product.version@ (@product.date@)
  * @module highcharts/indicators/psar
  * @requires highcharts
  * @requires highcharts/modules/stock
+ * @requires highcharts/indicators/indicators
  *
  * Parabolic SAR Indicator for Highcharts Stock
  *
- * (c) 2010-2024 Grzegorz Blachliński
+ * (c) 2010-2026 Highsoft AS
+ * Author: Grzegorz Blachliński
  *
- * License: www.highcharts.com/license
+ * A commercial license may be required depending on use,
+ * see www.highcharts.com/license
  */
 'use strict';
 import Highcharts from '../../Core/Globals.js';

@@ -2,11 +2,13 @@
  *
  *  Highcharts variwide module
  *
- *  (c) 2010-2024 Torstein Honsi
+ *  (c) 2010-2026 Highsoft AS
+ *  Author: Torstein Hønsi
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  * */
 
@@ -23,16 +25,12 @@ import type DataLabelOptions from '../../Core/Series/DataLabelOptions';
 import type PositionObject from '../../Core/Renderer/PositionObject';
 import type SVGElement from '../../Core/Renderer/SVG/SVGElement';
 import type Tick from '../../Core/Axis/Tick';
+import type VariwideSeries from './VariwideSeries';
 
 import H from '../../Core/Globals.js';
 const { composed } = H;
 import VariwidePoint from './VariwidePoint.js';
-import U from '../../Core/Utilities.js';
-const {
-    addEvent,
-    pushUnique,
-    wrap
-} = U;
+import { addEvent, pushUnique, wrap } from '../../Shared/Utilities.js';
 
 /* *
  *
@@ -40,15 +38,17 @@ const {
  *
  * */
 
-declare module '../../Core/Axis/AxisLike' {
-    interface AxisLike {
+/** @internal */
+declare module '../../Core/Axis/AxisBase' {
+    interface AxisBase {
         variwide?: boolean;
         zData?: Array<number>;
     }
 }
 
-declare module '../../Core/Axis/TickLike' {
-    interface TickLike {
+/** @internal */
+declare module '../../Core/Axis/TickBase' {
+    interface TickBase {
         postTranslate(
             xy: PositionObject,
             xOrY: keyof PositionObject,
@@ -64,7 +64,7 @@ declare module '../../Core/Axis/TickLike' {
  * */
 
 /**
- * @private
+ * @internal
  */
 function compose(
     AxisClass: typeof Axis,
@@ -76,7 +76,6 @@ function compose(
 
         addEvent(AxisClass, 'afterDrawCrosshair', onAxisAfterDrawCrosshair);
         addEvent(AxisClass, 'afterRender', onAxisAfterRender);
-
         addEvent(TickClass, 'afterGetPosition', onTickAfterGetPosition);
 
         tickProto.postTranslate = tickPostTranslate;
@@ -88,7 +87,7 @@ function compose(
 
 /**
  * Same width as the category (#8083)
- * @private
+ * @internal
  */
 function onAxisAfterDrawCrosshair(
     this: Axis,
@@ -99,40 +98,37 @@ function onAxisAfterDrawCrosshair(
     if (this.variwide && this.cross) {
         this.cross.attr(
             'stroke-width',
-            (e.point && e.point.crosshairWidth) as any
+            e.point?.crosshairWidth
         );
     }
 }
 
 /**
  * On a vertical axis, apply anti-collision logic to the labels.
- * @private
+ * @internal
  */
 function onAxisAfterRender(
     this: Axis
 ): void {
     const axis = this;
 
-    if (!this.horiz && this.variwide) {
-        this.chart.labelCollectors.push(
-            function (): Array<SVGElement> {
-                return axis.tickPositions
-                    .filter((pos: number): boolean => !!axis.ticks[pos].label)
-                    .map((pos, i): SVGElement => {
-                        const label: SVGElement =
-                            axis.ticks[pos].label as any;
+    this.chart.labelCollectors.push(
+        function (): Array<SVGElement> {
+            return axis.variwide ? axis.tickPositions
+                .filter((pos: number): boolean => !!axis.ticks[pos].label)
+                .map((pos, i): SVGElement => {
+                    const label: SVGElement = axis.ticks[pos].label as any;
 
-                        label.labelrank = (axis.zData as any)[i];
+                    label.labelrank = axis.zData?.[i];
 
-                        return label;
-                    });
-            }
-        );
-    }
+                    return label;
+                }) : [];
+        }
+    );
 }
 
 /**
- * @private
+ * @internal
  */
 function onTickAfterGetPosition(
     this: Tick,
@@ -151,7 +147,7 @@ function onTickAfterGetPosition(
 }
 
 /**
- * @private
+ * @internal
  */
 function tickPostTranslate(
     this: Tick,
@@ -161,21 +157,24 @@ function tickPostTranslate(
 ): void {
     const axis = this.axis;
 
-    let pos = xy[xOrY] - axis.pos;
+    if (axis.variwide) {
+        let pos = xy[xOrY] - axis.pos;
 
-    if (!axis.horiz) {
-        pos = axis.len - pos;
-    }
-    pos = (axis.series[0] as any).postTranslate(index, pos);
+        if (!axis.horiz) {
+            pos = axis.len - pos;
+        }
+        pos = (axis.series[0] as VariwideSeries|undefined)
+            ?.postTranslate?.(index, pos) ?? pos;
 
-    if (!axis.horiz) {
-        pos = axis.len - pos;
+        if (!axis.horiz) {
+            pos = axis.len - pos;
+        }
+        xy[xOrY] = axis.pos + pos;
     }
-    xy[xOrY] = axis.pos + pos;
 }
 
 /**
- * @private
+ * @internal
  */
 function wrapTickGetLabelPosition(
     this: Tick,
@@ -216,8 +215,10 @@ function wrapTickGetLabelPosition(
  *
  * */
 
+/** @internal */
 const VariwideComposition = {
     compose
 };
 
+/** @internal */
 export default VariwideComposition;

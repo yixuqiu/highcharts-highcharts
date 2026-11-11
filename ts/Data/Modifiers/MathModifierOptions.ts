@@ -1,10 +1,11 @@
 /* *
  *
- *  (c) 2009-2024 Highsoft AS
+ *  (c) 2009-2026 Highsoft AS
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  *  Authors:
  *  - Sophie Bremer
@@ -38,7 +39,7 @@ import type DataModifierOptions from './DataModifierOptions';
 export interface MathModifierColumnFormulaOptions {
 
     /**
-     * Column name or alias in the DataTable to replace with values of the
+     * Column name in the DataTable to replace with values of the
      * formula.
      */
     column: string;
@@ -81,13 +82,11 @@ export interface MathModifierOptions extends DataModifierOptions {
     /**
      * Array of column formulas that will be used to replace the column
      * values in their columns.
-     * @private
-     * @todo Implement
      */
     columnFormulas?: Array<MathModifierColumnFormulaOptions>;
 
     /**
-     * Array of column names or aliases to replace formula strings to
+     * Array of column names to replace formula strings to
      * replace with calculated values. By default all columns in a table
      * will be processed.
      */

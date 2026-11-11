@@ -208,37 +208,41 @@ QUnit.test('seriesTypes.heatmap.pointClass.setState', function (assert) {
             .pointClass.prototype.setState;
 
     setState.call(point, '');
-    assert.strictEqual(
-        point.graphic.zIndex,
-        0,
-        'When state:normal zIndex is 0'
+    assert.notEqual(
+        point.series.stateMarkerGraphic.element.getAttribute('href'),
+        `${chart.renderer.url}#${point.graphic.element.id}`,
+        'State is normal, state marker graphic should not refer to the point'
     );
     assert.strictEqual(
-        point.graphic.d.split(' ')[1] - point.graphic.getBBox().x,
+        Math.round(point.graphic.d.split(' ')[1] - point.graphic.getBBox().x),
         point.series.options.borderRadius,
         `The point's border radius should be correct (value set in options)
         when the point is in a 'normal' state, #16165.`
     );
 
     setState.call(point, 'hover');
-    assert.strictEqual(point.graphic.zIndex, 1, 'When state:hover zIndex is 1');
     assert.strictEqual(
-        point.graphic.d.split(' ')[1] - point.graphic.getBBox().x,
+        point.series.stateMarkerGraphic.attr('href'),
+        `${chart.renderer.url}#${point.graphic.element.id}`,
+        'State is hover, state marker graphic should refer to the point'
+    );
+    assert.strictEqual(
+        Math.round(point.graphic.d.split(' ')[1] - point.graphic.getBBox().x),
         point.series.options.borderRadius,
         `The point's border radius should be correct (value set in options)
         when the point is in a 'hover' state, #16165.`
     );
 
     setState.call(point, 'select');
-    assert.strictEqual(
-        point.graphic.zIndex,
-        0,
-        'When state:select zIndex is 0'
+    assert.notEqual(
+        point.series.stateMarkerGraphic.element.getAttribute('href'),
+        `${chart.renderer.url}#${point.graphic.element.id}`,
+        'State is select, state marker graphic should not refer to the point'
     );
 
     setState.call(point, '');
     assert.strictEqual(
-        point.graphic.d.split(' ')[1] - point.graphic.getBBox().x,
+        Math.round(point.graphic.d.split(' ')[1] - point.graphic.getBBox().x),
         point.series.options.borderRadius,
         `The point's border radius should be correct (value set in options)
         when the point is in a 'normal' state, #16165.`
@@ -257,6 +261,27 @@ QUnit.test('seriesTypes.heatmap.pointClass.setState', function (assert) {
         chart.series[0].color,
         'Point\'s stroke should be set on hover, #17856.'
     );
+
+    chart.update({
+        colorAxis: {
+            dataClasses: [{ to: 2 }]
+        }
+    }, true, true);
+
+    chart.legend.allItems[0].setVisible(false);
+    chart.legend.allItems[0].setVisible(true);
+
+    const controller = new TestController(chart);
+
+    controller.moveTo(100, 100);
+
+    assert.strictEqual(
+        chart.hoverPoint,
+        point,
+        `Tooltip should be visible on point hover after toggling data class
+        visibility, #23162.`
+    );
+
 });
 
 QUnit.test(
@@ -307,5 +332,108 @@ QUnit.test(
         } finally {
             TestUtilities.lolexUninstall(clock);
         }
+    }
+);
+
+QUnit.test(
+    'Y panning should handle heatmap row clipping and ticks, (#15368)',
+    function (assert) {
+        const chart = Highcharts.chart('container', {
+                chart: {
+                    type: 'heatmap',
+                    width: 300,
+                    height: 250,
+                    zooming: {
+                        type: 'y'
+                    },
+                    panning: {
+                        enabled: true,
+                        type: 'y'
+                    },
+                    panKey: 'shift'
+                },
+
+                yAxis: {
+                    reversed: true,
+                    categories: [
+                        'Monday',
+                        'Tuesday',
+                        'Wednesday',
+                        'Thursday',
+                        'Friday',
+                        'Saturday',
+                        'Sunday'
+                    ]
+                },
+
+
+                series: [{
+                    data: [
+                        [0, 0, 1],
+                        [0, 1, 2],
+                        [0, 2, 3],
+                        [0, 3, 4],
+                        [0, 4, 5],
+                        [0, 5, 6],
+                        [0, 6, 7],
+                        [1, 0, 7],
+                        [1, 1, 6],
+                        [1, 2, 5],
+                        [1, 3, 4],
+                        [1, 4, 3],
+                        [1, 5, 2],
+                        [1, 6, 1]
+                    ]
+                }]
+            }),
+            yAxis = chart.yAxis[0],
+            controller = new TestController(chart);
+
+        yAxis.setExtremes(1, 4, false, false);
+        chart.redraw(false);
+
+        controller.pan([150, 120], [150, 137], {
+            shiftKey: true
+        });
+
+        assert.strictEqual(
+            Highcharts.correctFloat(yAxis.min),
+            Math.round(yAxis.min),
+            'Y panning should respect startOnTick after drop, (#15368).'
+        );
+
+        assert.strictEqual(
+            Highcharts.correctFloat(yAxis.max),
+            Math.round(yAxis.max),
+            'Y panning should respect endOnTick after drop, (#15368).'
+        );
+
+        yAxis.update({
+            startOnTick: false,
+            endOnTick: false
+        }, false);
+        yAxis.setExtremes(1, 4, false, false);
+        chart.redraw(false);
+
+        const offTickRange = yAxis.max - yAxis.min;
+
+        controller.pan([150, 120], [150, 137], {
+            shiftKey: true
+        });
+
+        assert.close(
+            yAxis.max - yAxis.min,
+            offTickRange,
+            0.00001,
+            'Y panning should preserve the zoomed range when tick snapping ' +
+            'is disabled, (#15368).'
+        );
+
+        assert.notEqual(
+            Highcharts.correctFloat(yAxis.min),
+            Math.round(yAxis.min),
+            'Y panning should preserve fractional extremes for clipped rows ' +
+            'when tick snapping is disabled, (#15368).'
+        );
     }
 );

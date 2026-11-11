@@ -1,10 +1,12 @@
 /* *
  *
- *  (c) 2010-2024 Torstein Honsi
+ *  (c) 2010-2026 Highsoft AS
+ *  Author: Torstein Hønsi
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  * */
 
@@ -17,16 +19,35 @@
  * */
 
 import type ColorString from './ColorString';
-import type { ColorLike, ColorType } from './ColorType';
+import type { ColorBase, ColorType } from './ColorType';
 import type GradientColor from './GradientColor';
 
 import H from '../Globals.js';
-import U from '../Utilities.js';
 const {
+    win
+} = H;
+import {
+    defined,
     isNumber,
+    isString,
     merge,
     pInt
-} = U;
+} from '../../Shared/Utilities.js';
+
+/* *
+ *
+ *  Helpers
+ *
+ * */
+const colorMix = (color1: string, color2: string, weight: number): string => (
+    weight === 0 ? color1 :
+        weight === 1 ? color2 :
+            `color-mix(in srgb,${color1},${color2} ${weight * 100}%)`
+);
+
+
+const isStringColor = (color: ColorType): color is ColorString =>
+    isString(color) && !!color && color !== 'none';
 
 /* *
  *
@@ -34,7 +55,6 @@ const {
  *
  * */
 
-/* eslint-disable valid-jsdoc */
 
 /**
  * Handle color operations. Some object methods are chainable.
@@ -43,9 +63,9 @@ const {
  * @name Highcharts.Color
  *
  * @param {Highcharts.ColorType} input
- * The input color in either rgba or hex format
+ * The input color.
  */
-class Color implements ColorLike {
+class Color implements ColorBase {
 
     /* *
      *
@@ -56,7 +76,7 @@ class Color implements ColorLike {
     /**
      * Collection of named colors. Can be extended from the outside by adding
      * colors to Highcharts.Color.names.
-     * @private
+     * @internal
      */
     public static names: Record<string, ColorString> = {
         white: '#ffffff',
@@ -66,11 +86,12 @@ class Color implements ColorLike {
     /**
      * Collection of parsers. This can be extended from the outside by pushing
      * parsers to `Color.parsers`.
+     * @internal
      */
     public static parsers = [{
         // RGBA color
         // eslint-disable-next-line max-len
-        regex: /rgba\(\s*([0-9]{1,3})\s*,\s*([0-9]{1,3})\s*,\s*([0-9]{1,3})\s*,\s*([0-9]?(?:\.[0-9]+)?)\s*\)/,
+        regex: /rgba\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d?(?:\.\d+)?)\s*\)/,
         parse: function (result: RegExpExecArray): Color.RGBA {
             return [
                 pInt(result[1]),
@@ -82,14 +103,58 @@ class Color implements ColorLike {
     }, {
         // RGB color
         regex:
-            /rgb\(\s*([0-9]{1,3})\s*,\s*([0-9]{1,3})\s*,\s*([0-9]{1,3})\s*\)/,
+            /rgb\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})\s*\)/,
         parse: function (result: RegExpExecArray): Color.RGBA {
             return [pInt(result[1]), pInt(result[2]), pInt(result[3]), 1];
         }
+    }, {
+        // RGBA 3 & 4 digit hex color, e.g. #F0F, #F0FA
+        regex:
+            /^#([a-f0-9])([a-f0-9])([a-f0-9])([a-f0-9])?$/i,
+        parse: function (result: RegExpExecArray): Color.RGBA {
+            // #abcd => #aabbccdd, hence result + result.
+            return [
+                (pInt(result[1] + result[1], 16)),
+                (pInt(result[2] + result[2], 16)),
+                (pInt(result[3] + result[3], 16)),
+                !defined(result[4]) ?
+                    1 :
+                    (pInt(result[4] + result[4], 16) / 255)
+            ];
+        }
+    }, {
+        // RGBA 6 & 8 digit hex color, e.g. #FFCC00, #FFCC00FF
+        regex: /^#([a-f0-9]{2})([a-f0-9]{2})([a-f0-9]{2})([a-f0-9]{2})?$/i,
+        parse: function (result: RegExpExecArray): Color.RGBA {
+            return [
+                pInt(result[1], 16),
+                pInt(result[2], 16),
+                pInt(result[3], 16),
+                !defined(result[4]) ?
+                    1 :
+                    (pInt(result[4], 16) / 255)
+            ];
+        }
     }];
 
-    // Must be last static member for init cycle
-    public static readonly None = new Color('');
+    /**
+     * Whether to use CSS `color-mix` for color handling (brightening,
+     * tweening). This can be disabled from the outside.
+     * @internal
+     */
+    public static useColorMix = win.CSS?.supports(
+        'color',
+        'color-mix(in srgb,red,blue 9%)'
+    );
+
+
+    /**
+     * A static Color instance representing no color.
+     * @name Highcharts.Color.None
+     * @type {Highcharts.Color}
+     * @internal
+     */
+    public static readonly None = new Color(''); // Must be last static for init
 
     /* *
      *
@@ -103,7 +168,7 @@ class Color implements ColorLike {
      * @function Highcharts.Color.parse
      *
      * @param {Highcharts.ColorType} [input]
-     * The input color in either rgba or hex format.
+     * The input color.
      *
      * @return {Highcharts.Color}
      * Color instance.
@@ -121,6 +186,7 @@ class Color implements ColorLike {
     public constructor(
         input: ColorType
     ) {
+
         this.input = input;
 
         const GlobalColor = (H as AnyRecord).Color;
@@ -148,50 +214,12 @@ class Color implements ColorLike {
         } else if (typeof input === 'string') {
             this.input = input = (Color.names[input.toLowerCase()] || input);
 
-            // Bitmasking as input[0] is not working for legacy IE.
-            if (input.charAt(0) === '#') {
-                const len = input.length,
-                    col = parseInt(input.substr(1), 16);
-
-                // Handle long-form, e.g. #AABBCC
-                if (len === 7) {
-
-                    rgba = [
-                        (col & 0xFF0000) >> 16,
-                        (col & 0xFF00) >> 8,
-                        (col & 0xFF),
-                        1
-                    ];
-
-                // Handle short-form, e.g. #ABC
-                // In short form, the value is assumed to be the same
-                // for both nibbles for each component. e.g. #ABC = #AABBCC
-                } else if (len === 4) {
-
-                    rgba = [
-                        (
-                            ((col & 0xF00) >> 4) |
-                            (col & 0xF00) >> 8
-                        ),
-                        (
-                            ((col & 0xF0) >> 4) |
-                            (col & 0xF0)
-                        ),
-                        ((col & 0xF) << 4) | (col & 0xF),
-                        1
-                    ];
-                }
-            }
-
-            // Otherwise, check regex parsers
-            if (!rgba) {
-                i = Color.parsers.length;
-                while (i-- && !rgba) {
-                    parser = Color.parsers[i];
-                    result = parser.regex.exec(input);
-                    if (result) {
-                        rgba = parser.parse(result);
-                    }
+            i = Color.parsers.length;
+            while (i-- && !rgba) {
+                parser = Color.parsers[i];
+                result = parser.regex.exec(input);
+                if (result) {
+                    rgba = parser.parse(result);
                 }
             }
         }
@@ -207,8 +235,29 @@ class Color implements ColorLike {
      *
      * */
 
+    /**
+     * The original input color. This can be a color string, a gradient object,
+     * or a pattern object.
+     * @name Highcharts.Color#input
+     * @type {Highcharts.ColorType}
+     */
     public input: ColorType;
+
+    /** @internal */
+    public output?: string;
+
+    /**
+     * The RGBA color components, if the color is a solid color.
+     * @name Highcharts.Color#rgba
+     * @type {Highcharts.RGBA}
+     */
     public rgba: Color.RGBA = [NaN, NaN, NaN, NaN];
+
+    /**
+     * The gradient stops, if the color is a gradient.
+     * @name Highcharts.Color#stops
+     * @type {Array<Highcharts.Color>|undefined}
+     */
     public stops?: Array<Color>;
 
     /* *
@@ -231,6 +280,10 @@ class Color implements ColorLike {
     public get(format?: ('a'|'rgb'|'rgba')): ColorType {
         const input = this.input,
             rgba = this.rgba;
+
+        if (this.output) {
+            return this.output;
+        }
 
         if (
             typeof input === 'object' &&
@@ -281,15 +334,23 @@ class Color implements ColorLike {
             });
 
         } else if (isNumber(alpha) && alpha !== 0) {
-            for (let i = 0; i < 3; i++) {
-                rgba[i] += pInt(alpha * 255);
+            if (isNumber(rgba[0])) {
+                for (let i = 0; i < 3; i++) {
+                    rgba[i] += pInt(alpha * 255);
 
-                if (rgba[i] < 0) {
-                    rgba[i] = 0;
+                    if (rgba[i] < 0) {
+                        rgba[i] = 0;
+                    }
+                    if (rgba[i] > 255) {
+                        rgba[i] = 255;
+                    }
                 }
-                if (rgba[i] > 255) {
-                    rgba[i] = 255;
-                }
+            } else if (Color.useColorMix && isStringColor(this.input)) {
+                this.output = colorMix(
+                    this.input,
+                    alpha > 0 ? 'white' : 'black',
+                    Math.abs(alpha)
+                );
             }
         }
 
@@ -308,7 +369,13 @@ class Color implements ColorLike {
      *         Color with modifications.
      */
     public setOpacity(alpha: number): this {
-        this.rgba[3] = alpha;
+        if (isNumber(this.rgba[0])) {
+            this.rgba[3] = alpha;
+        } else if (Color.useColorMix && isStringColor(this.input)) {
+            this.output = colorMix(
+                this.input, '#0000', 1 - alpha
+            );
+        }
         return this;
     }
 
@@ -333,29 +400,31 @@ class Color implements ColorLike {
 
         // Unsupported color, return to-color (#3920, #7034)
         if (!isNumber(fromRgba[0]) || !isNumber(toRgba[0])) {
+            if (
+                Color.useColorMix &&
+                isStringColor(this.input) &&
+                isStringColor(to.input) &&
+                pos < 0.99
+            ) {
+                return colorMix(this.input, to.input, pos);
+            }
             return to.input || 'none';
         }
 
         // Check for has alpha, because rgba colors perform worse due to
         // lack of support in WebKit.
-        const hasAlpha = (toRgba[3] !== 1 || fromRgba[3] !== 1);
+        const hasAlpha = (toRgba[3] !== 1 || fromRgba[3] !== 1),
+            channel = (to: number, i: number): number =>
+                to + (fromRgba[i] - to) * (1 - pos),
+            rgba = toRgba.slice(0, 3).map(channel).map(Math.round);
 
-        return (hasAlpha ? 'rgba(' : 'rgb(') +
-            Math.round(toRgba[0] + (fromRgba[0] - toRgba[0]) * (1 - pos)) +
-            ',' +
-            Math.round(toRgba[1] + (fromRgba[1] - toRgba[1]) * (1 - pos)) +
-            ',' +
-            Math.round(toRgba[2] + (fromRgba[2] - toRgba[2]) * (1 - pos)) +
-            (
-                hasAlpha ?
-                    (
-                        ',' +
-                        (toRgba[3] + (fromRgba[3] - toRgba[3]) * (1 - pos))
-                    ) :
-                    ''
-            ) +
-            ')';
+        if (hasAlpha) {
+            rgba.push(channel(toRgba[3], 3));
+        }
+
+        return (hasAlpha ? 'rgba(' : 'rgb(') + rgba.join(',') + ')';
     }
+
 }
 
 /* *
@@ -392,18 +461,16 @@ export default Color;
  * */
 
 /**
- * A valid color to be parsed and handled by Highcharts. Highcharts internally
- * supports hex colors like `#ffffff`, rgb colors like `rgb(255,255,255)` and
- * rgba colors like `rgba(255,255,255,1)`. Other colors may be supported by the
- * browsers and displayed correctly, but Highcharts is not able to process them
- * and apply concepts like opacity and brightening.
+ * A valid color to be parsed and handled by Highcharts.
  *
  * @typedef {string} Highcharts.ColorString
  */
 
 /**
  * A valid color type than can be parsed and handled by Highcharts. It can be a
- * color string, a gradient object, or a pattern object.
+ * color string (including CSS expressions), a gradient object, or a pattern
+ * object. Read more about colors in the [Highcharts
+ * documentation](https://www.highcharts.com/docs/chart-design-and-style/colors).
  *
  * @typedef {Highcharts.ColorString|Highcharts.GradientColorObject|Highcharts.PatternObject} Highcharts.ColorType
  */
@@ -465,21 +532,30 @@ export default Color;
  *
  * @interface Highcharts.LinearGradientColorObject
  *//**
- * Start horizontal position of the gradient. Float ranges 0-1.
+ * Units for the gradient. Can be either 'userSpaceOnUse' or
+ * 'objectBoundingBox'.
+ * @name Highcharts.LinearGradientColorObject#gradientUnits
+ * @type {'userSpaceOnUse'|'objectBoundingBox'|undefined}
+ *//**
+ * Start horizontal position of the gradient. Float ranges 0-1 or percentage
+ * strings.
  * @name Highcharts.LinearGradientColorObject#x1
- * @type {number}
+ * @type {number|string}
  *//**
- * End horizontal position of the gradient. Float ranges 0-1.
+ * End horizontal position of the gradient. Float ranges 0-1 or percentage
+ * strings.
  * @name Highcharts.LinearGradientColorObject#x2
- * @type {number}
+ * @type {number|string}
  *//**
- * Start vertical position of the gradient. Float ranges 0-1.
+ * Start vertical position of the gradient. Float ranges 0-1 or percentage
+ * strings.
  * @name Highcharts.LinearGradientColorObject#y1
- * @type {number}
+ * @type {number|string}
  *//**
- * End vertical position of the gradient. Float ranges 0-1.
+ * End vertical position of the gradient. Float ranges 0-1 or percentage
+ * strings.
  * @name Highcharts.LinearGradientColorObject#y2
- * @type {number}
+ * @type {number|string}
  */
 
 /**
@@ -487,17 +563,33 @@ export default Color;
  *
  * @interface Highcharts.RadialGradientColorObject
  *//**
- * Center horizontal position relative to the shape. Float ranges 0-1.
+ * Units for the gradient. Can be either 'userSpaceOnUse' or
+ * 'objectBoundingBox'.
+ * @name Highcharts.RadialGradientColorObject#gradientUnits
+ * @type {'userSpaceOnUse'|'objectBoundingBox'|undefined}
+ *//**
+ * Center horizontal position relative to the shape. Float ranges 0-1
+ * or percentage strings.
  * @name Highcharts.RadialGradientColorObject#cx
- * @type {number}
+ * @type {number|string}
  *//**
- * Center vertical position relative to the shape. Float ranges 0-1.
+ * Center vertical position relative to the shape. Float ranges 0-1 or
+ * percentage strings.
  * @name Highcharts.RadialGradientColorObject#cy
- * @type {number}
+ * @type {number|string}
  *//**
- * Radius relative to the shape. Float ranges 0-1.
+ * Radius relative to the shape. Float ranges 0-1 or percentage
+ * strings.
  * @name Highcharts.RadialGradientColorObject#r
- * @type {number}
+ * @type {number|string}
+ */
+
+/**
+ * @interface Highcharts.RGBA
+ * @extends Array<number>
+ *//**
+ * @name Highcharts.RGBA#length
+ * @type {4}
  */
 
 /**
@@ -506,7 +598,7 @@ export default Color;
  * @function Highcharts.color
  *
  * @param {Highcharts.ColorType} input
- *        The input color in either rgba or hex format
+ *        The input color.
  *
  * @return {Highcharts.Color}
  *         Color instance

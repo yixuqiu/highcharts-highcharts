@@ -202,6 +202,7 @@ QUnit.test('Zones and column presentational props (#6234)', assert => {
                 data: [1, 3, 2, 4],
                 zoneAxis: 'x',
                 color: 'blue',
+                shadow: true,
                 zones: [
                     {
                         value: 2
@@ -226,7 +227,7 @@ QUnit.test('Zones and column presentational props (#6234)', assert => {
 
     assert.strictEqual(
         points[0].graphic.element.getAttribute('stroke'),
-        '#ffffff',
+        'var(--highcharts-background-color)',
         'No zones stroke'
     );
 
@@ -270,16 +271,34 @@ QUnit.test('Zones and column presentational props (#6234)', assert => {
 
     const colors = chart.series[0].points.map(p => p.graphic.attr('fill'));
     chart.update({
+
         series: [{
+            shadow: true,
+            type: 'line',
             data: [1.1, 3, 2, 4]
         }]
     });
+
+    const zones = chart.series[0].zones;
+
     assert.deepEqual(
         chart.series[0].points.map(p => p.graphic.attr('fill')),
         colors,
         'Colors should be preserved after update (#20426)'
     );
 
+    assert.deepEqual(
+        zones[0].graph.element.getAttribute('filter') !== undefined,
+        true,
+        'First zone has received shadow'
+    );
+
+
+    assert.deepEqual(
+        zones[1].graph.element.getAttribute('filter') !== undefined,
+        true,
+        'Second zone has received shadow'
+    );
 });
 
 QUnit.test('Adding and removing zones', function (assert) {
@@ -331,6 +350,61 @@ QUnit.test('Adding and removing zones', function (assert) {
         chart.series[0].graph.attr('visibility'),
         'hidden',
         'Series line should be hidden after adding zones back (#10569).'
+    );
+
+    chart.update({
+        yAxis: {
+            min: -15,
+            max: 20
+        },
+        series: [
+            {
+                data: [
+                    -10, -5, 0, 5, 10, 20, 10, 10, 5, 0, -5, -10,
+                    -10, -10, -5
+                ],
+                dashStyle: 'Dash',
+                zones: [
+                    {
+                        value: 0,
+                        color: '#f7a35c'
+                    },
+                    {
+                        value: 10,
+                        color: '#7cb5ec'
+                    },
+                    {
+                        value: 19.9,
+                        color: '#90ed7d'
+                    }
+                ]
+            }
+        ]
+    });
+
+    const maxPoint = chart.series[0].points[5],
+        maxClip = chart.series[0].zones[3].lineClip.find(
+            clip => clip[1] === maxPoint.plotX
+        ),
+        maxHalfWidth = chart.series[0].graph.strokeWidth() / 2 + 1;
+
+    assert.deepEqual(
+        maxClip,
+        ['L', maxPoint.plotX, maxPoint.plotY - maxHalfWidth],
+        'Clip path should not clip a line drawn at axis max, #24544.'
+    );
+
+    const boundaryPoint = chart.series[0].points[6],
+        boundaryClip = chart.series[0].zones[1].lineClip.find(
+            clip => clip[1] === boundaryPoint.plotX
+        ),
+        boundaryHalfWidth = chart.series[0].graph.strokeWidth() / 2 + 1;
+
+    assert.deepEqual(
+        boundaryClip,
+        ['L', boundaryPoint.plotX, boundaryPoint.plotY + boundaryHalfWidth],
+        'Clip path should preserve horizontal lines on internal zone ' +
+        'boundaries.'
     );
 
     const clip = chart.series[0].zones[0].clip;
@@ -394,5 +468,58 @@ QUnit.test('#9198 setData and zones', function (assert) {
         chart.series[0].zones[0].graph !== chart.series[1].zones[0].graph,
         `Zones graphs should be differents between original series and
         navigator series (#20440).`
+    );
+});
+
+QUnit.test('#24710, series.update and zones', function (assert) {
+    const chart = Highcharts.chart('container', {
+        series: [{
+            data: [
+                [0, -2], [1, -4], [2, 10], [3, 12], [4, 14], [5, 15], [6, 16],
+                [7, 17], [8, 18], [9, 19]
+            ],
+            zones: [{ // <- with zones commented out, it works
+                value: 0,
+                color: '#f7a35c'
+            }, {
+                value: 3,
+                color: '#7cb5ec'
+            }, {
+                color: '#90ed7d'
+            }]
+        }]
+    });
+    const series = chart.series[0];
+    series.zones[0].graph.thisIsTheSame = true;
+
+    // Run an update
+    const dataCopy = chart.series[0].userOptions.data.slice();
+    dataCopy.shift();
+    dataCopy.push([dataCopy[dataCopy.length - 1][0] + 1, 5]);
+    // chart.series[0].setData(dataCopy); // <- it works with zones
+    chart.update({
+        series: [{
+            data: dataCopy
+        }]
+    });
+
+    assert.ok(
+        series.zones[0].graph.thisIsTheSame,
+        'Graph should be the same after update (#24710).'
+    );
+});
+
+QUnit.test('#24633, getZone on a series with no zones', function (assert) {
+    const chart = Highcharts.chart('container', {
+        series: [{
+            data: [1, 2, 3]
+        }]
+    });
+    const point = chart.series[0].points[0];
+
+    assert.strictEqual(
+        point.getZone(),
+        undefined,
+        'getZone should return undefined when the series has no zones (#24633).'
     );
 });

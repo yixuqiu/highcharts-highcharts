@@ -39,9 +39,9 @@ QUnit.test('Center the halo on the point(#4689)', function (assert) {
 
     function getCenter(box) {
         return [
-            (box.x + box.width / 2).toFixed(0),
-            (box.y + box.height / 2).toFixed(0)
-        ].join(',');
+            (box.x + box.width / 2).toFixed(1),
+            (box.y + box.height / 2).toFixed(1)
+        ];
     }
 
     // Non-inverted chart
@@ -49,12 +49,32 @@ QUnit.test('Center the halo on the point(#4689)', function (assert) {
 
     for (var i = 0; i < chart.series[0].points.length; i++) {
         chart.series[0].points[i].onMouseOver();
-        assert.strictEqual(
+        assert.deepEqual(
             getCenter(chart.series[0].points[i].graphic.getBBox()),
             getCenter(chart.series[0].halo.getBBox()),
             'Point ' + i + ' and halo has the same center'
         );
     }
+
+    const point = chart.series[0].points[0],
+        series = point.series;
+    let error;
+
+    point.series = void 0;
+
+    try {
+        point.onMouseOut();
+    } catch (e) {
+        error = e;
+    }
+
+    point.series = series;
+
+    assert.ok(
+        !error,
+        'Point.onMouseOut should not throw when point.series is undefined, ' +
+        '(#24459).'
+    );
 });
 
 QUnit.test('Point inactive state - basics', function (assert) {
@@ -254,12 +274,18 @@ QUnit.test(
                 ]
             }),
             legend = chart.legend,
-            controller = new TestController(chart);
+            controller = new TestController(chart),
+            x = chart.series[0].nodes[0].plotX + chart.plotLeft,
+            // Workaround for failing test on Linux.
+            // Try removing in Chrome v129+.
+            baseY = chart.series[0].nodes[0].plotY + chart.plotTop,
+            correction = (
+                controller.elementsFromPoint(x, baseY)
+                    .indexOf(chart.series[0].nodes[0].graphic.element) < 0
+            ) ? -8 : 0,
+            y = baseY + correction;
 
-        controller.mouseOver(
-            chart.series[0].nodes[0].plotX + chart.plotLeft,
-            chart.series[0].nodes[0].plotY + chart.plotTop
-        );
+        controller.mouseOver(x, y);
 
         assert.strictEqual(
             Highcharts.attr(
@@ -290,7 +316,8 @@ QUnit.test(
 
         controller.mouseOver(
             chart.series[1].points[0].shapeArgs.x + chart.plotLeft + 15,
-            chart.series[1].points[0].shapeArgs.y + chart.plotTop - 15
+            chart.series[1].points[0].shapeArgs.y + chart.plotTop - 15 +
+                correction
         );
 
         assert.strictEqual(
@@ -313,7 +340,7 @@ QUnit.test(
 
         controller.mouseOver(
             legend.group.translateX + legend.maxItemWidth * 1.5,
-            legend.group.translateY + legend.itemHeight
+            legend.group.translateY + legend.itemHeight + correction
         );
 
         assert.strictEqual(
@@ -815,4 +842,156 @@ QUnit.test('NaN x value (#19148).', assert => {
             );
         }
     });
+});
+
+QUnit.test('Destroying point without chart animation', assert => {
+    const chart = Highcharts.chart('container', {
+            chart: {
+                animation: false
+            },
+            series: [{
+                data: [4]
+            }]
+        }),
+        s1 = chart.series[0];
+
+    s1.points[0].destroy();
+
+    assert.strictEqual(
+        s1.points[0].destroyed,
+        true,
+        'Point should have the destroyed flag'
+    );
+
+    assert.ok(
+        !s1.points[0].graphic,
+        'Point should not have a graphic prop'
+    );
+});
+
+QUnit.test('Destroying point with chart animation enabled', assert => {
+    const done = assert.async(),
+        animDuration = 10,
+        chart = Highcharts.chart('container', {
+            chart: {
+                animation: {
+                    duration: animDuration
+                }
+            },
+            series: [{
+                data: [7]
+            }]
+        }),
+        s1 = chart.series[0];
+
+    s1.points[0].destroy();
+
+    assert.strictEqual(
+        s1.points[0].condemned,
+        true,
+        'Point should have the condemned flag'
+    );
+
+    assert.ok(
+        !s1.points[0].destroyed,
+        'Point should not have the destroyed flag'
+    );
+
+    assert.ok(
+        s1.points[0].graphic,
+        'Point should have a graphic prop'
+    );
+
+    setTimeout(() => {
+        assert.strictEqual(
+            s1.points[0].destroyed,
+            true,
+            'Point should have the destroyed flag'
+        );
+
+        assert.ok(
+            !s1.points[0].condemned,
+            'Point should not have the condemned flag'
+        );
+
+        assert.ok(
+            !s1.points[0].graphic,
+            'Point should not have a graphic prop'
+        );
+
+        done();
+    }, animDuration * 2);
+});
+
+QUnit.test('Update series visibility with chart.update (#24864)', assert => {
+    const done = assert.async(),
+        clone = opts => JSON.parse(JSON.stringify(opts)),
+        animDuration = 10,
+        options = {
+            chart: {
+                animation: {
+                    duration: animDuration
+                }
+            },
+            series: [
+                {
+                    name: 'Series1',
+                    data: [1, 3]
+                },
+                {
+                    name: 'Series2',
+                    data: [5, 2]
+                }
+            ]
+        },
+        { series } = options,
+        chart = Highcharts.chart('container', options),
+        s1 = chart.series[0];
+
+    series[0].visible = false;
+    chart.update(clone(options));
+
+    // Update Series2 when Series1 is already hidden on chart
+    series[1].visible = false;
+    chart.update(clone(options));
+
+    s1.points.forEach(p => assert.strictEqual(
+        p.condemned,
+        true,
+        'Series1 point should be condemned during animation'
+    ));
+
+    setTimeout(() => {
+        s1.points.forEach(p => assert.strictEqual(
+            p.destroyed,
+            true,
+            'Series1 point should be destroyed after animation'
+        ));
+
+        series[0].visible = true;
+
+        let error;
+        try {
+            chart.update(clone(options));
+        } catch (e) {
+            error = e;
+        }
+
+        assert.ok(
+            !error,
+            'Should not throw after condemned Point.destroy() attempt'
+        );
+
+        s1.points.forEach(p => assert.ok(
+            !p.condemned && !p.destroyed,
+            'Series1 point should not have destroyed and condemned flags'
+        ));
+
+        s1.points.forEach(p => assert.ok(
+            p.graphic,
+            'Series1 point should have a graphic prop'
+        ));
+
+        done();
+    }, animDuration * 2);
 });

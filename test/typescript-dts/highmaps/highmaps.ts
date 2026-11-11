@@ -9,7 +9,39 @@
 import * as Highcharts from 'highcharts/highmaps';
 
 test_series();
+test_shadow();
 test_simple();
+
+/**
+ * Tests the documented `shadow` option on map and mapline series. #24856
+ */
+function test_shadow() {
+    Highcharts.mapChart('container', {
+        plotOptions: {
+            map: {
+                shadow: true
+            },
+            mapline: {
+                shadow: {
+                    color: '#000000',
+                    offsetX: 1,
+                    offsetY: 1,
+                    opacity: 0.5,
+                    width: 3
+                }
+            }
+        },
+        series: [{
+            type: 'map',
+            shadow: false,
+            data: []
+        }, {
+            type: 'mapline',
+            shadow: true,
+            data: []
+        }]
+    });
+}
 
 /**
  * Tests Highcharts.seriesTypes.map, Highcharts.seriesTypes.mapline, and
@@ -18,9 +50,9 @@ test_simple();
 function test_series() {
     const defaultOptions = Highcharts.getOptions();
     const tooltipFormatter = function(
-        this: Highcharts.TooltipFormatterContextObject
+        this: Highcharts.Point
     ) {
-        const point = this.point as any; // @todo make id, lat, lon public
+        const point = this as any; // @todo make id, lat, lon public
         return point.id + (
             point.lat ? `<br>Lat:${point.lat} Lon: ${point.lon}` : ''
         );

@@ -2,11 +2,13 @@
  *
  *  Highcharts variwide module
  *
- *  (c) 2010-2024 Torstein Honsi
+ *  (c) 2010-2026 Highsoft AS
+ *  Author: Torstein Hønsi
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  * */
 
@@ -19,23 +21,23 @@
  * */
 
 import type StackingAxis from '../../Core/Axis/Stacking/StackingAxis';
+import type { TypedArray } from '../../Shared/Types';
+import type RangeSelector from '../../Stock/RangeSelector/RangeSelector';
 import type VariwideSeriesOptions from './VariwideSeriesOptions';
 
+import ColumnSeries from '../Column/ColumnSeries.js';
 import SeriesRegistry from '../../Core/Series/SeriesRegistry.js';
-const {
-    column: ColumnSeries
-} = SeriesRegistry.seriesTypes;
 import VariwideComposition from './VariwideComposition.js';
 import VariwidePoint from './VariwidePoint.js';
 import VariwideSeriesDefaults from './VariwideSeriesDefaults.js';
-import U from '../../Core/Utilities.js';
-const {
+import {
     addEvent,
+    arrayMax,
+    arrayMin,
+    crisp,
     extend,
-    merge,
-    pick
-} = U;
-
+    merge
+} from '../../Shared/Utilities.js';
 
 /* *
  *
@@ -44,7 +46,6 @@ const {
  * */
 
 /**
- * @private
  * @class
  * @name Highcharts.seriesTypes.variwide
  *
@@ -59,8 +60,10 @@ class VariwideSeries extends ColumnSeries {
      *
      * */
 
+    /** @internal */
     public static compose = VariwideComposition.compose;
 
+    /** @internal */
     public static defaultOptions: VariwideSeriesOptions = merge(
         ColumnSeries.defaultOptions,
         VariwideSeriesDefaults
@@ -72,12 +75,16 @@ class VariwideSeries extends ColumnSeries {
      *
      * */
 
+    /** @internal */
     public crispOption?: boolean;
     public data!: Array<VariwidePoint>;
     public options!: VariwideSeriesOptions;
     public points!: Array<VariwidePoint>;
+    /** @internal */
     public relZ!: Array<number>;
+    /** @internal */
     public totalZ!: number;
+    /** @internal */
     public zData?: Array<number>;
 
     /* *
@@ -86,6 +93,7 @@ class VariwideSeries extends ColumnSeries {
      *
      * */
 
+    /** @internal */
     public processData(force?: boolean): undefined {
         this.totalZ = 0;
         this.relZ = [];
@@ -94,9 +102,11 @@ class VariwideSeries extends ColumnSeries {
             force
         );
 
+        const zData = this.getColumn('z');
+
         (this.xAxis.reversed ?
-            (this.zData as any).slice().reverse() :
-            (this.zData as any)
+            zData.slice().reverse() :
+            zData
         ).forEach(
             function (
                 this: VariwideSeries,
@@ -111,7 +121,7 @@ class VariwideSeries extends ColumnSeries {
 
         if (this.xAxis.categories) {
             this.xAxis.variwide = true;
-            this.xAxis.zData = this.zData; // Used for label rank
+            this.xAxis.zData = zData; // Used for label rank
         }
         return;
     }
@@ -120,7 +130,7 @@ class VariwideSeries extends ColumnSeries {
      * Translate an x value inside a given category index into the distorted
      * axis translation.
      *
-     * @private
+     * @internal
      * @function Highcharts.Series#postTranslate
      *
      * @param {number} index
@@ -162,8 +172,8 @@ class VariwideSeries extends ColumnSeries {
                 minPx - this.chart.plotLeft - goRight * axis.minPixelPadding,
             linearSlotLeft = i / relZ.length * len,
             linearSlotRight = (i + goRight) / relZ.length * len,
-            slotLeft = (pick(relZ[i], totalZ) / totalZ) * len,
-            slotRight = (pick(relZ[i + goRight], totalZ) / totalZ) * len,
+            slotLeft = ((relZ[i] ?? totalZ) / totalZ) * len,
+            slotRight = ((relZ[i + goRight] ?? totalZ) / totalZ) * len,
             xInsideLinearSlot = (x - (left + linearSlotLeft));
 
         // Set crosshairWidth for every point (#8173)
@@ -176,8 +186,8 @@ class VariwideSeries extends ColumnSeries {
             (linearSlotRight - linearSlotLeft);
     }
 
-    /* eslint-enable valid-jsdoc */
 
+    /** @internal */
     public translate(): void {
         // Temporarily disable crisping when computing original shapeArgs
         this.crispOption = this.options.crisp;
@@ -191,7 +201,7 @@ class VariwideSeries extends ColumnSeries {
 
     /**
      * Function that corrects stack labels positions
-     * @private
+     * @internal
      */
     public correctStackLabels(): void {
         const series = this,
@@ -232,6 +242,19 @@ class VariwideSeries extends ColumnSeries {
             }
         }
     }
+
+    /** @internal */
+    public getXExtremes(
+        xData: Array<number>|TypedArray
+    ): RangeSelector.RangeObject {
+        const max = arrayMax(xData),
+            maxZ = this.getColumn('z')[xData.indexOf(max)];
+
+        return {
+            min: arrayMin(xData),
+            max: max + (this.xAxis.categories ? 0 : maxZ)
+        };
+    }
 }
 
 // Extend translation by distorting X position based on Z.
@@ -239,8 +262,7 @@ addEvent(VariwideSeries, 'afterColumnTranslate', function (): void {
 
     // Temporarily disable crisping when computing original shapeArgs
     const xAxis = this.xAxis,
-        inverted = this.chart.inverted,
-        crisp = this.borderWidth % 2 / 2;
+        inverted = this.chart.inverted;
 
     let i = -1;
 
@@ -266,8 +288,8 @@ addEvent(VariwideSeries, 'afterColumnTranslate', function (): void {
         }
 
         if (this.crispOption) {
-            left = Math.round(left) - crisp;
-            right = Math.round(right) - crisp;
+            left = crisp(left, this.borderWidth);
+            right = crisp(right, this.borderWidth);
         }
 
         shapeArgs.x = left;
@@ -299,14 +321,19 @@ addEvent(VariwideSeries, 'afterColumnTranslate', function (): void {
  * */
 
 interface VariwideSeries {
+    /** @internal */
     irregularWidths: boolean;
+    /** @internal */
     parallelArrays: Array<string>;
+    /** @internal */
     pointArrayMap: Array<string>;
+    /** @internal */
     pointClass: typeof VariwidePoint;
 }
 
 extend(VariwideSeries.prototype, {
     irregularWidths: true,
+    keysAffectYAxis: ['y'],
     pointArrayMap: ['y', 'z'],
     parallelArrays: ['x', 'y', 'z'],
     pointClass: VariwidePoint

@@ -1,12 +1,11 @@
 /* *
  *
- *  (c) 2019-2024 Highsoft AS
+ *  (c) 2019-2026 Highsoft AS
  *
  *  Boost module: stripped-down renderer for higher performance
  *
  *  License: highcharts.com/license
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  * */
 
@@ -21,11 +20,12 @@
 import type Axis from '../../Core/Axis/Axis';
 import type { AxisSetExtremesEventObject } from '../../Core/Axis/AxisOptions';
 import type Chart from '../../Core/Chart/Chart';
-import type Color from '../../Core/Color/Color';
+import Color from '../../Core/Color/Color';
 import type HTMLElement from '../../Core/Renderer/HTML/HTMLElement';
 import type Series from '../../Core/Series/Series';
 import type SeriesRegistry from '../../Core/Series/SeriesRegistry';
 import type SVGElement from '../../Core/Renderer/SVG/SVGElement';
+import type Point from '../../Core/Series/Point';
 
 import BoostChart from './BoostChart.js';
 import BoostSeries from './BoostSeries.js';
@@ -35,11 +35,30 @@ const {
     win
 } = H;
 import NamedColors from './NamedColors.js';
-import U from '../../Core/Utilities.js';
-const {
-    addEvent,
-    error
-} = U;
+import { error } from '../../Core/Utilities.js';
+import { addEvent } from '../../Shared/Utilities.js';
+
+/* *
+ *
+ *  Declarations
+ *
+ * */
+
+declare module '../../Core/GlobalsBase.d.ts' {
+    interface GlobalsBase {
+        /**
+         * Returns true if the current browser supports WebGL.
+         *
+         * @requires modules/boost
+         *
+         * @function Highcharts.hasWebGLSupport
+         *
+         * @return {boolean}
+         * `true` if the browser supports WebGL.
+         */
+        hasWebGLSupport?: typeof hasWebGLSupport;
+    }
+}
 
 /* *
  *
@@ -60,14 +79,13 @@ const contexts = [
  *
  * */
 
-/**
- * @private
- */
+/** @internal */
 function compose(
     ChartClass: typeof Chart,
     AxisClass: typeof Axis,
     SeriesClass: typeof Series,
     seriesTypes: typeof SeriesRegistry.seriesTypes,
+    PointClass: typeof Point,
     ColorClass?: typeof Color
 ): void {
     const wglMode = hasWebGLSupport();
@@ -91,7 +109,7 @@ function compose(
     // WebGL support is alright, and we're good to go.
 
     BoostChart.compose(ChartClass, wglMode);
-    BoostSeries.compose(SeriesClass, seriesTypes, wglMode);
+    BoostSeries.compose(SeriesClass, seriesTypes, PointClass, wglMode);
 
     // Handle zooming by touch/pinch or mouse wheel. Assume that boosted charts
     // are too slow for a live preview while dragging. Instead, just scale the
@@ -137,13 +155,29 @@ function compose(
                     opacity
                 });
         }
+
+        // Boosted scatter crops its data table on the Y axis, so it must be
+        // reprocessed when the axis extremes change (#24386).
+        if (!this.isPanning) {
+            for (const series of this.series) {
+                if (
+                    series.boost &&
+                    series.is('scatter') &&
+                    !series.is('bubble') &&
+                    !series.is('treemap') &&
+                    !series.is('heatmap')
+                ) {
+                    series.isDirty = true;
+                }
+            }
+        }
     });
 }
 
 /**
  * Returns true if the current browser supports WebGL.
  *
- * @requires module:modules/boost
+ * @requires modules/boost
  *
  * @function Highcharts.hasWebGLSupport
  *
@@ -163,7 +197,7 @@ function hasWebGLSupport(): boolean {
                 if (typeof gl !== 'undefined' && gl !== null) {
                     return true;
                 }
-            } catch (e) {
+            } catch {
                 // Silent error
             }
         }
@@ -178,11 +212,13 @@ function hasWebGLSupport(): boolean {
  *
  * */
 
+/** @internal */
 const Boost = {
     compose,
     hasWebGLSupport
 };
 
+/** @internal */
 export default Boost;
 
 /* *
@@ -217,6 +253,12 @@ export default Boost;
  *         Line chart with hundreds of series
  * @sample highcharts/boost/scatter
  *         Scatter chart
+ * @sample highcharts/boost/scatter-pointcolor
+ *         Scatter chart with colored points
+ * @sample highcharts/boost/scatter-colorbypoint
+ *         Scatter chart with colorByPoint
+ * @sample highcharts/boost/scatter-zones
+ *         Scatter chart with zones
  * @sample highcharts/boost/area
  *         Area chart
  * @sample highcharts/boost/arearange
@@ -332,6 +374,16 @@ export default Boost;
  * @type      {boolean}
  * @default   false
  * @apioption boost.debug.timeBufferCopy
+ */
+
+/**
+ * The number of points processed per frame when building the k-d tree for
+ * boosted series. Lower values improve responsiveness but increase the time it
+ * takes to build the tree.
+ *
+ * @type      {number}
+ * @default   3000
+ * @apioption boost.chunkSize
  */
 
 /**

@@ -1,3 +1,5 @@
+// Source: https://www.bls.gov/web/laus/laumstrk.htm
+
 (async () => {
 
     const topology = await fetch(
@@ -33,7 +35,7 @@
     Highcharts.mapChart('container', {
 
         title: {
-            text: 'US unemployment rate in Dec. 2017',
+            text: 'US unemployment rate in May 2024',
             align: 'left'
         },
 
@@ -58,19 +60,24 @@
                 format: '{value}%'
             },
             stops: [
-                [0.2, '#188e2a'], // Green
-                [0.5, '#fee401'], // Yellow
-                [1, '#df1309'] // Red
+                [0.00, '#440154'],
+                [0.14, '#46327f'],
+                [0.29, '#365c8d'],
+                [0.43, '#277f8e'],
+                [0.57, '#1fa187'],
+                [0.71, '#4ac26e'],
+                [0.86, '#9fda3a'],
+                [1.00, '#fde725']
             ],
             min: 0,
-            max: 8
+            max: 6
         },
 
         series: [{
             mapData: topology,
             data,
             joinBy: 'ucName',
-            name: 'Unemployment rate per 2017',
+            name: 'Unemployment rate per 2024',
             dataLabels: {
                 enabled: true,
                 format: '{point.properties.hc-a2}',

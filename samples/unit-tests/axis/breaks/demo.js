@@ -173,9 +173,8 @@ QUnit.test(
     'pointBreak callback wasn\'t called for xAxis and different ' +
         'series than column.(#4533)',
     function (assert) {
-        var iteratorPB = 0,
-            iteratorAB = 0,
-            iteratorPOB = 0;
+        let iteratorPB = 0,
+            iteratorAB = 0;
 
         const chart = Highcharts.chart('container', {
             chart: {
@@ -198,9 +197,6 @@ QUnit.test(
                     },
                     afterBreaks() {
                         iteratorAB++;
-                    },
-                    pointOutsideOfBreak() {
-                        iteratorPOB++;
                     }
                 }
             },
@@ -238,17 +234,32 @@ QUnit.test(
         assert.strictEqual(iteratorAB, 7, 'All after breaks called');
         assert.strictEqual(iteratorPB, 8, 'All point breaks called');
 
-        assert.strictEqual(
-            iteratorPOB,
-            0,
-            'No point breaks out should be called initially.'
-        );
+        // Testing es6 arrow functions for axis event callbacks.
+        let es6AfterBreaksFlag = false;
 
-        chart.yAxis[0].setExtremes(0, 5);
+        chart.update({
+            xAxis: {
+                breaks: [
+                    {
+                        from: 5,
+                        to: 15,
+                        breakSize: 1
+                    }
+                ],
+                events: {
+                    afterBreaks: (e, axis) => {
+                        es6AfterBreaksFlag = (
+                            e && axis && true
+                        ) || false;
+                    }
+                }
+            }
+        });
+
         assert.strictEqual(
-            iteratorPOB,
-            chart.series[0].points.length,
-            'The pointOutsideOfBreak event should be called for all points.'
+            es6AfterBreaksFlag,
+            true,
+            'Es6 arrow-function should work for axis events.'
         );
     }
 );
@@ -847,8 +858,8 @@ QUnit.test(
 
         chart.xAxis[0].setExtremes();
 
-        const point1 = chart.series[0].points[0].shapeArgs,
-            point2 = chart.series[0].points[1].shapeArgs;
+        const point1 = chart.series[0].points[0].graphic.getBBox(),
+            point2 = chart.series[0].points[1].graphic.getBBox();
         assert.ok(
             point1.x + point2.width < point2.x,
             'Points should not overlap after applying breaks property, #16368.'
@@ -947,7 +958,7 @@ QUnit.test('Axis breaks with categories', function (assert) {
     var gridBox = chart.xAxis[0].gridGroup.getBBox();
 
     assert.strictEqual(
-        gridBox.x + 0.5,
+        gridBox.x - 0.5,
         chart.plotLeft,
         'Left tick is left of plot area'
     );
@@ -993,7 +1004,7 @@ QUnit.test('Axis breaks with scatter series', function (assert) {
 });
 
 QUnit.test('Axis breaks on Y axis', function (assert) {
-    var chart = Highcharts.chart('container', {
+    const chart = Highcharts.chart('container', {
         yAxis: {
             breaks: [
                 {
@@ -1015,6 +1026,27 @@ QUnit.test('Axis breaks on Y axis', function (assert) {
         chart.yAxis[0].toPixels(50),
         chart.yAxis[0].toPixels(100),
         '50 and 100 translate to the same axis position'
+    );
+
+    chart.update({
+        yAxis: {
+            tickInterval: 5,
+            min: 0,
+            max: 90,
+            breaks: [{
+                from: 20,
+                to: 62
+            }]
+        },
+        series: [{
+            data: [2, 6, 3]
+        }]
+    });
+
+    assert.strictEqual(
+        chart.yAxis[0].toPixels(20),
+        chart.yAxis[0].toPixels(62),
+        '20 and 62 translate to the same axis position, #23728.'
     );
 });
 
@@ -1127,13 +1159,25 @@ QUnit.test(
     function (assert) {
         const chart = Highcharts.chart('container', {
             chart: {
-                width: 400
+                width: 400,
+                style: {
+                    fontFamily: 'Helvetica, Arial, sans-serif'
+                }
             },
             xAxis: {
                 breaks: [{
                     from: 3,
                     to: 7
                 }]
+            },
+            // All yAxis options juts to avoid font/browser/OS related issues
+            yAxis: {
+                opposite: true,
+                labels: {
+                    reserveSpace: false,
+                    x: -50
+                },
+                offset: 70
             },
             series: [{
                 data: [
@@ -1149,9 +1193,66 @@ QUnit.test(
 
         assert.close(
             chart.xAxis[0].toValue(100),
-            0.26227,
-            0.05,
+            1.23368,
+            0.01,
             'The toValue method should return correct value when breakes ' +
             'enabled.'
         );
     });
+
+QUnit.test('Range of BrokenAxis', assert => {
+    const chart = Highcharts.chart('container', {
+        chart: {
+            width: 600
+        },
+        xAxis: [{
+            minorGridLineColor: '#C0C0C0',
+            minorGridLineWidth: 1,
+            minorGridLineDashStyle: 'Dot',
+            minorTickInterval: 40,
+            min: 0,
+            max: 10000,
+            breaks: [{
+                from: 3000,
+                to: 8000,
+                breakSize: 200
+            }]
+        }],
+        series: [{
+            data: [{
+                x: 0,
+                y: 1
+            }, {
+                x: 1000,
+                y: 2
+            }, {
+                x: 2000,
+                y: 1
+            }, {
+                x: 3000,
+                y: 1
+            }]
+        }, {
+            data: [{
+                x: 8000,
+                y: 1
+            }, {
+                x: 9000,
+                y: 3
+            }, {
+                x: 10000,
+                y: 2
+            }]
+        }]
+    });
+    const minorGridLines = chart.container.querySelectorAll(
+        '.highcharts-minor-grid-line'
+    );
+
+    assert.notEqual(
+        minorGridLines.length,
+        0,
+        'Minor grid lines should be rendered outside of a break when' +
+        'breaks are set (#21740)'
+    );
+});

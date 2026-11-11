@@ -1,10 +1,12 @@
 /* *
  *
- *  (c) 2010-2024 Kacper Madej
+ *  (c) 2010-2026 Highsoft AS
+ *  Author: Kacper Madej
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  * */
 
@@ -16,6 +18,7 @@
  *
  * */
 
+import type { IndicatorLinkedSeriesBase } from '../IndicatorBase';
 import type IndicatorValuesObject from '../IndicatorValuesObject';
 import type LineSeries from '../../../Series/Line/LineSeries';
 import type {
@@ -24,16 +27,9 @@ import type {
 } from './ROCOptions';
 import type ROCPoint from './ROCPoint';
 
+import SMAIndicator from '../SMA/SMAIndicator.js';
 import SeriesRegistry from '../../../Core/Series/SeriesRegistry.js';
-const {
-    sma: SMAIndicator
-} = SeriesRegistry.seriesTypes;
-import U from '../../../Core/Utilities.js';
-const {
-    isArray,
-    merge,
-    extend
-} = U;
+import { extend, isArray, merge } from '../../../Shared/Utilities.js';
 
 /* *
  *
@@ -42,9 +38,7 @@ const {
  * */
 
 // Utils:
-/**
- *
- */
+/** @internal */
 function populateAverage(
     xVal: Array<number>,
     yVal: (Array<number>|Array<Array<number>>),
@@ -87,7 +81,6 @@ function populateAverage(
 /**
  * The ROC series type.
  *
- * @private
  * @class
  * @name Highcharts.seriesTypes.roc
  *
@@ -113,15 +106,16 @@ class ROCIndicator extends SMAIndicator {
      *
      * This series requires `linkedTo` option to be set.
      *
-     * @sample stock/indicators/roc
+     * @sample {highstock} stock/indicators/roc
      *         Rate of change indicator
      *
      * @extends      plotOptions.sma
      * @since        6.0.0
      * @product      highstock
-     * @requires     stock/indicators/indicators
-     * @requires     stock/indicators/roc
+     * @requires     indicators/indicators
+     * @requires     indicators/roc
      * @optionparent plotOptions.roc
+     * @internal
      */
     public static defaultOptions: ROCOptions = merge(SMAIndicator.defaultOptions, {
         params: {
@@ -148,8 +142,9 @@ class ROCIndicator extends SMAIndicator {
      *
      * */
 
+    /** @internal */
     public getValues<TLinkedSeries extends LineSeries>(
-        series: TLinkedSeries,
+        series: TLinkedSeries&IndicatorLinkedSeriesBase,
         params: ROCParamsOptions
     ): (IndicatorValuesObject<TLinkedSeries>|undefined) {
         const period: number = (params.period as any),
@@ -235,7 +230,7 @@ export default ROCIndicator;
  * */
 
 /**
- * A `ROC` series. If the [type](#series.wma.type) option is not
+ * A `ROC` series. If the [type](#series.roc.type) option is not
  * specified, it is inherited from [chart.type](#chart.type).
  *
  * Rate of change indicator (ROC). The indicator value for each point
@@ -252,9 +247,8 @@ export default ROCIndicator;
  * @extends   series,plotOptions.roc
  * @since     6.0.0
  * @product   highstock
- * @excluding dataParser, dataURL
- * @requires  stock/indicators/indicators
- * @requires  stock/indicators/roc
+ * @requires  indicators/indicators
+ * @requires  indicators/roc
  * @apioption series.roc
  */
 

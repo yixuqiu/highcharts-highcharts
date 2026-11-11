@@ -2,13 +2,14 @@
  *
  *  This module implements sunburst charts in Highcharts.
  *
- *  (c) 2016-2024 Highsoft AS
+ *  (c) 2016-2026 Highsoft AS
  *
- *  Authors: Jon Arild Nygard
+ *  Authors: Jon Arild Nygård
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  * */
 
@@ -29,7 +30,6 @@ import type {
     SunburstSeriesOptions
 } from './SunburstSeriesOptions';
 import type SVGAttributes from '../../Core/Renderer/SVG/SVGAttributes';
-import type SVGElement from '../../Core/Renderer/SVG/SVGElement';
 import type SVGLabel from '../../Core/Renderer/SVG/SVGLabel';
 
 import CU from '../CenteredUtilities.js';
@@ -39,11 +39,9 @@ const {
 } = CU;
 import H from '../../Core/Globals.js';
 const { noop } = H;
+import ColumnSeries from '../Column/ColumnSeries.js';
+import TreemapSeries from '../Treemap/TreemapSeries.js';
 import SeriesRegistry from '../../Core/Series/SeriesRegistry.js';
-const {
-    column: ColumnSeries,
-    treemap: TreemapSeries
-} = SeriesRegistry.seriesTypes;
 import SunburstPoint from './SunburstPoint.js';
 import SunburstUtilities from './SunburstUtilities.js';
 import TU from '../TreeUtilities.js';
@@ -53,12 +51,12 @@ const {
     setTreeValues,
     updateRootId
 } = TU;
-import U from '../../Core/Utilities.js';
 import SunburstNode from './SunburstNode.js';
 import SunburstSeriesDefaults from './SunburstSeriesDefaults.js';
-const {
+import SVGElement from '../../Core/Renderer/SVG/SVGElement.js';
+import { composeTextPath } from '../../Extensions/TextPath.js';
+import {
     defined,
-    error,
     extend,
     fireEvent,
     isNumber,
@@ -66,7 +64,9 @@ const {
     isString,
     merge,
     splat
-} = U;
+} from '../../Shared/Utilities.js';
+import { error } from '../../Core/Utilities.js';
+composeTextPath(SVGElement);
 
 /* *
  *
@@ -82,7 +82,7 @@ const rad2deg = 180 / Math.PI;
  *
  * */
 
-/** @private */
+/** @internal */
 function isBoolean(x: unknown): x is boolean {
     return typeof x === 'boolean';
 }
@@ -91,7 +91,7 @@ function isBoolean(x: unknown): x is boolean {
  * Find a set of coordinates given a start coordinates, an angle, and a
  * distance.
  *
- * @private
+ * @internal
  * @function getEndPoint
  *
  * @param {number} x
@@ -121,7 +121,7 @@ const getEndPoint = function getEndPoint(
     };
 };
 
-/** @private */
+/** @internal */
 function getDlOptions(
     params: SunburstSeries.DlOptionsParams
 ): SunburstDataLabelOptions {
@@ -129,6 +129,7 @@ function getDlOptions(
     const point = params.point,
         shape: Partial<SunburstNode.NodeValuesObject> =
             isObject(params.shapeArgs) ? params.shapeArgs : {},
+        { end = 0, radius = 0, start = 0 } = shape,
         optionsPoint = (
             isObject(params.optionsPoint) ?
                 params.optionsPoint.dataLabels :
@@ -141,13 +142,18 @@ function getDlOptions(
                 params.level.dataLabels :
                 {}
         )[0],
-        options = merge<SunburstDataLabelOptions>({
-            style: {}
-        }, optionsLevel, optionsPoint);
+        options = merge<SunburstDataLabelOptions>(optionsLevel, optionsPoint),
+        style = options.style = options.style || {},
+        padding: Array<number> = splat(options.padding || 0),
+        paddingLeft = padding[3 % padding.length],
+        paddingRight = padding[1 % padding.length],
+        { innerArcLength = 0, outerArcLength = 0 } = point;
 
     let rotationRad: (number|undefined),
         rotation: (number|undefined),
-        rotationMode = options.rotationMode;
+        rotationMode = options.rotationMode,
+        width: number|undefined = defined(style.width) ?
+            parseInt(style.width || '0', 10) : void 0;
 
     if (!isNumber(options.rotation)) {
         if (rotationMode === 'auto' || rotationMode === 'circular') {
@@ -161,10 +167,7 @@ function getDlOptions(
                 rotationMode = 'auto';
             }
 
-            if (
-                (point.innerArcLength as any) < 1 &&
-                (point.outerArcLength as any) > (shape.radius as any)
-            ) {
+            if (innerArcLength < 1 && outerArcLength > radius) {
                 rotationRad = 0;
                 // Trigger setTextPath function to get textOutline etc.
                 if (point.dataLabelPath && rotationMode === 'circular') {
@@ -172,10 +175,13 @@ function getDlOptions(
                         enabled: true
                     };
                 }
-            } else if (
-                (point.innerArcLength as any) > 1 &&
-                (point.outerArcLength as any) > 1.5 * (shape.radius as any)
-            ) {
+                // If the slice is less than 180 degrees, set a reasonable width
+                // for fitting into the open slice (#22532)
+                if (end - start < Math.PI) {
+                    width = radius * 0.7;
+                }
+
+            } else if (innerArcLength > 1 && outerArcLength > 1.5 * radius) {
                 if (rotationMode === 'circular') {
                     options.textPath = {
                         enabled: true,
@@ -189,8 +195,7 @@ function getDlOptions(
             } else {
                 // Trigger the destroyTextPath function
                 if (
-                    point.dataLabel &&
-                    point.dataLabel.textPath &&
+                    point.dataLabel?.textPath &&
                     rotationMode === 'circular'
                 ) {
                     options.textPath = {
@@ -203,51 +208,56 @@ function getDlOptions(
 
         if (rotationMode !== 'auto' && rotationMode !== 'circular') {
 
-            if (point.dataLabel && point.dataLabel.textPath) {
+            if (point.dataLabel?.textPath) {
                 options.textPath = {
                     enabled: false
                 };
             }
-            rotationRad = (
-                (shape.end as any) -
-                ((shape.end as any) - (shape.start as any)) / 2
-            );
+            rotationRad = end - (end - start) / 2;
         }
 
         if (rotationMode === 'parallel') {
-            (options.style as any).width = Math.min(
-                (shape.radius as any) * 2.5,
-                ((point.outerArcLength as any) + point.innerArcLength) / 2
+            width = Math.min(
+                radius * 2.5,
+                (outerArcLength + innerArcLength) / 2
             );
         } else {
-            if (
-                !defined((options.style as any).width) &&
-                shape.radius
-            ) {
-                (options.style as any).width = point.node.level === 1 ?
-                    2 * shape.radius :
-                    shape.radius;
+            if (!defined(width) && radius) {
+                width = point.node.level === 1 ? 2 * radius : radius;
             }
         }
 
-        if (
-            rotationMode === 'perpendicular' &&
+        if (rotationMode === 'perpendicular') {
             // 16 is the inferred line height. We don't know the real line
             // yet because the label is not rendered. A better approach for this
             // would be to hide the label from the `alignDataLabel` function
             // when the actual line height is known.
-            point.outerArcLength as any < 16
-        ) {
-            (options.style as any).width = 1;
+            const h = 16;
+            if (outerArcLength < h) {
+                width = 1;
+            } else if (shape.radius) {
+                style.lineClamp = Math.floor(innerArcLength / h) || 1;
+
+                // When the slice is narrow (< 16px) in the inner end, compute a
+                // safe margin to avoid the label overlapping the border
+                // (#22532)
+                const safeMargin = innerArcLength < h ?
+                    radius * (
+                        (h - innerArcLength) /
+                        (outerArcLength - innerArcLength)
+                    ) :
+                    0;
+                width = radius - safeMargin;
+            }
         }
 
         // Apply padding (#8515)
-        (options.style as any).width = Math.max(
-            (options.style as any).width - 2 * (options.padding || 0),
+        width = Math.max(
+            (width || 0) - paddingLeft - paddingRight,
             1
         );
 
-        rotation = ((rotationRad as any) * rad2deg) % 180;
+        rotation = ((rotationRad || 0) * rad2deg) % 180;
         if (rotationMode === 'parallel') {
             rotation -= 90;
         }
@@ -272,15 +282,14 @@ function getDlOptions(
             // Center dataLabel - disable textPath
             options.textPath.enabled = false;
             // Setting width and padding
-            (options.style as any).width = Math.max(
-                (point.shapeExisting.r * 2) -
-                2 * (options.padding || 0), 1
+            width = Math.max(
+                (point.shapeExisting.r * 2) - paddingLeft - paddingRight,
+                1
             );
         } else if (
-            point.dlOptions &&
-            point.dlOptions.textPath &&
+            point.dlOptions?.textPath &&
             !point.dlOptions.textPath.enabled &&
-            (rotationMode === 'circular')
+            rotationMode === 'circular'
         ) {
             // Bring dataLabel back if was a center dataLabel
             options.textPath.enabled = true;
@@ -289,17 +298,20 @@ function getDlOptions(
             // Enable rotation to render text
             options.rotation = 0;
             // Setting width and padding
-            (options.style as any).width = Math.max(
-                ((point.outerArcLength as any) +
-                (point.innerArcLength as any)) / 2 -
-                2 * (options.padding || 0), 1
+            width = Math.max(
+                (outerArcLength + innerArcLength) / 2 -
+                    paddingLeft - paddingRight,
+                1
             );
+            style.whiteSpace = 'nowrap';
         }
     }
+    style.width = width + 'px';
+
     return options;
 }
 
-/** @private */
+/** @internal */
 function getAnimation(
     shape: SunburstNode.NodeValuesObject,
     params: SunburstSeries.AnimationParams
@@ -375,7 +387,7 @@ function getAnimation(
     };
 }
 
-/** @private */
+/** @internal */
 function getDrillId(
     point: SunburstPoint,
     idRoot: string,
@@ -399,7 +411,7 @@ function getDrillId(
     return drillId;
 }
 
-/** @private */
+/** @internal */
 function cbSetTreeValuesBefore(
     node: SunburstNode,
     options: SunburstNode.NodeValuesObject
@@ -451,6 +463,7 @@ class SunburstSeries extends TreemapSeries {
      *
      * */
 
+    /** @internal */
     public static defaultOptions: SunburstSeriesOptions = merge(
         TreemapSeries.defaultOptions,
         SunburstSeriesDefaults
@@ -462,22 +475,28 @@ class SunburstSeries extends TreemapSeries {
      *
      * */
 
+    /** @internal */
     public center!: Array<number>;
 
     public data!: Array<SunburstPoint>;
 
+    /** @internal */
     public mapOptionsToLevel!: Record<string, SunburstSeriesLevelOptions>;
 
+    /** @internal */
     public nodeMap!: Record<string, SunburstNode>;
 
     public options!: SunburstSeriesOptions;
 
     public points!: Array<SunburstPoint>;
 
+    /** @internal */
     public shapeRoot?: SunburstNode.NodeValuesObject;
 
+    /** @internal */
     public startAndEndRadians!: CU.RadianAngles;
 
+    /** @internal */
     public tree!: SunburstNode;
 
     /* *
@@ -486,6 +505,7 @@ class SunburstSeries extends TreemapSeries {
      *
      * */
 
+    /** @internal */
     public alignDataLabel(
         point: SunburstPoint,
         dataLabel: SVGLabel,
@@ -495,12 +515,17 @@ class SunburstSeries extends TreemapSeries {
         if (labelOptions.textPath && labelOptions.textPath.enabled) {
             return;
         }
+
+        // In sunburst dataLabel may be placed, but this should be reset to
+        // make sure the dataLabel can be aligned to a new position (#21913)
+        dataLabel.placed = false;
+
         return super.alignDataLabel.apply(this, arguments);
     }
 
     /**
      * Animate the slices in. Similar to the animation of polar charts.
-     * @private
+     * @internal
      */
     public animate(init?: boolean): void {
         const chart = this.chart,
@@ -543,6 +568,7 @@ class SunburstSeries extends TreemapSeries {
         }
     }
 
+    /** @internal */
     public drawPoints(): void {
         const series = this,
             mapOptionsToLevel = series.mapOptionsToLevel,
@@ -582,17 +608,13 @@ class SunburstSeries extends TreemapSeries {
             addedHack = false;
 
         if (hackDataLabelAnimation) {
-            (series.dataLabelsGroup as any).attr({ opacity: 0 });
+            series.dataLabelsGroup!.attr({ opacity: 0 });
             animateLabels = function (): void {
-                const s = series;
-
                 animateLabelsCalled = true;
-                if (s.dataLabelsGroup) {
-                    s.dataLabelsGroup.animate({
-                        opacity: 1,
-                        visibility: 'inherit'
-                    });
-                }
+                series.dataLabelsGroup!.animate({
+                    opacity: 1,
+                    visibility: 'inherit'
+                });
             };
         }
         for (const point of points) {
@@ -617,16 +639,16 @@ class SunburstSeries extends TreemapSeries {
 
             if (hasRendered && animation) {
                 animationInfo = getAnimation(shape, {
-                    center: center,
-                    point: point,
-                    radians: radians,
-                    innerR: innerR,
-                    idRoot: idRoot,
-                    idPreviousRoot: idPreviousRoot,
-                    shapeExisting: shapeExisting,
-                    shapeRoot: shapeRoot,
-                    shapePreviousRoot: shapePreviousRoot,
-                    visible: visible
+                    center,
+                    point,
+                    radians,
+                    innerR,
+                    idRoot,
+                    idPreviousRoot,
+                    shapeExisting,
+                    shapeRoot,
+                    shapePreviousRoot,
+                    visible
                 });
             } else {
                 // When animation is disabled, attr is called from animation.
@@ -646,12 +668,18 @@ class SunburstSeries extends TreemapSeries {
                 isInside: visible,
                 isNull: !visible // Used for dataLabels & point.draw
             });
-            point.dlOptions = getDlOptions({
-                point: point,
-                level: level,
-                optionsPoint: point.options,
-                shapeArgs: shape
-            });
+            point.dlOptions = {
+                ...getDlOptions({
+                    point,
+                    level,
+                    optionsPoint: point.options,
+                    shapeArgs: shape
+                }),
+                zIndex: void 0
+            };
+            // Delete so it doesn't override anything on merge.
+            delete point.dlOptions.zIndex;
+
             if (!addedHack && visible) {
                 addedHack = true;
                 onComplete = animateLabels;
@@ -665,9 +693,9 @@ class SunburstSeries extends TreemapSeries {
                         (point.selected && 'select') as any
                     ) as any)
                 ),
-                onComplete: onComplete,
-                group: group,
-                renderer: renderer,
+                onComplete,
+                group,
+                renderer,
                 shapeType: 'arc',
                 shapeArgs: shape
             });
@@ -683,7 +711,7 @@ class SunburstSeries extends TreemapSeries {
             // If animateLabels is called before labels were hidden, then call
             // it again.
             if (animateLabelsCalled) {
-                (animateLabels as any)();
+                animateLabels?.();
             }
         } else {
             ColumnSeries.prototype.drawDataLabels.call(series);
@@ -694,7 +722,7 @@ class SunburstSeries extends TreemapSeries {
 
     /**
      * The layout algorithm for the levels.
-     * @private
+     * @internal
      */
     public layoutAlgorithm(
         parent: SunburstNode.NodeValuesObject,
@@ -751,6 +779,7 @@ class SunburstSeries extends TreemapSeries {
         }, [] as Array<SunburstNode.NodeValuesObject>);
     }
 
+    /** @internal */
     public setRootNode(
         id: string,
         redraw?: boolean,
@@ -776,7 +805,7 @@ class SunburstSeries extends TreemapSeries {
 
     /**
      * Set the shape arguments on the nodes. Recursive from root down.
-     * @private
+     * @internal
      */
     public setShapeArgs(
         parent: SunburstNode,
@@ -842,6 +871,7 @@ class SunburstSeries extends TreemapSeries {
         }
     }
 
+    /** @internal */
     public translate(this: SunburstSeries): void {
         const series = this,
             options = series.options,
@@ -863,9 +893,6 @@ class SunburstSeries extends TreemapSeries {
 
         series.shapeRoot = nodeRoot && nodeRoot.shapeArgs;
 
-        if (!series.processedXData) { // Hidden series
-            series.processData();
-        }
         series.generatePoints();
 
         fireEvent(series, 'afterTranslate');
@@ -946,9 +973,13 @@ class SunburstSeries extends TreemapSeries {
  * */
 
 interface SunburstSeries {
+    /** @internal */
     getCenter: typeof CU['getCenter'];
+    /** @internal */
     pointClass: typeof SunburstPoint;
+    /** @internal */
     utils: typeof SunburstUtilities;
+    /** @internal */
     NodeClass: typeof SunburstNode;
 }
 
@@ -979,12 +1010,14 @@ namespace SunburstSeries {
      *
      * */
 
+    /** @internal */
     export interface AnimationParams {
         center: PositionObject;
         idPreviousRoot?: string;
         idRoot: string;
         innerR: number;
         point: SunburstPoint;
+        /** @internal */
         radians: CU.RadianAngles;
         shapeExisting: SunburstNode.NodeValuesObject;
         shapePreviousRoot?: SunburstNode.NodeValuesObject;
@@ -992,6 +1025,7 @@ namespace SunburstSeries {
         visible: boolean;
     }
 
+    /** @internal */
     export interface DlOptionsParams {
         level: SunburstSeriesLevelOptions;
         optionsPoint: SunburstPointOptions;
@@ -999,6 +1033,7 @@ namespace SunburstSeries {
         shapeArgs: SunburstNode.NodeValuesObject;
     }
 
+    /** @internal */
     export interface SetRootNodeObject {
         newRootId?: string;
         previousRootId?: string;

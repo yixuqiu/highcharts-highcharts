@@ -2,13 +2,14 @@
  *
  *  This module implements sunburst charts in Highcharts.
  *
- *  (c) 2016-2024 Highsoft AS
+ *  (c) 2016-2026 Highsoft AS
  *
- *  Authors: Jon Arild Nygard
+ *  Authors: Jon Arild Nygård
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  * */
 
@@ -43,10 +44,8 @@ import type SunburstSeriesOptions from './SunburstSeriesOptions';
  *               ignoreHiddenPoint, innerSize, joinBy, legendType, linecap,
  *               minSize, navigatorOptions, pointRange
  * @product      highcharts
- * @requires     modules/sunburst.js
+ * @requires     modules/sunburst
  * @optionparent plotOptions.sunburst
- *
- * @private
  */
 const SunburstSeriesDefaults: SunburstSeriesOptions = {
 
@@ -96,7 +95,7 @@ const SunburstSeriesDefaults: SunburstSeriesOptions = {
     /**
      * Can set a `color` on all points which lies on the same level.
      *
-     * @type      {Highcharts.ColorString|Highcharts.GradientColorObject|Highcharts.PatternObject}
+     * @type      {Highcharts.ColorType}
      * @apioption plotOptions.sunburst.levels.color
      */
 
@@ -149,6 +148,15 @@ const SunburstSeriesDefaults: SunburstSeriesOptions = {
      */
 
     /**
+     * Whether the `level` number is absolute, or relative to the currently
+     * visible root. Overrides the series option of the same name for this
+     * level.
+     *
+     * @type      {boolean}
+     * @apioption plotOptions.sunburst.levels.levelIsConstant
+     */
+
+    /**
      * Can set a `levelSize` on all points which lies on the same level.
      *
      * @type      {Object}
@@ -160,7 +168,7 @@ const SunburstSeriesDefaults: SunburstSeriesOptions = {
      * zoom in on its children. Deprecated and replaced by
      * [allowTraversingTree](#plotOptions.sunburst.allowTraversingTree).
      *
-     * @deprecated
+     * @deprecated 7.0.3
      * @type      {boolean}
      * @default   false
      * @since     6.0.0
@@ -189,15 +197,11 @@ const SunburstSeriesDefaults: SunburstSeriesOptions = {
      * @type    {Array<number|string>}
      * @default ["50%", "50%"]
      * @product highcharts
-     *
-     * @private
      */
     center: ['50%', '50%'],
 
     /**
      * @product highcharts
-     *
-     * @private
      */
     clip: false,
 
@@ -206,14 +210,10 @@ const SunburstSeriesDefaults: SunburstSeriesOptions = {
      * Disable inherited opacity from Treemap series.
      *
      * @ignore-option
-     *
-     * @private
      */
     opacity: 1,
     /**
      * @declare Highcharts.SeriesSunburstDataLabelsOptionsObject
-     *
-     * @private
      */
     dataLabels: {
 
@@ -243,7 +243,6 @@ const SunburstSeriesDefaults: SunburstSeriesOptions = {
         rotationMode: 'circular',
 
         style: {
-            /** @internal */
             textOverflow: 'ellipsis'
         }
 
@@ -252,8 +251,6 @@ const SunburstSeriesDefaults: SunburstSeriesOptions = {
      * Which point to use as a root in the visualization.
      *
      * @type {string}
-     *
-     * @private
      */
     rootId: void 0,
 
@@ -262,8 +259,6 @@ const SunburstSeriesDefaults: SunburstSeriesOptions = {
      * set to false the first level visible when drilling is considered
      * to be level one. Otherwise the level will be the same as the tree
      * structure.
-     *
-     * @private
      */
     levelIsConstant: true,
 
@@ -274,8 +269,6 @@ const SunburstSeriesDefaults: SunburstSeriesOptions = {
      *         Sunburst with various sizes per level
      *
      * @since 6.0.5
-     *
-     * @private
      */
     levelSize: {
         /**
@@ -312,7 +305,7 @@ const SunburstSeriesDefaults: SunburstSeriesOptions = {
      *
      * @extends   plotOptions.treemap.traverseUpButton
      * @since     6.0.0
-     * @deprecated
+     * @deprecated 9.3.3
      * @apioption plotOptions.sunburst.traverseUpButton
      *
      */
@@ -325,8 +318,6 @@ const SunburstSeriesDefaults: SunburstSeriesOptions = {
      *         Sliced sunburst
      *
      * @since 6.0.4
-     *
-     * @private
      */
     slicedOffset: 10
 
@@ -337,14 +328,15 @@ const SunburstSeriesDefaults: SunburstSeriesOptions = {
  * not specified, it is inherited from [chart.type](#chart.type).
  *
  * @extends   series,plotOptions.sunburst
- * @excluding dataParser, dataURL, stack, dataSorting, boostThreshold,
+ * @excluding stack, dataSorting, boostThreshold,
  *            boostBlending
  * @product   highcharts
- * @requires  modules/sunburst.js
+ * @requires  modules/sunburst
  * @apioption series.sunburst
  */
 
 /**
+ * @basic
  * @type      {Array<number|null|*>}
  * @extends   series.treemap.data
  * @excluding x, y

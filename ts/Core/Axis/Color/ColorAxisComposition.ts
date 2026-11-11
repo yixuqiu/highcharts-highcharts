@@ -1,10 +1,12 @@
 /* *
  *
- *  (c) 2010-2024 Torstein Honsi
+ *  (c) 2010-2026 Highsoft AS
+ *  Author: Torstein Hønsi
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  * */
 
@@ -19,24 +21,24 @@
 import type Axis from '../Axis';
 import type Chart from '../../Chart/Chart';
 import type ColorAxis from './ColorAxis';
+import type ColorAxisOptions from './ColorAxisOptions';
 import type ColorType from '../../Color/ColorType';
 import type Fx from '../../Animation/Fx';
 import type Legend from '../../Legend/Legend';
 import type Point from '../../Series/Point';
 import type Series from '../../Series/Series';
 import type SeriesOptions from '../../Series/SeriesOptions';
+import type SVGElement from '../../Renderer/SVG/SVGElement';
 import type TreemapSeries from '../../../Series/Treemap/TreemapSeries';
 
 import Color from '../../Color/Color.js';
 const { parse: color } = Color;
-import U from '../../Utilities.js';
-const {
+import {
     addEvent,
     extend,
     merge,
-    pick,
     splat
-} = U;
+} from '../../../Shared/Utilities.js';
 
 /* *
  *
@@ -44,15 +46,15 @@ const {
  *
  * */
 
-declare module '../../Series/PointLike' {
-    interface PointLike {
+declare module '../../Series/PointBase' {
+    interface PointBase {
         /** @requires ColorSeriesMixin */
         setVisible(vis?: boolean): void;
     }
 }
 
-declare module '../../Series/SeriesLike' {
-    interface SeriesLike {
+declare module '../../Series/SeriesBase' {
+    interface SeriesBase {
         /** @requires ColorSeriesMixin */
         translateColors(): void;
     }
@@ -64,7 +66,7 @@ declare module '../../Series/SeriesLike' {
  *
  * */
 
-namespace ColorAxisComposition {
+export namespace ColorAxisComposition {
 
     /* *
      *
@@ -105,9 +107,7 @@ namespace ColorAxisComposition {
      *
      * */
 
-    /**
-     * @private
-     */
+    /** @internal */
     export function compose(
         ColorAxisClass: typeof ColorAxis,
         ChartClass: typeof Chart,
@@ -127,7 +127,7 @@ namespace ColorAxisComposition {
                 chartProto.addColorAxis
             ];
 
-            addEvent(ChartClass, 'afterGetAxes', onChartAfterGetAxes);
+            addEvent(ChartClass, 'afterCreateAxes', onChartAfterCreateAxes);
 
             wrapChartCreateAxis(ChartClass);
 
@@ -168,10 +168,10 @@ namespace ColorAxisComposition {
     }
 
     /**
-     * Extend the chart getAxes method to also get the color axis.
-     * @private
+     * Extend the chart createAxes method to also make the color axis.
+     * @internal
      */
-    function onChartAfterGetAxes(
+    function onChartAfterCreateAxes(
         this: Chart
     ): void {
         const { userOptions } = this;
@@ -179,13 +179,13 @@ namespace ColorAxisComposition {
         this.colorAxis = [];
 
         // If a `colorAxis` config is present in the user options (not in a
-        // theme), instanciate it.
+        // theme), instantiate it.
         if (userOptions.colorAxis) {
             userOptions.colorAxis = splat(userOptions.colorAxis);
             userOptions.colorAxis.map((axisOptions): ColorAxis => (
                 new ColorAxisConstructor(
                     this,
-                    axisOptions as Partial<ColorAxis.Options>
+                    axisOptions as Partial<ColorAxisOptions>
                 )
             ));
         }
@@ -194,7 +194,7 @@ namespace ColorAxisComposition {
     /**
      * Add the color axis. This also removes the axis' own series to prevent
      * them from showing up individually.
-     * @private
+     * @internal
      */
     function onLegendAfterGetAllItems(
         this: Legend,
@@ -213,13 +213,13 @@ namespace ColorAxisComposition {
             };
 
         let colorAxisItems = [] as Array<(ColorAxis|ColorAxis.LegendItemObject)>,
-            options: ColorAxis.Options,
+            options: ColorAxisOptions,
             i;
 
         colorAxes.forEach(function (colorAxis: ColorAxis): void {
             options = colorAxis.options;
 
-            if (options && options.showInLegend) {
+            if (options?.showInLegend) {
                 // Data classes
                 if (options.dataClasses && options.visible) {
                     colorAxisItems = colorAxisItems.concat(
@@ -246,6 +246,8 @@ namespace ColorAxisComposition {
                         }
                     }
                 });
+            } else {
+                colorAxis.destroyItems();
             }
         });
 
@@ -255,9 +257,7 @@ namespace ColorAxisComposition {
         }
     }
 
-    /**
-     * @private
-     */
+    /** @internal */
     function onLegendAfterColorizeItem(
         this: Legend,
         e: {
@@ -274,7 +274,7 @@ namespace ColorAxisComposition {
 
     /**
      * Updates in the legend need to be reflected in the color axis. (#6888)
-     * @private
+     * @internal
      */
     function onLegendAfterUpdate(
         this: Legend,
@@ -287,14 +287,13 @@ namespace ColorAxisComposition {
 
     /**
      * Calculate and set colors for points.
-     * @private
+     * @internal
      */
     function onSeriesAfterTranslate(
         this: Series
     ): void {
         if (
-            this.chart.colorAxis &&
-            this.chart.colorAxis.length ||
+            this.chart.colorAxis?.length ||
             (this as TreemapSeries).colorAttribs
         ) {
             this.translateColors();
@@ -303,7 +302,7 @@ namespace ColorAxisComposition {
 
     /**
      * Add colorAxis to series axisTypes.
-     * @private
+     * @internal
      */
     function onSeriesBindAxes(
         this: Series
@@ -320,18 +319,18 @@ namespace ColorAxisComposition {
 
     /**
      * Set the visibility of a single point
-     * @private
+     * @internal
      * @function Highcharts.colorPointMixin.setVisible
      * @param {boolean} visible
      */
     export function pointSetVisible(
         this: PointComposition,
-        vis?: boolean
+        visible?: boolean
     ): void {
         const point = this,
-            method = vis ? 'show' : 'hide';
+            method = visible ? 'show' : 'hide';
 
-        point.visible = point.options.visible = Boolean(vis);
+        point.visible = point.options.visible = Boolean(visible);
 
         // Show and hide associated elements
         ['graphic', 'dataLabel'].forEach(function (key: string): void {
@@ -345,12 +344,12 @@ namespace ColorAxisComposition {
     /**
      * In choropleth maps, the color is a result of the value, so this needs
      * translation too
-     * @private
+     * @internal
      * @function Highcharts.colorSeriesMixin.translateColors
      */
     function seriesTranslateColors(this: SeriesComposition): void {
         const series = this,
-            points = this.data.length ? this.data : this.points,
+            points = this.getPointsCollection() as PointComposition[], // #17945
             nullColor = this.options.nullColor,
             colorAxis = this.colorAxis,
             colorKey = this.colorKey;
@@ -364,6 +363,29 @@ namespace ColorAxisComposition {
                             colorAxis.toColor(value, point) :
                             point.color || series.color
                 );
+
+            // Points created while their data class is toggled off in the
+            // legend must inherit its hidden state (#25083)
+            const item = colorAxis?.legendItem?.labels?.[
+                    point.dataClass as number
+                ] as ColorAxis.LegendItemObject|undefined,
+                hidden = item?.visible === false,
+                // Only take back the points that were hidden this way
+                visible = !hidden &&
+                    !!(point.visible || point.hiddenInDataClass);
+
+            if (item) {
+                item.isDirtyPoints = hidden;
+            }
+
+            if (point.visible !== visible) {
+                point.hiddenInDataClass = hidden;
+                point.visible = point.options.visible = visible;
+                if (visible) {
+                    // Hidden by a legend click, drawPoints won't show it
+                    point.graphic?.show();
+                }
+            }
 
             if (color && point.color !== color) {
                 point.color = color;
@@ -379,9 +401,7 @@ namespace ColorAxisComposition {
         });
     }
 
-    /**
-     * @private
-     */
+    /** @internal */
     function wrapChartCreateAxis(
         ChartClass: typeof Chart
     ): void {
@@ -400,7 +420,7 @@ namespace ColorAxisComposition {
             const axis = new ColorAxisConstructor(
                 chart,
                 merge(
-                    options.axis as Partial<ColorAxis.Options>,
+                    options.axis as Partial<ColorAxisOptions>,
                     {
                         index: (chart as AnyRecord)[type].length,
                         isX: false
@@ -420,7 +440,7 @@ namespace ColorAxisComposition {
                 series.isDirtyData = true;
             });
 
-            if (pick(options.redraw, true)) {
+            if (options.redraw ?? true) {
                 chart.redraw(options.animation);
             }
 
@@ -430,12 +450,12 @@ namespace ColorAxisComposition {
 
     /**
      * Handle animation of the color attributes directly.
-     * @private
+     * @internal
      */
     function wrapFxFillSetter(
         this: Fx
     ): void {
-        this.elem.attr(
+        ((this.elem as SVGElement).attr)(
             'fill',
             color(this.start as any).tweenTo(
                 color(this.end as any),
@@ -448,12 +468,12 @@ namespace ColorAxisComposition {
 
     /**
      * Handle animation of the color attributes directly.
-     * @private
+     * @internal
      */
     function wrapFxStrokeSetter(
         this: Fx
     ): void {
-        this.elem.attr(
+        (this.elem as SVGElement).attr(
             'stroke',
             color(this.start as any).tweenTo(
                 color(this.end as any),

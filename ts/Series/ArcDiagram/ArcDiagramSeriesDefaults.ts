@@ -2,11 +2,13 @@
  *
  *  Arc diagram module
  *
- *  (c) 2021 Piotr Madej, Grzegorz Blachliński
+ *  (c) 2021-2026 Highsoft AS
+ *  Author: Piotr Madej, Grzegorz Blachliński
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  * */
 
@@ -44,13 +46,13 @@ import type ArcDiagramSeriesOptions from './ArcDiagramSeriesOptions';
  * @extends      plotOptions.sankey
  * @since 10.0.0
  * @product      highcharts
+ * @requires     modules/sankey
  * @requires     modules/arc-diagram
  * @exclude      curveFactor, connectEnds, connectNulls, colorAxis, colorKey,
- *               dataSorting, dragDrop, getExtremesFromAll, nodeAlignment,
- *               nodePadding, centerInCategory, pointInterval,
- *               pointIntervalUnit, pointPlacement, pointStart,
- *               relativeXValue, softThreshold, stack, stacking, step,
- *               xAxis, yAxis
+ *               dataSorting, dragDrop, getExtremesFromAll, legendSymbolColor,
+ *               nodeAlignment, nodePadding, centerInCategory, pointInterval,
+ *               pointIntervalUnit, pointPlacement, pointStart, relativeXValue,
+ *               softThreshold, stack, stacking, step, xAxis, yAxis
  * @optionparent plotOptions.arcdiagram
  */
 const ArcDiagramSeriesDefaults: ArcDiagramSeriesOptions = {
@@ -87,8 +89,6 @@ const ArcDiagramSeriesDefaults: ArcDiagramSeriesOptions = {
      * string by default.
      *
      * @declare Highcharts.SeriesArcDiagramDataLabelsOptionsObject
-     *
-     * @private
      */
     dataLabels: {
 
@@ -107,7 +107,7 @@ const ArcDiagramSeriesDefaults: ArcDiagramSeriesOptions = {
 
             /**
              * @type    {Highcharts.SVGAttributes}
-             * @default {"startOffset":"25%"}
+             * @default { startOffset: '25%' }
              */
             attributes: {
 
@@ -130,7 +130,6 @@ const ArcDiagramSeriesDefaults: ArcDiagramSeriesOptions = {
      *
      * @type    {number}
      * @since 10.0.0
-     * @default undefined
      * @product highcharts
      * @apioption series.arcdiagram.linkRadius
      */
@@ -144,12 +143,18 @@ const ArcDiagramSeriesDefaults: ArcDiagramSeriesOptions = {
      *
      * @type    {number}
      * @since 10.0.0
-     * @default undefined
      * @product highcharts
      * @apioption series.arcdiagram.linkWeight
      */
 
     /**
+     * Options for the point markers of arc diagram series. Properties like
+     * `fillColor`, `lineColor` and `lineWidth` define the visual appearance of
+     * the markers, while the `symbol` option defines their shape.
+     *
+     * In styled mode, the markers can be styled with the `.highcharts-point`,
+     * `.highcharts-point-hover` and `.highcharts-point-select` class names.
+     *
      * @extends   plotOptions.series.marker
      * @excluding enabled, enabledThreshold, height, width
      */
@@ -211,14 +216,15 @@ const ArcDiagramSeriesDefaults: ArcDiagramSeriesOptions = {
  */
 
 /**
+ * @type      {Highcharts.SeriesArcDiagramDataLabelsOptionsObject|Array<Highcharts.SeriesArcDiagramDataLabelsOptionsObject>}
+ * @product   highcharts
+ * @apioption series.arcdiagram.dataLabels
+ */
+
+/**
  * @extends   plotOptions.series.marker
  * @excluding enabled, enabledThreshold, height, radius, width
  * @apioption series.arcdiagram.marker
- */
-/**
- * @type      {Highcharts.SeriesArcDiagramDataLabelsOptionsObject|Array<Highcharts.SeriesArcDiagramDataLabelsOptionsObject>}
- * @product   highcharts
- * @apioption series.arcdiagram.data.dataLabels
  */
 
 /**
@@ -244,15 +250,6 @@ const ArcDiagramSeriesDefaults: ArcDiagramSeriesOptions = {
  */
 
 /**
- * Individual data label for each node. The options are the same as the ones for
- * [series.arcdiagram.dataLabels](#series.arcdiagram.dataLabels).
- *
- * @type
- * {Highcharts.SeriesArcDiagramDataLabelsOptionsObject|Array<Highcharts.SeriesArcDiagramDataLabelsOptionsObject>}
- *
- */
-
-/**
  * An array of data points for the series. For the `arcdiagram` series type,
  * points can be given in the following way:
  *
@@ -273,11 +270,41 @@ const ArcDiagramSeriesDefaults: ArcDiagramSeriesOptions = {
  *     }]
  *  ```
  *
- * @type      {Array<*>}
+ *  When you provide the data as tuples, the keys option has to be set as well.
+ *
+ *  ```js
+ *     keys: ['from', 'to', 'weight'],
+ *     data: [
+ *         ['Category1', 'Category2', 2],
+ *         ['Category1', 'Category3', 5]
+ *     ]
+ *  ```
+ *
+ * @basic
+ * @type      {Array<*>|Array<Array<(string|number)>>}
  * @extends   series.sankey.data
  * @product   highcharts
- * @excluding outgoing, dataLabels
+ * @excluding outgoing
  * @apioption series.arcdiagram.data
+ */
+
+/**
+ * @type      {Highcharts.SeriesArcDiagramDataLabelsOptionsObject|Array<Highcharts.SeriesArcDiagramDataLabelsOptionsObject>}
+ * @product   highcharts
+ * @apioption series.arcdiagram.data.dataLabels
+ */
+
+/**
+ * The link weight, in pixels. If not set, width is calculated per link,
+ * depending on the weight value.
+ *
+ * @sample highcharts/series-arcdiagram/link-weight
+ *         Link weight set on series
+ *
+ * @type {number}
+ * @since 10.0.0
+ * @product highcharts
+ * @apioption series.arcdiagram.data.linkWeight
  */
 
 ''; // Adds doclets above to the transpiled file

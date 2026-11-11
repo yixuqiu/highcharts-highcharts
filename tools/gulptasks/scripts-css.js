@@ -23,7 +23,7 @@ const highchartsConfig = {
     replacePath: '',
     exclude: [
         'dashboards/',
-        'datagrid/',
+        'grid/',
         'dashboards-icons/'
     ]
 };
@@ -38,11 +38,16 @@ const dashboardsConfig = {
     exclude: []
 };
 
-const datagridConfig = {
-    sources: 'css/datagrid/',
-    target: TARGET_DIRECTORY + '/datagrid',
-    replacePath: 'datagrid/',
-    exclude: []
+const gridConfig = {
+    sources: [
+        'css/grid/'
+    ],
+    target: TARGET_DIRECTORY + '/grid/css/modules',
+    replacePath: 'css/grid/',
+    exclude: [
+        '.stylelintrc',
+        'grid.css' // deprecated, will be removed from the bundle
+    ]
 };
 
 function handleConfig(config) {
@@ -60,6 +65,30 @@ function handleConfig(config) {
 
     // Merge the defaultConfig with the provided config
     return { ...defaultConfig, ...config };
+}
+
+async function bundleGridCSS() {
+    const argv = require('yargs').argv;
+    const LogLib = require('../libs/log');
+    const ProcessLib = require('../libs/process');
+    const Path = require('path');
+
+    const config = Path.join('tools', 'webpacks', 'grid-styles.webpack.mjs');
+
+    if (argv.verbose) {
+        LogLib.warn(config);
+    }
+
+    LogLib.message('Bundling Grid CSS...');
+    await ProcessLib.exec(
+        `npx webpack -c ${config} --no-color`,
+        {
+            maxBuffer: 1024 * 1024,
+            silent: argv.verbose ? 1 : 2,
+            timeout: 60000
+        }
+    );
+    LogLib.success('Finished CSS bundling.');
 }
 
 function copyCSS(config) {
@@ -84,6 +113,47 @@ function copyCSS(config) {
     );
 }
 
+/**
+ * Changes the HC Grid product version in the CSS files.
+ * @param  {string} folder
+ * Folder to replace the version in.
+ * @param  {string} buildPropertiesPath
+ * Path to build properties file.
+ */
+function replaceProductVersionInFiles(folder, buildPropertiesPath) {
+    const fs = require('fs');
+    const path = require('path');
+    const { updateFile } = require('../libs/fs');
+
+    const { version } = JSON.parse(
+        fs.readFileSync(
+            path.resolve(__dirname, buildPropertiesPath),
+            'utf8'
+        )
+    );
+    const files = fs.readdirSync(folder, { withFileTypes: true });
+
+    files.forEach(file => {
+        if (file.isDirectory()) {
+            return;
+        }
+
+        const filePath = path.join(folder, file.name);
+        try {
+            updateFile(filePath, content =>
+                content.replace(/@product\.version@/gu, version));
+        } catch (error) {
+            // Directory symlinks are not marked as directories by readdir.
+            if (
+                !['EISDIR', 'EPERM'].includes(error.code) ||
+                !fs.statSync(filePath).isDirectory()
+            ) {
+                throw error;
+            }
+        }
+    });
+}
+
 /* *
  *
  *  Tasks
@@ -103,16 +173,28 @@ function scriptCSS(argv) {
     const log = require('../libs/log');
 
     return new Promise(resolve => {
-        log.message(`Generating css for ${argv.dashboards ? 'dashboards' : 'highcharts'} ...`);
-
-        if (argv.dashboards) {
+        if (argv.product === 'Dashboards') {
+            log.message('Generating css for Dashboards...');
             copyCSS(dashboardsConfig);
-            copyCSS(datagridConfig);
+            replaceProductVersionInFiles(
+                require('path').join(dashboardsConfig.target, 'css'),
+                './dashboards/build-properties.json'
+            );
+            log.success('Copied dashboards CSS');
+        } else if (argv.product === 'Grid') {
+            log.message('Generating css for Grid...');
+            copyCSS(gridConfig);
+            bundleGridCSS();
+            replaceProductVersionInFiles(
+                require('path').join(TARGET_DIRECTORY, 'grid', 'css'),
+                './grid/build-properties.json'
+            );
+            log.success('Copied grid CSS');
         } else {
+            log.message('Generating css for Highcharts...');
             copyCSS(highchartsConfig);
+            log.success('Copied highcharts CSS');
         }
-
-        log.success(`Copied ${argv.dashboards ? 'dashboards' : 'highcharts'} CSS`);
 
         resolve();
     });
@@ -120,7 +202,7 @@ function scriptCSS(argv) {
 
 scriptCSS.description = 'Creates CSS files for given product';
 scriptCSS.flags = {
-    '--dashboards': 'Creates CSS files for dashboards'
+    '--product': 'Creates CSS files for product: Highcharts (default), Grid, Dashboards'
 };
 
 gulp.task('scripts-css', () => scriptCSS(require('yargs').argv));

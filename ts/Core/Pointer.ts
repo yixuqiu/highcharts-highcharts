@@ -1,10 +1,12 @@
 /* *
  *
- *  (c) 2010-2024 Torstein Honsi
+ *  (c) 2010-2026 Highsoft AS
+ *  Author: Torstein Hønsi
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  * */
 
@@ -30,21 +32,18 @@ import type {
 import type Series from './Series/Series';
 import type SVGElement from './Renderer/SVG/SVGElement';
 
-import Color from './Color/Color.js';
-const { parse: color } = Color;
 import H from './Globals.js';
 const {
     charts,
     composed,
     isTouchDevice
 } = H;
-import { Palette } from '../Core/Color/Palettes.js';
-import U from './Utilities.js';
 import SVGAttributes from './Renderer/SVG/SVGAttributes';
-const {
+import {
     addEvent,
     attr,
     css,
+    defined,
     extend,
     find,
     fireEvent,
@@ -52,10 +51,9 @@ const {
     isObject,
     objectEach,
     offset,
-    pick,
     pushUnique,
     splat
-} = U;
+} from '../Shared/Utilities.js';
 
 /* *
  *
@@ -63,18 +61,41 @@ const {
  *
  * */
 
-declare module './Chart/ChartLike'{
-    interface ChartLike {
+declare module './Chart/ChartBase'{
+    interface ChartBase {
         cancelClick?: boolean;
         hoverPoint?: Point;
         hoverPoints?: Array<Point>;
         hoverSeries?: Series;
+        lastPanX?: number;
+        lastPanY?: number;
         mouseDownX?: number;
         mouseDownY?: number;
         mouseIsDown?: (boolean|string);
         pointer?: Pointer;
     }
 }
+
+/**
+ *
+ *  Functions
+ *
+ */
+
+/**
+ * Check whether the configured action key allows the interaction.
+ *
+ * @internal
+ * @param {Event} e
+ *        A mouse event.
+ * @param {string | undefined} key
+ *        Zoom or pan key.
+ * @return {boolean}
+ *         True if the key is undefined
+ *         or if the action key is pressed. False otherwise.
+ */
+const checkActionKey = (e: Event, key: string | undefined): boolean =>
+    !defined(key) || (e as any)[`${key}Key`];
 
 /* *
  *
@@ -105,17 +126,14 @@ class Pointer {
      *
      * */
 
+    /** @internal */
     public static hoverChartIndex: (number|undefined);
 
-    public static unbindDocumentMouseUp: (Function|undefined);
+    /** @internal */
+    public static unbindDocumentMouseUp: Array<{ doc: Document, unbind: Function }> = [];
 
+    /** @internal */
     public static unbindDocumentTouchEnd: (Function|undefined);
-
-    /* *
-     *
-     *  Constructors
-     *
-     * */
 
     /* *
      *
@@ -123,48 +141,134 @@ class Pointer {
      *
      * */
 
+    /**
+     * The chart that the Pointer belongs to.
+     * @internal
+     */
     public chart: Chart;
 
+    /**
+     * The position of the chart on the page.
+     * @internal
+     */
     public chartPosition?: Pointer.ChartPositionObject;
 
+    /**
+     * The distance by which the mouse has been dragged since the last
+     * `mousedown` event.
+     * @internal
+     */
     public hasDragged: number = 0;
 
-    public hasPinched?: boolean;
+    /**
+     * Indicates if there has been a movement larger than ~4px during
+     * a pinch event.
+     * @internal
+     */
+    public hasPinchMoved?: boolean;
 
+    /**
+     * Whether the browser is using pointer capture.
+     * @internal
+     */
     public hasPointerCapture?: boolean;
 
+    /**
+     * Whether the chart has zooming in any direction.
+     * @internal
+     */
     public hasZoom?: boolean;
 
+    /**
+     * True, if a pinch gesture is in progress.
+     * @internal
+     */
     public initiated?: boolean;
 
+    /**
+     * True, if the pointer is hovering over a point that is not the current
+     * `hoverPoint`.
+     * @internal
+     */
     public isDirectTouch?: boolean;
 
+    /**
+     * The last touch events from a touch/pinch gesture.
+     * @internal
+     */
     public lastTouches?: Array<PointerEvent>;
 
+    /**
+     * The options for the Pointer.
+     * @internal
+     */
     public options: Options;
 
+    /**
+     * The touch points that are participating in a pinch gesture.
+     * @internal
+     */
     public pinchDown?: Array<PointerEvent>;
 
+    /**
+     * A list of events to unbind when the pointer is destroyed.
+     * @internal
+     */
     public pointerCaptureEventsToUnbind: Array<Function> = [];
 
+    /**
+     * A flag to indicate that the target has been reset since the last touch
+     * event.
+     * @internal
+     */
     public res?: boolean;
 
+    /**
+     * Whether to run the chart-level click handler.
+     * @internal
+     */
     public runChartClick?: boolean;
 
+    /**
+     * The selection marker element.
+     * @internal
+     */
     public selectionMarker?: SVGElement;
 
-    public tooltipTimeout?: number;
-
+    /**
+     * A list of events to unbind when the pointer is destroyed.
+     * @internal
+     */
     public eventsToUnbind: Array<Function> = [];
 
+    /**
+     * The document mousemove event handler.
+     * @internal
+     */
     public unDocMouseMove?: Function;
 
+    /**
+     * Whether to zoom horizontally.
+     * @internal
+     */
     public zoomHor?: boolean;
 
+    /**
+     * Whether to zoom vertically.
+     * @internal
+     */
     public zoomVert?: boolean;
 
+    /**
+     * Whether to zoom on the X axis.
+     * @internal
+     */
     public zoomX?: boolean;
 
+    /**
+     * Whether to zoom on the Y axis.
+     * @internal
+     */
     public zoomY?: boolean;
 
     /* *
@@ -178,19 +282,18 @@ class Pointer {
      * or, if `inactiveOtherPoints` is set to true, set inactive state to
      * all points within that series.
      *
-     * @private
+     * @internal
      * @function Highcharts.Pointer#applyInactiveState
      *
      * @param {Array<Highcharts.Point>} points
      * Currently hovered points
      */
-    public applyInactiveState(points: Array<Point>): void {
-        let activeSeries = [] as Array<Series>,
-            series: Series;
+    public applyInactiveState(points: Array<Point> = []): void {
+        const activeSeries: Array<Series> = [];
 
         // Get all active series from the hovered points
-        (points || []).forEach(function (item): void {
-            series = item.series;
+        points.forEach((item): void => {
+            const series = item.series;
 
             // Include itself
             activeSeries.push(series);
@@ -202,26 +305,40 @@ class Pointer {
 
             // Include all child series
             if (series.linkedSeries) {
-                activeSeries = activeSeries.concat(
-                    series.linkedSeries
-                );
+                activeSeries.push.apply(activeSeries, series.linkedSeries);
             }
 
             // Include navigator series
             if (series.navigatorSeries) {
                 activeSeries.push(series.navigatorSeries);
             }
-        });
-        // Now loop over all series, filtering out active series
-        this.chart.series.forEach(function (inactiveSeries): void {
-            if (activeSeries.indexOf(inactiveSeries) === -1) {
-                // Inactive series
-                inactiveSeries.setState('inactive', true);
-            } else if (inactiveSeries.options.inactiveOtherPoints) {
-                // Active series, but other points should be inactivated
-                inactiveSeries.setAllPointsToState('inactive');
+
+            // Include boosed series when they share markerGroup
+            if (series.boosted && series.markerGroup) {
+                activeSeries.push.apply(
+                    activeSeries,
+                    this.chart.series.filter((otherSeries): boolean =>
+                        otherSeries.markerGroup === series.markerGroup
+                    )
+                );
             }
         });
+
+        for (const series of this.chart.series) {
+            const seriesOptions = series.options;
+
+            if (seriesOptions.states?.inactive?.enabled === false) {
+                continue;
+            }
+
+            if (activeSeries.indexOf(series) === -1) {
+                // Inactive series
+                series.setState('inactive', true);
+            } else if (seriesOptions.inactiveOtherPoints) {
+                // Active series, but other points should be inactivated
+                series.setAllPointsToState('inactive');
+            }
+        }
     }
 
     /**
@@ -236,18 +353,16 @@ class Pointer {
         this.eventsToUnbind = [];
 
         if (!H.chartCount) {
-            if (Pointer.unbindDocumentMouseUp) {
-                Pointer.unbindDocumentMouseUp = Pointer.unbindDocumentMouseUp();
-            }
+            Pointer.unbindDocumentMouseUp.forEach(
+                (el): void => el.unbind()
+            );
+            Pointer.unbindDocumentMouseUp.length = 0;
             if (Pointer.unbindDocumentTouchEnd) {
                 Pointer.unbindDocumentTouchEnd = (
                     Pointer.unbindDocumentTouchEnd()
                 );
             }
         }
-
-        // Memory and CPU leak
-        clearInterval(pointer.tooltipTimeout);
 
         objectEach(pointer, function (_val, prop): void {
             pointer[prop] = void 0 as any;
@@ -256,7 +371,7 @@ class Pointer {
 
     /**
      * Calculate attrs for selection marker.
-     * @private
+     * @internal
      * @function Highcharts.Pointer#getSelectionMarkerAttrs
      * @emits getSelectionMarkerAttrs
      */
@@ -317,20 +432,21 @@ class Pointer {
     /**
      * Perform a drag operation in response to a mousemove event while the mouse
      * is down.
-     * @private
+     * @internal
      * @function Highcharts.Pointer#drag
      */
     public drag(e: PointerEvent): void {
         const { chart } = this,
             {
-                mouseDownX = 0,
-                mouseDownY = 0
+                lastPanX = 0,
+                lastPanY = 0
             } = chart,
+            chartOptions = chart.options,
             {
                 panning,
                 panKey,
                 selectionMarkerFill
-            } = chart.options.chart,
+            } = chartOptions.chart,
             plotLeft = chart.plotLeft,
             plotTop = chart.plotTop,
             plotWidth = chart.plotWidth,
@@ -366,16 +482,16 @@ class Pointer {
             chartY = plotTop + plotHeight;
         }
 
-        // Determine if the mouse has moved more than 10px
+        // Determine if the mouse has moved more than 10px since the last pan
         this.hasDragged = Math.sqrt(
-            Math.pow(mouseDownX - chartX, 2) +
-            Math.pow(mouseDownY - chartY, 2)
+            Math.pow(lastPanX - chartX, 2) +
+            Math.pow(lastPanY - chartY, 2)
         );
 
         if (this.hasDragged > 10) {
             clickedInside = chart.isInsidePlot(
-                mouseDownX - plotLeft,
-                mouseDownY - plotTop,
+                lastPanX - plotLeft,
+                lastPanY - plotTop,
                 {
                     visiblePlotOnly: true
                 }
@@ -386,7 +502,6 @@ class Pointer {
 
             // Make a selection
             if (
-                (chart.hasCartesianSeries || chart.mapView) &&
                 this.hasZoom &&
                 clickedInside &&
                 !panKeyPressed
@@ -404,10 +519,7 @@ class Pointer {
 
                     if (!chart.styledMode) {
                         selectionMarker.attr({
-                            fill:
-                                selectionMarkerFill ||
-                                color(Palette.highlightColor80)
-                                    .setOpacity(0.25).get()
+                            fill: selectionMarkerFill
                         });
                     }
                 }
@@ -420,7 +532,10 @@ class Pointer {
             }
 
             // Panning
-            if (clickedInside && !selectionMarker && panningEnabled) {
+            if (
+                clickedInside && !selectionMarker && panningEnabled &&
+                (checkActionKey(e, panKey))
+            ) {
                 chart.pan(e, panning as any);
             }
         }
@@ -428,7 +543,7 @@ class Pointer {
 
     /**
      * Start a drag operation.
-     * @private
+     * @internal
      * @function Highcharts.Pointer#dragStart
      */
     public dragStart(e: PointerEvent): void {
@@ -437,13 +552,13 @@ class Pointer {
         // Record the start position
         chart.mouseIsDown = e.type;
         chart.cancelClick = false;
-        chart.mouseDownX = e.chartX;
-        chart.mouseDownY = e.chartY;
+        chart.mouseDownX = chart.lastPanX = e.chartX;
+        chart.mouseDownY = chart.lastPanY = e.chartY;
     }
 
     /**
      * Get selection box to calculate extremes
-     * @private
+     * @internal
      * @function Highcharts.Pointer#getSelectionBox
      * @emits getSelectionBox
      */
@@ -460,7 +575,7 @@ class Pointer {
 
     /**
      * On mouse up or touch end across the entire document, drop the selection.
-     * @private
+     * @internal
      * @function Highcharts.Pointer#drop
      */
     public drop(e?: PointerEvent): void {
@@ -485,6 +600,13 @@ class Pointer {
                 }
             }
         }
+
+        // Run a final transform with a drop trigger to display the reset
+        // zoom button after a pinch gesture (#22128)
+        if (e?.type === 'touchend' && this.hasDragged) {
+            chart.transform({ trigger: 'drop' });
+        }
+
         if (redraw) {
             chart.redraw();
         }
@@ -525,6 +647,7 @@ class Pointer {
             chart.mouseIsDown = false;
             this.hasDragged = 0;
             this.pinchDown = [];
+            this.hasPinchMoved = false;
         }
     }
 
@@ -554,7 +677,7 @@ class Pointer {
 
         let closest: (Point|undefined);
 
-        /** @private */
+        /** @internal */
         function sort(
             p1: Point,
             p2: Point
@@ -601,6 +724,8 @@ class Pointer {
 
             if (// Check that we actually found a point on the series.
                 isObject(point, true) && point.series &&
+                // Skip points that are condemned for removal (#25063)
+                !point.condemned &&
                 // Use the new point if it is closer.
                 (!isObject(closest, true) ||
                 (sort(closest as any, point as any) > 0))
@@ -611,10 +736,7 @@ class Pointer {
         return closest;
     }
 
-    /**
-     * @private
-     * @function Highcharts.Pointer#getChartCoordinatesFromPoint
-     */
+    /** @internal */
     public getChartCoordinatesFromPoint(
         point: Point,
         inverted?: boolean
@@ -645,7 +767,7 @@ class Pointer {
             };
         }
 
-        if (shapeArgs && shapeArgs.x && shapeArgs.y) {
+        if (shapeArgs?.x && shapeArgs.y) {
             // E.g. pies do not have axes
             return {
                 chartX: shapeArgs.x,
@@ -724,7 +846,7 @@ class Pointer {
     /**
      * Calculates what is the current hovered point/points and series.
      *
-     * @private
+     * @internal
      * @function Highcharts.Pointer#getHoverData
      *
      * @param {Highcharts.Point|undefined} existingHoverPoint
@@ -758,93 +880,87 @@ class Pointer {
         e?: PointerEvent
     ): Pointer.HoverDataObject {
         const hoverPoints = [] as Array<Point>,
-            useExisting = !!(isDirectTouch && existingHoverPoint),
-            filter = function (s: Series): boolean {
-                return (
-                    s.visible &&
-                    !(!shared && s.directTouch) && // #3821
-                    pick(s.options.enableMouseTracking, true)
-                );
-            };
-
-        let hoverSeries: Series = existingHoverSeries as any,
-            // Which series to look in for the hover point
-            searchSeries,
+            filter = (s: Series): boolean => (
+                s.visible &&
+                !(!shared && s.directTouch) && // #3821
+                (s.options.enableMouseTracking ?? true)
+            ),
             // Parameters needed for beforeGetHoverData event.
             eventArgs: Pointer.EventArgsObject = {
-                chartX: e ? e.chartX : void 0,
-                chartY: e ? e.chartY : void 0,
-                shared: shared
+                chartX: e?.chartX,
+                chartY: e?.chartY,
+                shared
             };
 
         // Find chart.hoverPane and update filter method in polar.
         fireEvent(this, 'beforeGetHoverData', eventArgs);
 
-        const notSticky = hoverSeries && !hoverSeries.stickyTracking;
-
-        searchSeries = notSticky ?
-            // Only search on hovered series if it has stickyTracking false
-            [hoverSeries as any] :
-            // Filter what series to look in.
-            series.filter(
-                (s): boolean => s.stickyTracking &&
-                (eventArgs.filter || filter)(s)
-            );
-
-        // Use existing hovered point or find the one closest to coordinates.
-        const hoverPoint = useExisting || !e ?
+        // Use the existing point, unless it has been removed (#25063)
+        let hoverPoint = existingHoverPoint?.series &&
+            !existingHoverPoint.condemned ?
             existingHoverPoint :
-            this.findNearestKDPoint(searchSeries, shared, e) as any;
+            void 0;
 
-        // Assign hover series
-        hoverSeries = hoverPoint && hoverPoint.series;
+        // Find the closest point, unless the pointer touches the existing one
+        if (e && !(isDirectTouch && hoverPoint)) {
+            hoverPoint = this.findNearestKDPoint(
+                // Only search the hovered series if it has stickyTracking false
+                existingHoverSeries && !existingHoverSeries.stickyTracking ?
+                    [existingHoverSeries] :
+                    series.filter((s): boolean => (
+                        s.stickyTracking && (eventArgs.filter || filter)(s)
+                    )),
+                shared,
+                e
+            );
+        }
 
-        // If we have a hoverPoint, assign hoverPoints.
         if (hoverPoint) {
             // When tooltip is shared, it displays more than one point
-            if (shared && !hoverSeries.noSharedTooltip) {
-                searchSeries = series.filter(function (s): boolean {
-                    return eventArgs.filter ?
-                        eventArgs.filter(s) : filter(s) && !s.noSharedTooltip;
-                });
+            if (shared && !hoverPoint.series.noSharedTooltip) {
+                const { x } = hoverPoint;
 
                 // Get all points with the same x value as the hoverPoint
-                searchSeries.forEach(function (s): any {
-                    let point = find(s.points, function (p: Point): boolean {
-                        return p.x === hoverPoint.x && !p.isNull;
-                    });
+                for (const s of series) {
+                    if (
+                        eventArgs.filter ?
+                            eventArgs.filter(s) :
+                            filter(s) && !s.noSharedTooltip
+                    ) {
+                        const nullInteraction = s.options?.nullInteraction;
+                        let point = find(s.points, (p): boolean => (
+                            p.x === x &&
+                            !p.condemned && // #25063
+                            (!p.isNull || !!nullInteraction)
+                        ));
 
-                    if (isObject(point)) {
-                        /*
-                        * Boost returns a minimal point. Convert it to a usable
-                        * point for tooltip and states.
-                        */
-                        if (s.boosted && s.boost) {
-                            point = s.boost.getPoint(point);
+                        if (isObject(point)) {
+                            // Boost returns a minimal point. Convert it to a
+                            // usable point for tooltip and states.
+                            if (s.boosted && s.boost) {
+                                point = s.boost.getPoint(point);
+                            }
+                            hoverPoints.push(point);
                         }
-                        hoverPoints.push(point);
                     }
-                });
+                }
             } else {
                 hoverPoints.push(hoverPoint);
             }
         }
 
         // Check whether the hoverPoint is inside pane we are hovering over.
-        eventArgs = { hoverPoint: hoverPoint };
-        fireEvent(this, 'afterGetHoverData', eventArgs);
+        const afterArgs: Pointer.EventArgsObject = { hoverPoint };
+        fireEvent(this, 'afterGetHoverData', afterArgs);
 
         return {
-            hoverPoint: eventArgs.hoverPoint,
-            hoverSeries: hoverSeries,
-            hoverPoints: hoverPoints
+            hoverPoint: afterArgs.hoverPoint,
+            hoverSeries: hoverPoint?.series as Series,
+            hoverPoints
         };
     }
 
-    /**
-     * @private
-     * @function Highcharts.Pointer#getPointFromEvent
-     */
+    /** @internal */
     public getPointFromEvent(e: Event): (Point|undefined) {
         let target = e.target,
             point;
@@ -856,10 +972,7 @@ class Pointer {
         return point;
     }
 
-    /**
-     * @private
-     * @function Highcharts.Pointer#onTrackerMouseOut
-     */
+    /** @internal */
     public onTrackerMouseOut(e: PointerEvent): void {
         const chart = this.chart;
         const relatedTarget = e.relatedTarget;
@@ -925,7 +1038,7 @@ class Pointer {
     /**
      * Initialize the Pointer.
      *
-     * @private
+     * @internal
      * @function Highcharts.Pointer#init
      *
      * @param {Highcharts.Chart} chart
@@ -981,10 +1094,9 @@ class Pointer {
             touches ?
                 touches.length ?
                     touches.item(0) as Touch :
-                    (pick( // #13534
-                        touches.changedTouches,
+                    (
+                        touches.changedTouches ??
                         (e as TouchEvent).changedTouches
-                    )
                     )[0] :
                 e as unknown as PointerEvent
         );
@@ -1008,10 +1120,7 @@ class Pointer {
         }) as any;
     }
 
-    /**
-     * @private
-     * @function Highcharts.Pointer#onContainerClick
-     */
+    /** @internal */
     public onContainerClick(e: MouseEvent): void {
         const chart = this.chart;
         const hoverPoint = chart.hoverPoint;
@@ -1059,10 +1168,7 @@ class Pointer {
         }
     }
 
-    /**
-     * @private
-     * @function Highcharts.Pointer#onContainerMouseDown
-     */
+    /** @internal */
     public onContainerMouseDown(e: MouseEvent): void {
         const isPrimaryButton = ((e.buttons || e.button) & 1) === 1;
 
@@ -1094,11 +1200,11 @@ class Pointer {
 
     /**
      * When mouse leaves the container, hide the tooltip.
-     * @private
+     * @internal
      * @function Highcharts.Pointer#onContainerMouseLeave
      */
     public onContainerMouseLeave(e: MouseEvent): void {
-        const { pointer } = charts[pick(Pointer.hoverChartIndex, -1)] || {};
+        const { pointer } = charts[(Pointer.hoverChartIndex ?? -1)] || {};
 
         e = this.normalize(e);
 
@@ -1107,7 +1213,6 @@ class Pointer {
         // #4886, MS Touch end fires mouseleave but with no related target
         if (
             pointer &&
-            e.relatedTarget &&
             !this.inClass(e.relatedTarget as any, 'highcharts-tooltip')
         ) {
             pointer.reset();
@@ -1118,7 +1223,7 @@ class Pointer {
 
     /**
      * When mouse enters the container, delete pointer's chartPosition.
-     * @private
+     * @internal
      * @function Highcharts.Pointer#onContainerMouseEnter
      */
     public onContainerMouseEnter(): void {
@@ -1127,7 +1232,7 @@ class Pointer {
 
     /**
      * The mousemove, touchmove and touchstart event handler
-     * @private
+     * @internal
      * @function Highcharts.Pointer#onContainerMouseMove
      */
     public onContainerMouseMove(e: MouseEvent): void {
@@ -1143,7 +1248,7 @@ class Pointer {
 
         // Show the tooltip and run mouse over events (#977)
         if (
-            !chart.openMenu &&
+            !chart.exporting?.openMenu &&
             (
                 this.inClass(pEvt.target as any, 'highcharts-tracker') ||
                 chart.isInsidePlot(
@@ -1158,10 +1263,7 @@ class Pointer {
             // If the tooltip has stickOnContact enabled, do nothing. This
             // applies regardless of any combinations of the `split` and
             // `useHTML` options.
-            !(
-                tooltip &&
-                tooltip.shouldStickOnContact(pEvt)
-            )
+            !tooltip?.shouldStickOnContact(pEvt)
         ) {
             if (
                 this.inClass(pEvt.target as any, 'highcharts-no-tooltip')
@@ -1173,18 +1275,12 @@ class Pointer {
         }
     }
 
-    /**
-     * @private
-     * @function Highcharts.Pointer#onDocumentTouchEnd
-     */
+    /** @internal */
     public onDocumentTouchEnd(e: PointerEvent): void {
         this.onDocumentMouseUp(e);
     }
 
-    /**
-     * @private
-     * @function Highcharts.Pointer#onContainerTouchMove
-     */
+    /** @internal */
     public onContainerTouchMove(e: PointerEvent): void {
         if (this.touchSelect(e)) {
             this.onContainerMouseMove(e);
@@ -1193,10 +1289,7 @@ class Pointer {
         }
     }
 
-    /**
-     * @private
-     * @function Highcharts.Pointer#onContainerTouchStart
-     */
+    /** @internal */
     public onContainerTouchStart(e: PointerEvent): void {
         if (this.touchSelect(e)) {
             this.onContainerMouseDown(e);
@@ -1210,7 +1303,7 @@ class Pointer {
      * Special handler for mouse move that will hide the tooltip when the mouse
      * leaves the plotarea. Issue #149 workaround. The mouseleave event does not
      * always fire.
-     * @private
+     * @internal
      * @function Highcharts.Pointer#onDocumentMouseMove
      */
     public onDocumentMouseMove(e: MouseEvent): void {
@@ -1229,29 +1322,31 @@ class Pointer {
                     visiblePlotOnly: true
                 }
             ) &&
-            !(
-                tooltip &&
-                tooltip.shouldStickOnContact(pEvt)
-            ) &&
-            !this.inClass(pEvt.target as any, 'highcharts-tracker')
+            !tooltip?.shouldStickOnContact(pEvt) && (
+                pEvt.target === chart.container.ownerDocument ||
+                !this.inClass(pEvt.target as any, 'highcharts-tracker')
+            )
         ) {
             this.reset();
         }
     }
 
-    /**
-     * @private
-     * @function Highcharts.Pointer#onDocumentMouseUp
-     */
+    /** @internal */
     public onDocumentMouseUp(e: PointerEvent): void {
-        charts[pick(Pointer.hoverChartIndex, -1)]
+        // #17852, IOS devices sometimes reverts back to previous point when
+        // dragging between points
+        if (e?.touches && this.hasPinchMoved) {
+            e?.preventDefault?.();
+        }
+
+        charts[(Pointer.hoverChartIndex ?? -1)]
             ?.pointer
             ?.drop(e);
     }
 
     /**
      * Handle touch events with two touches
-     * @private
+     * @internal
      * @function Highcharts.Pointer#pinch
      */
     public pinch(e: PointerEvent): void {
@@ -1270,9 +1365,8 @@ class Pointer {
                 ) ||
                 pointer.runChartClick
             ),
-            tooltip = chart.tooltip,
             followTouchMove = touchesLength === 1 &&
-                pick(tooltip?.options.followTouchMove, true);
+                (chart.tooltip?.options.followTouchMove ?? true);
 
         // Don't initiate panning until the user has pinched. This prevents us
         // from blocking page scrolling as users scroll down a long page
@@ -1300,6 +1394,7 @@ class Pointer {
         if (e.type === 'touchstart') {
             pointer.pinchDown = touches;
             pointer.res = true; // Reset on next move
+            chart.mouseDownX = chart.lastPanX = e.chartX;
 
         // Optionally move the tooltip on touchmove
         } else if (followTouchMove) {
@@ -1341,6 +1436,10 @@ class Pointer {
                     trigger: e.type
                 });
 
+                // Record a truthy value in order to trigger the final transform
+                // in the drop function
+                pointer.hasDragged = 1;
+
             });
 
             if (pointer.res) {
@@ -1354,7 +1453,7 @@ class Pointer {
 
     /**
      * Run translation operations
-     * @private
+     * @internal
      * @function Highcharts.Pointer#pinchTranslate
      * /
     public pinchTranslate(
@@ -1393,7 +1492,7 @@ class Pointer {
     /**
      * Run translation operations for each direction (horizontal and vertical)
      * independently.
-     * @private
+     * @internal
      * @function Highcharts.Pointer#pinchTranslateDirection
      * /
     public pinchTranslateDirection(
@@ -1498,7 +1597,7 @@ class Pointer {
 
     /**
      * Reset the tracking by hiding the tooltip, the hover series state and the
-     * hover point
+     * hover point.
      *
      * @function Highcharts.Pointer#reset
      *
@@ -1507,6 +1606,7 @@ class Pointer {
      * possible.
      *
      * @param {number} [delay]
+     * The tooltip hide delay in ms.
      */
     public reset(allowMove?: boolean, delay?: number): void {
         const pointer = this,
@@ -1515,7 +1615,7 @@ class Pointer {
             hoverPoint = chart.hoverPoint,
             hoverPoints = chart.hoverPoints,
             tooltip = chart.tooltip,
-            tooltipPoints = tooltip && tooltip.shared ?
+            tooltipPoints = tooltip?.shared ?
                 hoverPoints :
                 hoverPoint;
 
@@ -1601,7 +1701,7 @@ class Pointer {
      * With line type charts with a single tracker, get the point closest to the
      * mouse. Run Point.onMouseOver and display tooltip for the point or points.
      *
-     * @private
+     * @internal
      * @function Highcharts.Pointer#runPointActions
      *
      * @emits Highcharts.Point#event:mouseOut
@@ -1612,7 +1712,7 @@ class Pointer {
             chart = pointer.chart,
             series = chart.series,
             tooltip = (
-                chart.tooltip && chart.tooltip.options.enabled ?
+                chart.tooltip?.options.enabled ?
                     chart.tooltip :
                     void 0
             ),
@@ -1623,12 +1723,12 @@ class Pointer {
             );
 
         let hoverPoint = p || chart.hoverPoint,
-            hoverSeries = hoverPoint && hoverPoint.series || chart.hoverSeries;
+            hoverSeries = hoverPoint?.series || chart.hoverSeries;
 
         const // `onMouseOver` or already hovering a series with directTouch
             isDirectTouch = (!e || e.type !== 'touchmove') && (
                 !!p || (
-                    (hoverSeries && hoverSeries.directTouch) &&
+                    (hoverSeries?.directTouch) &&
                     pointer.isDirectTouch
                 )
             ),
@@ -1646,8 +1746,7 @@ class Pointer {
         hoverSeries = hoverData.hoverSeries;
 
         const points = hoverData.hoverPoints,
-            followPointer = hoverSeries &&
-                hoverSeries.tooltipOptions.followPointer &&
+            followPointer = hoverSeries?.tooltipOptions.followPointer &&
                 !hoverSeries.tooltipOptions.split,
             useSharedTooltip = (
                 shared &&
@@ -1662,7 +1761,7 @@ class Pointer {
             (
                 force ||
                 hoverPoint !== chart.hoverPoint ||
-                (tooltip && tooltip.isHidden)
+                tooltip?.isHidden
             )
         ) {
             (chart.hoverPoints || []).forEach(function (p: Point): void {
@@ -1689,8 +1788,9 @@ class Pointer {
                 chart.hoverPoint.firePointEvent('mouseOut');
             }
 
-            // Hover point may have been destroyed in the event handlers (#7127)
-            if (!hoverPoint.series) {
+            // Hover point may have been destroyed (#7127) or condemned (#25063)
+            // in the event handlers.
+            if (!hoverPoint.series || hoverPoint.condemned) {
                 return;
             }
 
@@ -1754,14 +1854,14 @@ class Pointer {
 
         // Issues related to crosshair #4927, #5269 #5066, #5658
         chart.axes.forEach(function drawAxisCrosshair(axis): void {
-            const snap = pick((axis.crosshair || {}).snap, true);
+            const snap = axis.crosshair?.snap ?? true;
 
             let point: Point|undefined;
             if (snap) {
                 point = chart.hoverPoint; // #13002
                 if (!point || (point.series as any)[axis.coll] !== axis) {
                     point = find(points, (p: Point): boolean =>
-                        p.series && (p.series as any)[axis.coll] === axis
+                        p.series?.[axis.coll] === axis
                     );
                 }
             }
@@ -1782,18 +1882,30 @@ class Pointer {
      * contain a one-to-one assignment between methods and their handlers. Any
      * advanced logic should be moved to the handler reflecting the event's
      * name.
-     * @private
+     * @internal
      * @function Highcharts.Pointer#setDOMEvents
      */
     public setDOMEvents(): void {
-
         const container = this.chart.container,
-            ownerDoc = container.ownerDocument;
+            ownerDoc = container.ownerDocument,
+            // Get the parent element, including handling Shadow DOM (#23450)
+            getParent = (el: HTMLElement): HTMLElement|null|undefined =>
+                el.parentElement || (
+                    el.getRootNode() as ShadowRoot|undefined
+                )?.host?.parentElement;
 
-        container.onmousedown = this.onContainerMouseDown.bind(this);
-        container.onmousemove = this.onContainerMouseMove.bind(this);
-        container.onclick = this.onContainerClick.bind(this);
         this.eventsToUnbind.push(
+            addEvent(
+                container,
+                'mousedown',
+                this.onContainerMouseDown.bind(this)
+            ),
+            addEvent(
+                container,
+                'mousemove',
+                this.onContainerMouseMove.bind(this)
+            ),
+            addEvent(container, 'click', this.onContainerClick.bind(this)),
             addEvent(
                 container,
                 'mouseenter',
@@ -1805,22 +1917,28 @@ class Pointer {
                 this.onContainerMouseLeave.bind(this)
             )
         );
-        if (!Pointer.unbindDocumentMouseUp) {
-            Pointer.unbindDocumentMouseUp = addEvent(
-                ownerDoc,
-                'mouseup',
-                this.onDocumentMouseUp.bind(this)
-            );
+
+        if (!Pointer.unbindDocumentMouseUp.some(
+            (el): boolean => el.doc === ownerDoc
+        )) {
+            Pointer.unbindDocumentMouseUp.push({
+                doc: ownerDoc,
+                unbind: addEvent(
+                    ownerDoc,
+                    'mouseup',
+                    this.onDocumentMouseUp.bind(this)
+                )
+            });
         }
 
         // In case we are dealing with overflow, reset the chart position when
         // scrolling parent elements
-        let parent = this.chart.renderTo.parentElement;
+        let parent = getParent(this.chart.renderTo);
         while (parent && parent.tagName !== 'BODY') {
             this.eventsToUnbind.push(addEvent(parent, 'scroll', (): void => {
                 delete this.chartPosition;
             }));
-            parent = parent.parentElement;
+            parent = getParent(parent);
         }
 
         this.eventsToUnbind.push(
@@ -1854,7 +1972,7 @@ class Pointer {
      * Sets, or removes on update, pointer events using pointer capture for
      * tooltip.followTouchMove if any series has findNearestPointBy that
      * includes the y dimension.
-     * @private
+     * @internal
      * @function Highcharts.Pointer#setPointerCapture
     */
     public setPointerCapture(): void {
@@ -1867,10 +1985,7 @@ class Pointer {
             events = pointer.pointerCaptureEventsToUnbind,
             chart = pointer.chart,
             container = chart.container,
-            followTouchMove = pick(
-                chart.options.tooltip?.followTouchMove,
-                true
-            ),
+            followTouchMove = chart.options.tooltip?.followTouchMove ?? true,
             shouldHave = followTouchMove && chart.series.some(
                 (series): boolean => (series.options.findNearestPointBy as any)
                     .indexOf('y') > -1
@@ -1905,12 +2020,6 @@ class Pointer {
                 )
             );
 
-            if (!chart.styledMode) {
-                css(container, { 'touch-action': 'none' });
-            }
-            // Mostly for styled mode
-            container.className += ' highcharts-no-touch-action';
-
             pointer.hasPointerCapture = true;
         } else if (pointer.hasPointerCapture && !shouldHave) {
             // Remove
@@ -1919,20 +2028,6 @@ class Pointer {
             events.forEach((e: Function): void => e());
             events.length = 0;
 
-            if (!chart.styledMode) {
-                css(container, {
-                    'touch-action': pick(
-                        chart.options.chart.style?.['touch-action'],
-                        'manipulation'
-                    )
-                });
-            }
-            // Mostly for styled mode
-            container.className = container.className.replace(
-                ' highcharts-no-touch-action',
-                ''
-            );
-
             pointer.hasPointerCapture = false;
         }
     }
@@ -1940,33 +2035,38 @@ class Pointer {
     /**
      * Sets the index of the hovered chart and leaves the previous hovered
      * chart, to reset states like tooltip.
-     * @private
+     * @internal
      * @function Highcharts.Pointer#setHoverChartIndex
      */
     public setHoverChartIndex(e?: MouseEvent): void {
         const chart = this.chart;
-        const hoverChart = H.charts[pick(Pointer.hoverChartIndex, -1)];
+        const hoverChart = H.charts[(Pointer.hoverChartIndex ?? -1)];
 
         if (
             hoverChart &&
             hoverChart !== chart
         ) {
+            const relatedTargetObj = { relatedTarget: chart.container };
+
+            if (e && !e?.relatedTarget) {
+                // #17192, Non-enumerable properties of "e" are dropped with
+                // spreading (...e). Using Object.assign ensures integrity.
+                Object.assign({}, e, relatedTargetObj);
+            }
+
             hoverChart.pointer?.onContainerMouseLeave(
-                e || { relatedTarget: chart.container } as any
+                e || relatedTargetObj as any
             );
         }
 
-        if (
-            !hoverChart ||
-            !hoverChart.mouseIsDown
-        ) {
+        if (!hoverChart?.mouseIsDown) {
             Pointer.hoverChartIndex = chart.index;
         }
     }
 
     /**
      * General touch handler shared by touchstart and touchmove.
-     * @private
+     * @internal
      * @function Highcharts.Pointer#touch
      */
     public touch(e: PointerEvent, start?: boolean): void {
@@ -1977,9 +2077,9 @@ class Pointer {
 
         this.setHoverChartIndex();
 
-        if ((e as any).touches.length === 1) {
+        e = this.normalize(e);
 
-            e = this.normalize(e);
+        if ((e as any).touches.length === 1) {
 
             isInside = chart.isInsidePlot(
                 e.chartX - chart.plotLeft,
@@ -1988,8 +2088,7 @@ class Pointer {
                     visiblePlotOnly: true
                 }
             );
-            if (isInside && !chart.openMenu) {
-
+            if (isInside && !chart.exporting?.openMenu) {
                 // Run mouse events and display tooltip etc
                 if (start) {
                     this.runPointActions(e);
@@ -1998,11 +2097,11 @@ class Pointer {
                 // Android fires touchmove events after the touchstart even if
                 // the finger hasn't moved, or moved only a pixel or two. In iOS
                 // however, the touchmove doesn't fire unless the finger moves
-                // more than ~4px. So we emulate this behaviour in Android by
+                // more than ~4px. So we emulate this behavior in Android by
                 // checking how much it moved, and cancelling on small
                 // distances. #3450. Tested and still relevant as of 2024.
                 if (e.type === 'touchmove') {
-                    hasMoved = pinchDown[0] ? // #5266
+                    this.hasPinchMoved = hasMoved = pinchDown[0] ? // #5266
                         (
                             Math.pow(pinchDown[0].chartX - e.chartX, 2) +
                             Math.pow(pinchDown[0].chartY - e.chartY, 2)
@@ -2010,8 +2109,18 @@ class Pointer {
                         false;
                 }
 
-                if (pick(hasMoved, true)) {
+                if (hasMoved ?? true) {
                     this.pinch(e);
+                }
+
+                // If inside, capture touch-drag and display tooltip. If not
+                // inside, allow dragging the finger to scroll the page
+                if (
+                    this.hasPointerCapture && // #25095
+                    e.type === 'touchmove' &&
+                    !(chart.scrollablePixelsX || chart.scrollablePixelsY)
+                ) {
+                    e.preventDefault();
                 }
 
             } else if (start) {
@@ -2027,7 +2136,7 @@ class Pointer {
     /**
      * Returns true if the chart is set up for zooming by single touch and the
      * event is capable
-     * @private
+     * @internal
      * @function Highcharts.Pointer#touchSelect
      */
     private touchSelect(e: PointerEvent): boolean {
@@ -2041,7 +2150,7 @@ class Pointer {
     /**
      * Resolve the zoomType option, this is reset on all touch start and mouse
      * down events.
-     * @private
+     * @internal
      * @function Highcharts.Pointer#zoomOption
      */
     public zoomOption(e: Event): void {
@@ -2054,14 +2163,16 @@ class Pointer {
 
         // Look for the pinchType option
         if (/touch/.test(e.type)) {
-            zoomType = pick(chart.zooming.pinchType, zoomType);
+            zoomType = (chart.zooming.pinchType ?? zoomType);
         }
 
         this.zoomX = zoomX = /x/.test(zoomType);
         this.zoomY = zoomY = /y/.test(zoomType);
         this.zoomHor = (zoomX && !inverted) || (zoomY && inverted);
         this.zoomVert = (zoomY && !inverted) || (zoomX && inverted);
-        this.hasZoom = zoomX || zoomY;
+        this.hasZoom = (zoomX || zoomY) &&
+            (checkActionKey(e, chart.zooming.key));
+
     }
 }
 
@@ -2079,53 +2190,209 @@ namespace Pointer {
      *
      * */
 
+    /**
+     * Chart position and scale.
+     */
     export interface ChartPositionObject {
+        /**
+         * Left offset of the chart container.
+         */
         left: number;
+        /**
+         * Horizontal scale of the chart container.
+         */
         scaleX: number;
+        /**
+         * Vertical scale of the chart container.
+         */
         scaleY: number;
+        /**
+         * Top offset of the chart container.
+         */
         top: number;
     }
-    export interface AxesCoordinatesObject {
-        xAxis: Array<AxisCoordinateObject>;
-        yAxis: Array<AxisCoordinateObject>;
-    }
+
+    /**
+     * One position in relation to an axis.
+     */
     export interface AxisCoordinateObject {
+        /**
+         * Related axis.
+         */
         axis: Axis;
+        /**
+         * Axis value.
+         */
         value: number;
     }
+
+    /**
+     * Positions in terms of axis values.
+     */
+    export interface AxesCoordinatesObject {
+        /**
+         * Positions on the x-axis.
+         */
+        xAxis: Array<AxisCoordinateObject>;
+        /**
+         * Positions on the y-axis.
+         */
+        yAxis: Array<AxisCoordinateObject>;
+    }
+
+    /** @internal */
     export interface CoordinatesObject {
+
+        /**
+         * The X coordinate of the pointer interaction relative to the chart.
+         */
         chartX: number;
+
+        /**
+         * The Y coordinate of the pointer interaction relative to the chart.
+         */
         chartY: number;
+
     }
+
+    /** @internal */
     export interface EventArgsObject {
+
+        /**
+         * Chart X position of the pointer.
+         */
         chartX?: number;
+
+        /**
+         * Chart Y position of the pointer.
+         */
         chartY?: number;
+
+        /**
+         * Filter to apply to the series.
+         */
         filter?: Function;
+
+        /**
+         * The point currently being hovered.
+         */
         hoverPoint?: Point;
+
+        /**
+         * Whether the tooltip is shared.
+         */
         shared?: boolean;
+
     }
+
+    /** @internal */
     export interface HoverDataObject {
+
+        /**
+         * The hovered point.
+         */
         hoverPoint?: Point;
+
+        /**
+         * All hovered points.
+         */
         hoverPoints: Array<Point>;
+
+        /**
+         * The hovered series.
+         */
         hoverSeries: Series;
+
     }
+
+    /**
+     * Axis-specific data of a selection.
+     */
     export interface SelectDataObject {
+
+        /**
+         * The selected Axis.
+         */
         axis: Axis;
+
+        /**
+         * The maximum axis value, either automatic or set manually.
+         */
         max: number;
+
+        /**
+         * The minimum axis value, either automatic or set manually.
+         */
         min: number;
+
     }
+
+    /**
+     * Object for select events.
+     * The primary axes are `xAxis[0]` and `yAxis[0]`. Remember the unit of a
+     * datetime axis is milliseconds since 1970-01-01 00:00:00.
+     */
     export interface SelectEventObject {
+
+        /** @internal */
         animation?: boolean,
+
+        /** @internal */
         height?: number;
+
+        /**
+         * The related browser event.
+         */
         originalEvent: Event;
+
+        /**
+         * Prevent default action.
+         */
+        preventDefault: Event['preventDefault'];
+
+        /**
+         * Indicates a reset event to restore default state.
+         */
         resetSelection?: boolean;
+
+        /**
+         * The chart that the selection event belongs to.
+         */
+        target: Chart;
+
+        /** @internal */
         trigger?: string;
+
+        /** @internal */
         width?: number;
+
+        /** @internal */
         x?: number;
+
+        /**
+         * Arrays containing the axes of each dimension and each axis' min and
+         * max values.
+         */
         xAxis: Array<SelectDataObject>;
+
+        /** @internal */
         y?: number;
+
+        /**
+         * Arrays containing the axes of each dimension and each axis' min and
+         * max values.
+         */
         yAxis: Array<SelectDataObject>;
+
     }
+
+    /* *
+     *
+     *  Variables
+     *
+     * */
+
+    let PointerClass: typeof Pointer = Pointer;
 
     /* *
      *
@@ -2133,10 +2400,15 @@ namespace Pointer {
      *
      * */
 
-    /**
-     * @private
-     */
-    export function compose(ChartClass: typeof Chart): void {
+    /** @internal */
+    export function compose(
+        ChartClass: typeof Chart,
+        PointerSubclass?: typeof Pointer
+    ): void {
+
+        // A subclass, like MSPointer in the ES5 build, replaces the class
+        // instead of adding a second pointer to each chart
+        PointerClass = PointerSubclass || PointerClass;
 
         if (pushUnique(composed, 'Core.Pointer')) {
             addEvent(ChartClass, 'beforeRender', function (): void {
@@ -2149,7 +2421,7 @@ namespace Pointer {
                  * @type {Highcharts.Pointer}
                  * @instance
                  */
-                this.pointer = new Pointer(this, this.options);
+                this.pointer = new PointerClass(this, this.options);
             });
         }
 
@@ -2247,6 +2519,16 @@ export default Pointer;
  *
  * @name Highcharts.PointerEventObject#chartY
  * @type {number}
+ *//**
+ * Axis positions on the x-axis, when available for a chart click.
+ *
+ * @name Highcharts.PointerEventObject#xAxis
+ * @type {Array<Highcharts.PointerAxisCoordinateObject>|undefined}
+ *//**
+ * Axis positions on the y-axis, when available for a chart click.
+ *
+ * @name Highcharts.PointerEventObject#yAxis
+ * @type {Array<Highcharts.PointerAxisCoordinateObject>|undefined}
  */
 
 /**
@@ -2278,9 +2560,17 @@ export default Pointer;
  * @name Highcharts.SelectEventObject#originalEvent
  * @type {global.Event}
  *//**
+ * Prevents the default action for the event, if called.
+ * @name Highcharts.SelectEventObject#preventDefault
+ * @type {Function}
+ *//**
  * Indicates a reset event to restore default state.
  * @name Highcharts.SelectEventObject#resetSelection
  * @type {boolean|undefined}
+ *//**
+ * The Chart that the selection belongs to.
+ * @name Highcharts.SelectEventObject#target
+ * @type {Highcharts.Chart}
  *//**
  * Arrays containing the axes of each dimension and each axis' min and max
  * values.

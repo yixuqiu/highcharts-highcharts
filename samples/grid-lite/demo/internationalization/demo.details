@@ -1,0 +1,14 @@
+---
+name: Internationalization
+authors:
+  - Dawid Draguła
+js_wrap: b
+alt_text: >-
+  Multi-language support for data grids
+tags:
+  - Highcharts Grid demo
+categories:
+  - General:
+        priority: 70
+use_png_thumbnail: true
+...

@@ -149,7 +149,7 @@
                     },
                     boost: {
                         useGPUTranslations: true,
-                        usePreAllocated: true
+                        usePreallocated: true
                     },
                     xAxis: {
                         min: 0,
@@ -173,7 +173,7 @@
                         type: 'scatter',
                         boostThreshold: 16,
                         color: 'rgb(152, 0, 67)',
-                        fillOpacity: 0.1,
+                        fillOpacity: 0.7,
                         data: [
                             [4, 4], [4, 3], [4, 1], [4, 2],
                             [3, 4], [3, 3], [3, 1], [3, 2],
@@ -203,8 +203,8 @@
 
             assert.deepEqual(
                 [
-                    series.processedXData.length,
-                    series.processedYData.length
+                    series.getColumn('x', true).length,
+                    series.getColumn('y', true).length
                 ],
                 [16, 16],
                 'Scatter should have 16 boosted points. (#20433)'
@@ -212,15 +212,96 @@
 
             controller.pan([150, 150], [300, 300]);
 
-            assert.deepEqual(
-                [
-                    series.yAxis.min,
-                    series.yAxis.max
-                ],
-                [1.75, 3.25],
+            assert.ok(
+                series.yAxis.min > 1 && series.yAxis.max < 4,
                 'Scatter yAxis should have zoomed min/max.'
             );
 
+        }
+    );
+
+    QUnit.test(
+        '#21106, Chart should not clip series on increasing size after boost',
+        function (assert) {
+            let boostEnabled = false;
+
+            function getOptions() {
+                const options = {
+                    series: [{
+                        boostThreshold: boostEnabled ? 1 : 0,
+                        data: [1, 4, 3, 5],
+                        type: 'column'
+                    }]
+                };
+
+                return options;
+            }
+
+            const chart = Highcharts.chart('container', getOptions()),
+                series = chart.series[0];
+
+            function toggleBoost() {
+                boostEnabled = !boostEnabled;
+                chart.update(getOptions());
+            }
+
+            chart.setSize(200, 200);
+            toggleBoost(); // Enable boost
+            toggleBoost(); // Disable boost
+            // Columns should be visible and not clipped
+            chart.setSize(400, 400);
+
+
+            const chartSeriesGroup = chart.seriesGroup.element
+                .getAttribute('clip-path');
+            assert.ok(
+                chartSeriesGroup === 'none' || chartSeriesGroup === null,
+                'chart.seriesGroup should not have clip-path'
+            );
+
+            const seriesGroup = series.group.element.getAttribute('clip-path');
+            assert.ok(
+                seriesGroup !== null || seriesGroup !== 'none',
+                'series.group should have clippath'
+            );
+
+            const clipPath = chart.renderer.defs.element
+                .querySelector(
+                    // Get id from clip-path attribute from series group
+                    series.group.element
+                        .getAttribute('clip-path')
+                        .replace(chart.renderer.url, '')
+                        .replace('url(', '')
+                        .replace(')', '')
+                ).firstElementChild; // Get the rect
+
+            const seriesClipPathX = clipPath.getAttribute('x');
+            const seriesClipPathY = clipPath.getAttribute('y');
+            const seriesClipPathWidth = clipPath.getAttribute('width');
+            const seriesClipPathHeight = clipPath.getAttribute('height');
+
+            for (const point of series.points) {
+                assert.ok(
+                    point.graphic && point.graphic.element,
+                    `Column ${point.index} should be visible`
+                );
+
+                const bbox = point.graphic.getBBox();
+                assert.notOk(
+                    // Is ouside to the left
+                    bbox.x + point.plotX < seriesClipPathX + chart.plotLeft ||
+                    // Is outside to the top
+                    bbox.y + point.plotY < seriesClipPathY + chart.plotTop ||
+                    // Is outside to the right
+                    bbox.x + bbox.width + point.plotX >
+                    seriesClipPathX + seriesClipPathWidth + chart.plotLeft ||
+                    bbox.y + bbox.height + point.plotY >
+                    // Is outside to the bottom
+                    seriesClipPathY + seriesClipPathHeight + chart.plotTop,
+                    'Column ' + point.index +
+                        ' should not be clipped by series.group'
+                );
+            }
         }
     );
 

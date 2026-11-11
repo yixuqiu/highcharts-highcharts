@@ -1,10 +1,11 @@
 /* *
  *
- *  (c) 2009-2024 Highsoft AS
+ *  (c) 2009-2026 Highsoft AS
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  *  Authors:
  *  - Sebastian Bochan
@@ -20,9 +21,6 @@ import DG from '../Globals.js';
 
 const PREFIX = DG.classNamePrefix + 'edit-';
 
-/**
- * @internal
- */
 const EditGlobals: EditGlobals = {
     classNames: {
         resizeSnap: PREFIX + 'resize-snap',
@@ -43,6 +41,7 @@ const EditGlobals: EditGlobals = {
         editSidebar: PREFIX + 'sidebar',
         editSidebarShow: PREFIX + 'sidebar-show',
         editSidebarHide: PREFIX + 'sidebar-hide',
+        editSidebarHeader: PREFIX + 'sidebar-header',
         editSidebarTitle: PREFIX + 'sidebar-title',
         editSidebarMenuItem: PREFIX + 'sidebar-item',
         rowContextHighlight: PREFIX + 'row-context-highlight',
@@ -67,6 +66,7 @@ const EditGlobals: EditGlobals = {
         toggleSlider: PREFIX + 'toggle-slider',
         toggleWrapperColored: PREFIX + 'toggle-wrapper-colored',
         toggleLabels: PREFIX + 'toggle-labels',
+        labeledToggleWrapper: PREFIX + 'labeled-toggle-wrapper',
         button: PREFIX + 'button',
         sidebarNavButton: PREFIX + 'sidebar-button-nav',
         labelText: PREFIX + 'label-text',
@@ -74,6 +74,7 @@ const EditGlobals: EditGlobals = {
         editToolsBtn: PREFIX + 'tools-btn',
         editTools: PREFIX + 'tools',
         editGridItems: PREFIX + 'grid-items',
+        editStandaloneToggle: PREFIX + 'standalone-toggle',
 
         // Confirmation popup
         confirmationPopup: PREFIX + 'confirmation-popup',
@@ -97,14 +98,17 @@ const EditGlobals: EditGlobals = {
         accordionContainer: PREFIX + 'accordion',
         accordionHeader: PREFIX + 'accordion-header',
         accordionHeaderBtn: PREFIX + 'accordion-header-btn',
+        accordionHeaderWrapper: PREFIX + 'accordion-header-wrapper',
         accordionHeaderIcon: PREFIX + 'accordion-header-icon',
         accordionContent: PREFIX + 'accordion-content',
         accordionNestedWrapper: PREFIX + 'accordion-nested',
         accordionMenuButtonsContainer:
             PREFIX + 'accordion-menu-buttons-container',
         accordionMenuButton: PREFIX + 'accordion-menu-button',
+        accordionStandaloneWrapper: PREFIX + 'accordion-standalone-wrapper',
         hiddenElement: PREFIX + 'hidden-element',
         collapsableContentHeader: PREFIX + 'collapsable-content-header',
+        standaloneElement: PREFIX + 'standalone-element',
 
         // Custom dropdown with icons
         collapsedElement: PREFIX + 'collapsed-element',
@@ -136,10 +140,12 @@ const EditGlobals: EditGlobals = {
         confirmButton: 'Confirm',
         confirmDestroyCell: 'Do you really want to destroy the cell?',
         confirmDestroyRow: 'Do you really want to destroy the row?',
+        confirmDiscardChanges: 'Do you really want to discard the changes?',
         dataLabels: 'Data labels',
         editMode: 'Edit mode',
         errorMessage: 'Something went wrong',
         exitFullscreen: 'Exit full screen',
+        htmlInput: 'HTML',
         id: 'Id',
         off: 'off',
         on: 'on',
@@ -150,263 +156,273 @@ const EditGlobals: EditGlobals = {
         viewFullscreen: 'View in full screen',
         sidebar: {
             HTML: 'HTML',
-            layout: 'Layout',
+            row: 'Row',
             Highcharts: 'Highcharts',
-            DataGrid: 'DataGrid',
+            Grid: 'Grid',
             KPI: 'KPI'
         }
     }
 };
 
-/**
- * @internal
- */
 interface EditGlobals {
-    classNames: EditGlobals.ClassNamesOptions;
-    lang: EditGlobals.LangOptions;
+    classNames: ClassNamesOptions;
+    lang: LangOptions;
 }
 
-namespace EditGlobals {
-    export interface ClassNamesOptions {
-        accordionContainer: string;
-        accordionContent: string;
-        accordionHeader: string;
-        accordionHeaderBtn: string;
-        accordionHeaderIcon: string;
-        accordionMenu: string;
-        accordionMenuButton: string;
-        accordionMenuButtonsContainer: string;
-        accordionNestedWrapper: string;
-        button: string;
-        cellEditHighlight: string;
-        collapsableContentHeader: string;
-        confirmationPopup: string;
-        contextDetectionPointer: string;
-        contextMenu: string;
-        contextMenuBtn: string;
-        contextMenuBtnText: string;
-        contextMenuItem: string;
-        currentEditedElement: string;
-        customSelect: string;
-        customSelectButton: string;
-        dashboardCellEditHighlightActive: string;
-        dragMock: string;
-        dropPointer: string;
-        dropdown: string;
-        dropdownButton: string;
-        dropdownButtonContent: string;
-        dropdownContent: string;
-        dropdownIcon: string;
-        editGridItems: string;
-        editModeEnabled: string;
-        editOverlay: string;
-        editOverlayActive: string;
-        editSidebar: string;
-        editSidebarHide: string;
-        editSidebarMenuItem: string;
-        editSidebarRight: string;
-        editSidebarRightShow: string;
-        editSidebarShow: string;
-        editSidebarTabBtn: string;
-        editSidebarTabBtnWrapper: string;
-        editSidebarTitle: string;
-        editSidebarWrapper: string;
-        editToolbar: string;
-        editToolbarCell: string;
-        editToolbarCellOutline: string;
-        editToolbarItem: string;
-        editToolbarRow: string;
-        editToolbarRowOutline: string;
-        editTools: string;
-        editToolsBtn: string;
-        hiddenElement: string;
-        icon: string;
-        labelText: string;
-        maskElement: string;
-        menu: string;
-        menuDestroy: string;
-        menuHorizontalSeparator: string;
-        menuItem: string;
-        menuVerticalSeparator: string;
-        popupCloseButton: string;
-        popupCancelBtn: string;
-        popupConfirmBtn: string;
-        popupButtonContainer: string;
-        popupContentContainer: string;
-        resizePointer: string;
-        resizeSnap: string;
-        resizeSnapX: string;
-        resizeSnapY: string;
-        resizerMenuBtnActive: string;
-        collapsedElement: string;
-        rowContextHighlight: string;
-        separator: string;
-        sidebarCloseButton: string;
-        sidebarNavButton: string;
-        toggleContainer: string;
-        toggleLabels: string;
-        toggleSlider: string;
-        toggleWrapper: string;
-        toggleWrapperColored: string;
-        viewFullscreen: string;
-    }
-
-    export interface LangOptions {
-        /**
-         * Accessibility language options for the dashboard.
-         */
-        accessibility: EditGlobals.LangAccessibilityOptions;
-        /**
-         * @default 'Add component'
-         */
-        addComponent: string;
-        /**
-         * @default 'Cancel'
-         */
-        cancelButton: string;
-        /**
-         * @default 'Caption'
-         */
-        caption: string;
-        /**
-         * @default 'Chart class name'
-         */
-        chartClassName: string;
-        /**
-         * @default 'Chart configuration'
-         */
-        chartConfig: string;
-        /**
-         * @default 'Chart ID'
-         */
-        chartID: string;
-        /**
-         * @default 'Chart options'
-         */
-        chartOptions: string;
-        /**
-         * @default 'Chart type'
-         */
-        chartType: string;
-        /**
-         * @default 'Connector name'
-         */
-        connectorName: string;
-        /**
-         * @default 'Confirm'
-         */
-        confirmButton: string;
-        /**
-         * @default 'Do you really want to destroy the cell?'
-         */
-        confirmDestroyCell: string;
-        /**
-         * @default 'Do you really want to destroy the row?'
-         */
-        confirmDestroyRow: string;
-        /**
-         * @default 'Data labels'
-         */
-        dataLabels: string;
-        /**
-         * @default 'Edit mode'
-         */
-        editMode: string;
-        /**
-         * @default 'Something went wrong'
-         */
-        errorMessage: string;
-        /**
-         * @default 'Exit full screen'
-         */
-        exitFullscreen: string;
-        /**
-         * @default 'Id'
-         */
-        id: string;
-        /**
-         * @default 'off'
-         */
-        off: string;
-        /**
-         * @default 'on'
-         */
-        on: string;
-        /**
-         * @default 'Point format'
-         */
-        pointFormat: string;
-        /**
-         * @default 'Settings'
-         */
-        settings: string;
-        /**
-         * Options for the sidebar and its components.
-         */
-        sidebar:SidebarLangOptions
-        /**
-         * @default 'Styles'
-         */
-        style: string;
-        /**
-         * @default 'Title'
-         */
-        title: string;
-        /**
-         * @default 'View in full screen'
-         */
-        viewFullscreen: string;
-        [key: string]: any;
-    }
-
-    export interface SidebarLangOptions {
-        [key: string]: string;
-        /**
-         * @default 'HTML'
-         */
-        HTML: string;
-        /**
-         * @default 'Layout'
-         */
-        layout: string;
-        /**
-         * @default 'Highcharts'
-         */
-        Highcharts: string;
-        /**
-         * @default 'DataGrid'
-         */
-        DataGrid: string;
-        /**
-         * @default 'KPI'
-         */
-        KPI: string;
-    }
-
-    export interface LangAccessibilityOptions {
-        contextMenu: LangAccessibilityOptionsContextMenu;
-        editMode: LangAccessibilityOptionsEditMode;
-    }
-
-    export interface LangAccessibilityOptionsContextMenu {
-        [key: string]: string;
-
-        /**
-         * @default 'Context menu'
-         */
-        button: string;
-    }
-
-    export interface LangAccessibilityOptionsEditMode {
-        [key: string]: string;
-
-        /**
-         * @default 'Edit mode'
-         */
-        editMode: string;
-    }
-
-    export type TLangKeys = 'editMode' | 'verticalSeparator';
+/* *
+ *
+ *  Type Declarations
+ *
+ * */
+export interface ClassNamesOptions {
+    accordionContainer: string;
+    accordionContent: string;
+    accordionHeader: string;
+    accordionHeaderBtn: string;
+    accordionHeaderIcon: string;
+    accordionMenu: string;
+    accordionMenuButton: string;
+    accordionMenuButtonsContainer: string;
+    accordionNestedWrapper: string;
+    accordionStandaloneWrapper: string;
+    accordionHeaderWrapper: string;
+    button: string;
+    cellEditHighlight: string;
+    collapsableContentHeader: string;
+    confirmationPopup: string;
+    contextDetectionPointer: string;
+    contextMenu: string;
+    contextMenuBtn: string;
+    contextMenuBtnText: string;
+    contextMenuItem: string;
+    currentEditedElement: string;
+    customSelect: string;
+    customSelectButton: string;
+    dashboardCellEditHighlightActive: string;
+    dragMock: string;
+    dropPointer: string;
+    dropdown: string;
+    dropdownButton: string;
+    dropdownButtonContent: string;
+    dropdownContent: string;
+    dropdownIcon: string;
+    editGridItems: string;
+    editModeEnabled: string;
+    editStandaloneToggle: string;
+    editOverlay: string;
+    editOverlayActive: string;
+    editSidebar: string;
+    editSidebarHide: string;
+    editSidebarHeader: string;
+    editSidebarMenuItem: string;
+    editSidebarRight: string;
+    editSidebarRightShow: string;
+    editSidebarShow: string;
+    editSidebarTabBtn: string;
+    editSidebarTabBtnWrapper: string;
+    editSidebarTitle: string;
+    editSidebarWrapper: string;
+    editToolbar: string;
+    editToolbarCell: string;
+    editToolbarCellOutline: string;
+    editToolbarItem: string;
+    editToolbarRow: string;
+    editToolbarRowOutline: string;
+    editTools: string;
+    editToolsBtn: string;
+    hiddenElement: string;
+    icon: string;
+    labelText: string;
+    maskElement: string;
+    menu: string;
+    menuDestroy: string;
+    menuHorizontalSeparator: string;
+    menuItem: string;
+    menuVerticalSeparator: string;
+    popupCloseButton: string;
+    popupCancelBtn: string;
+    popupConfirmBtn: string;
+    popupButtonContainer: string;
+    popupContentContainer: string;
+    resizePointer: string;
+    resizeSnap: string;
+    resizeSnapX: string;
+    resizeSnapY: string;
+    resizerMenuBtnActive: string;
+    collapsedElement: string;
+    rowContextHighlight: string;
+    separator: string;
+    sidebarCloseButton: string;
+    sidebarNavButton: string;
+    standaloneElement: string;
+    toggleContainer: string;
+    toggleLabels: string;
+    toggleSlider: string;
+    toggleWrapper: string;
+    toggleWrapperColored: string;
+    labeledToggleWrapper: string;
+    viewFullscreen: string;
 }
+
+export interface LangOptions {
+    /**
+     * Accessibility language options for the dashboard.
+     */
+    accessibility: LangAccessibilityOptions;
+    /**
+     * @default 'Add component'
+     */
+    addComponent: string;
+    /**
+     * @default 'Cancel'
+     */
+    cancelButton: string;
+    /**
+     * @default 'Caption'
+     */
+    caption: string;
+    /**
+     * @default 'Chart class name'
+     */
+    chartClassName: string;
+    /**
+     * @default 'Chart configuration'
+     */
+    chartConfig: string;
+    /**
+     * @default 'Chart ID'
+     */
+    chartID: string;
+    /**
+     * @default 'Chart options'
+     */
+    chartOptions: string;
+    /**
+     * @default 'Chart type'
+     */
+    chartType: string;
+    /**
+     * @default 'Connector name'
+     */
+    connectorName: string;
+    /**
+     * @default 'Confirm'
+     */
+    confirmButton: string;
+    /**
+     * @default 'Do you really want to destroy the cell?'
+     */
+    confirmDestroyCell: string;
+    /**
+     * @default 'Do you really want to destroy the row?'
+     */
+    confirmDestroyRow: string;
+    /**
+     * @default 'Do you really want to discard the changes?'
+     */
+    confirmDiscardChanges: string;
+    /**
+     * @default 'Data labels'
+     */
+    dataLabels: string;
+    /**
+     * @default 'Edit mode'
+     */
+    editMode: string;
+    /**
+     * @default 'Something went wrong'
+     */
+    errorMessage: string;
+    /**
+     * @default 'Exit full screen'
+     */
+    exitFullscreen: string;
+    /**
+     * @default 'Id'
+     */
+    id: string;
+    /**
+     * @default 'off'
+     */
+    off: string;
+    /**
+     * @default 'on'
+     */
+    on: string;
+    /**
+     * @default 'Point format'
+     */
+    pointFormat: string;
+    /**
+     * @default 'Settings'
+     */
+    settings: string;
+    /**
+     * Options for the sidebar and its components.
+     */
+    sidebar: SidebarLangOptions
+    /**
+     * @default 'Styles'
+     */
+    style: string;
+    /**
+     * @default 'Title'
+     */
+    title: string;
+    /**
+     * @default 'View in full screen'
+     */
+    viewFullscreen: string;
+    [key: string]: any;
+}
+
+export interface SidebarLangOptions {
+    [key: string]: string;
+    /**
+     * @default 'HTML'
+     */
+    HTML: string;
+    /**
+     * @default 'Row'
+     */
+    row: string;
+    /**
+     * @default 'Highcharts'
+     */
+    Highcharts: string;
+    /**
+     * @default 'Grid'
+     */
+    Grid: string;
+    /**
+     * @default 'KPI'
+     */
+    KPI: string;
+}
+
+export interface LangAccessibilityOptions {
+    contextMenu: LangAccessibilityOptionsContextMenu;
+    editMode: LangAccessibilityOptionsEditMode;
+}
+
+export interface LangAccessibilityOptionsContextMenu {
+    [key: string]: string;
+
+    /**
+     * @default 'Context menu'
+     */
+    button: string;
+}
+
+export interface LangAccessibilityOptionsEditMode {
+    [key: string]: string;
+
+    /**
+     * @default 'Edit mode'
+     */
+    editMode: string;
+}
+
+export type TLangKeys = 'editMode' | 'verticalSeparator';
 
 export default EditGlobals;

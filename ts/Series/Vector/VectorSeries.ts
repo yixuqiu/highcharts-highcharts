@@ -2,11 +2,13 @@
  *
  *  Vector plot series module
  *
- *  (c) 2010-2024 Torstein Honsi
+ *  (c) 2010-2026 Highsoft AS
+ *  Author: Torstein Hønsi
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  * */
 
@@ -22,25 +24,15 @@ import type VectorPoint from './VectorPoint';
 import type VectorSeriesOptions from './VectorSeriesOptions';
 import type SVGAttributes from '../../Core/Renderer/SVG/SVGAttributes';
 import type SVGPath from '../../Core/Renderer/SVG/SVGPath';
+import type { StatesOptionsKey } from '../../Core/Series/StatesOptions';
 
-import A from '../../Core/Animation/AnimationUtilities.js';
-const { animObject } = A;
+import { animObject } from '../../Core/Animation/AnimationUtilities.js';
 import H from '../../Core/Globals.js';
+import ScatterSeries from '../Scatter/ScatterSeries.js';
+import Series from '../../Core/Series/Series.js';
 import SeriesRegistry from '../../Core/Series/SeriesRegistry.js';
-const {
-    series: Series,
-    seriesTypes: {
-        scatter: ScatterSeries
-    }
-} = SeriesRegistry;
-import U from '../../Core/Utilities.js';
-const {
-    arrayMax,
-    extend,
-    merge,
-    pick
-} = U;
 import VectorSeriesDefaults from './VectorSeriesDefaults.js';
+import { arrayMax, extend, merge } from '../../Shared/Utilities.js';
 
 /* *
  *
@@ -51,7 +43,6 @@ import VectorSeriesDefaults from './VectorSeriesDefaults.js';
 /**
  * The vector series class.
  *
- * @private
  * @class
  * @name Highcharts.seriesTypes.vector
  *
@@ -65,6 +56,7 @@ class VectorSeries extends ScatterSeries {
      *
      * */
 
+    /** @internal */
     public static defaultOptions: VectorSeriesOptions = merge(
         ScatterSeries.defaultOptions,
         VectorSeriesDefaults
@@ -78,8 +70,10 @@ class VectorSeries extends ScatterSeries {
 
     public data!: Array<VectorPoint>;
 
+    /** @internal */
     public lengthData?: Array<number>;
 
+    /** @internal */
     public lengthMax!: number;
 
     public options!: VectorSeriesOptions;
@@ -94,7 +88,7 @@ class VectorSeries extends ScatterSeries {
 
     /**
      * Fade in the arrows on initializing series.
-     * @private
+     * @internal
      */
     public animate(init?: boolean): void {
         if (init) {
@@ -111,7 +105,7 @@ class VectorSeries extends ScatterSeries {
     /**
      * Create a single arrow. It is later rotated around the zero
      * centerpoint.
-     * @private
+     * @internal
      */
     public arrow(point: VectorPoint): SVGPath {
         const fraction: number = (point.length as any) / this.lengthMax,
@@ -164,7 +158,7 @@ class VectorSeries extends ScatterSeries {
     */
 
     /**
-     * @private
+     * @internal
      */
     public drawPoints(): void {
         const chart = this.chart;
@@ -189,7 +183,7 @@ class VectorSeries extends ScatterSeries {
                         .addClass(
                             'highcharts-point ' +
                             'highcharts-color-' +
-                            pick(point.colorIndex, point.series.colorIndex)
+                            (point.colorIndex ?? point.series.colorIndex)
                         );
                 }
                 point.graphic
@@ -214,11 +208,11 @@ class VectorSeries extends ScatterSeries {
 
     /**
      * Get presentational attributes.
-     * @private
+     * @internal
      */
     public pointAttribs(
         point?: VectorPoint,
-        state?: string
+        state?: StatesOptionsKey
     ): SVGAttributes {
         const options = this.options;
 
@@ -226,25 +220,24 @@ class VectorSeries extends ScatterSeries {
             strokeWidth = this.options.lineWidth;
 
         if (state) {
-            stroke = (options.states as any)[state].color || stroke;
-            strokeWidth =
-            ((options.states as any)[state].lineWidth || strokeWidth) +
-            ((options.states as any)[state].lineWidthPlus || 0);
+            stroke = options.states?.[state]?.color || stroke;
+            strokeWidth = (options.states?.[state]?.lineWidthPlus || 0) +
+                (options.states?.[state]?.lineWidth || strokeWidth || 0);
         }
 
         return {
-            'stroke': stroke,
+            stroke,
             'stroke-width': strokeWidth
         };
     }
 
     /**
-     * @private
+     * @internal
      */
     public translate(): void {
         Series.prototype.translate.call(this);
 
-        this.lengthMax = arrayMax(this.lengthData as any);
+        this.lengthMax = arrayMax(this.getColumn('length'));
     }
 
 }
@@ -264,19 +257,19 @@ interface VectorSeries {
 extend(VectorSeries.prototype, {
 
     /**
-     * @ignore
+     * @internal
      * @deprecated
      */
     drawGraph: H.noop,
 
     /**
-     * @ignore
+     * @internal
      * @deprecated
      */
     getSymbol: H.noop,
 
     /**
-     * @ignore
+     * @internal
      * @deprecated
      */
     markerAttribs: H.noop as any,

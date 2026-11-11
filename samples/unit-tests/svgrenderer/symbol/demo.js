@@ -1,159 +1,3 @@
-// Purposefully not using lolex for this, as we are loading images.
-QUnit.test('Symbol tests', function (assert) {
-    var w = 400,
-        h = 400,
-        done = assert.async(),
-        total = 0,
-        count = 0,
-        symbol1,
-        symbol2,
-        symbol3,
-        label,
-        url =
-            location.host.substr(0, 12) === 'localhost:98' ?
-                'url(base/test/testimage.png)' : // karma
-                'url(testimage.png)'; // utils
-
-    function ifDone() {
-        count++;
-        if (count === total) {
-            done();
-        }
-    }
-
-    // Add chart to get the onload event after images are loaded.
-    Highcharts.chart('container', {
-        chart: {
-            width: w,
-            height: h,
-            backgroundColor: 'none',
-            events: {
-                // set up images related elements
-                beforeRender: function () {
-                    var ren = this.renderer;
-
-                    // Add a grid so we can see where they symbols are
-                    for (var x = 99.5; x < w - 1; x += 100) {
-                        ren.path(['M', x, 0, 'L', x, 400])
-                            .attr({
-                                stroke: 'silver',
-                                'stroke-width': 1
-                            })
-                            .add();
-                    }
-
-                    for (var y = 99.5; y < h - 1; y += 100) {
-                        ren.path(['M', 0, y, 'L', 400, y])
-                            .attr({
-                                stroke: 'silver',
-                                'stroke-width': 1
-                            })
-                            .add();
-                    }
-
-                    // Basic symbol
-                    symbol1 = ren.symbol(url, 100, 100).add();
-                    total++;
-
-                    // With explicit size
-                    symbol2 = ren
-                        .symbol(
-                            url.replace(')', '?' + Date.now() + ')'),
-                            200,
-                            100,
-                            null,
-                            null,
-                            {
-                                width: 20,
-                                height: 20
-                            }
-                        )
-                        .add();
-                    total++;
-
-                    // Label with background
-                    label = ren
-                        .label('Hello Label', 300, 100, url)
-                        .attr({
-                            padding: 0,
-                            width: 100,
-                            height: 30
-                        })
-                        .add();
-                    total++;
-
-                    // Symbol with wrong name #6627
-                    symbol3 = ren
-                        .symbol('krakow', 100, 200, 10, 10)
-                        .attr({
-                            fill: 'red'
-                        })
-                        .add();
-                    total++;
-                },
-                // images are loaded
-                load: function () {
-                    // Basic symbol
-                    assert.strictEqual(
-                        symbol1.element.getAttribute('width'),
-                        '30',
-                        'Width ok'
-                    );
-                    assert.strictEqual(
-                        symbol1.element.getAttribute('transform') &&
-                            symbol1.element
-                                .getAttribute('transform')
-                                .replace(' ', ','), // MSIE
-                        'translate(-15,-15)',
-                        'Translate ok'
-                    );
-                    ifDone();
-
-                    // With explicit size
-                    assert.strictEqual(
-                        symbol2.element.getAttribute('width'),
-                        '20',
-                        'Width ok'
-                    );
-                    assert.strictEqual(
-                        symbol2.element.getAttribute('transform') &&
-                            symbol2.element
-                                .getAttribute('transform')
-                                .replace(' ', ','), // MSIE
-                        'translate(-10,-10)',
-                        'Translate ok'
-                    );
-                    ifDone();
-
-                    // Label with background
-                    assert.strictEqual(
-                        label.box.element.getAttribute('width'),
-                        '30',
-                        'Label box width ok'
-                    );
-                    assert.strictEqual(
-                        label.box.element.getAttribute('transform') &&
-                            label.box.element
-                                .getAttribute('transform')
-                                .replace('(35)', '(35,0)'), // MSIE
-                        'translate(35,0)',
-                        'Label box translate ok, centered in label'
-                    );
-                    ifDone();
-
-                    // Symbol with wrong name #6627
-                    assert.strictEqual(
-                        symbol3.symbolName,
-                        'circle',
-                        'Wrong symbol name defualts to "circle" (#6627)'
-                    );
-                    ifDone();
-                }
-            }
-        }
-    });
-});
-
 QUnit.test('Arc', assert => {
     const path = Highcharts.SVGRenderer.prototype.symbols.arc(0, 0, 10, 10, {
         r: 0
@@ -169,6 +13,114 @@ QUnit.test('Arc', assert => {
         0,
         '#15382: Y radius should be 0'
     );
+
+    const ren = new Highcharts.Renderer(
+            document.getElementById('container'),
+            400,
+            400
+        ),
+        arcBox = ren.path({
+            d: ren.symbols.arc(150, 150, 150, 150, {
+                r: 150,
+                end: Math.PI * 2 - 1.1,
+                start: -1.1
+            })
+        }).attr({
+            stroke: 'black'
+        }).add().getBBox();
+
+    assert.close(
+        arcBox.y,
+        0,
+        0.001,
+        'Arc with changed start and end angle should create a correct circle.'
+    );
+    assert.close(
+        arcBox.x,
+        0,
+        0.001,
+        'Arc with changed start and end angle should create a correct circle.'
+    );
+    assert.close(
+        arcBox.width,
+        300,
+        0.001,
+        'Arc with changed start and end angle should create a correct circle.'
+    );
+    assert.close(
+        arcBox.height,
+        300,
+        0.001,
+        'Arc with changed start and end angle should create a correct circle.'
+    );
+});
+
+// Tests for #20585, #21701, #23601
+QUnit.test('Arc proximity', assert => {
+    const ren = new Highcharts.Renderer(
+        document.getElementById('container'),
+        400,
+        400
+    );
+
+    [0, 5000, 10000, 32768, 65536, 401e3].forEach(x => {
+
+        const circle = ren
+            .symbol('circle', x, 100, 6, 6)
+            .attr({
+                fill: 'blue'
+            })
+            .add();
+
+        const circleBig = ren
+            .symbol('circle', x, 100, 60, 60)
+            .attr({
+                fill: 'green'
+            })
+            .add();
+
+        assert.close(
+            circle.getBBox().width,
+            6,
+            0.00001,
+            `Small circle should be rendered with correct width, x=${x}`
+        );
+        assert.close(
+            circleBig.getBBox().width,
+            60,
+            0.00001,
+            `Large circle should be rendered with correct width, x=${x}`
+        );
+
+        // Full ring, like a donut with one point or a pane background
+        [false, true].forEach(open => {
+            const ring = ren
+                    .symbol('arc', x + 30, 100, 30, 30, {
+                        start: -Math.PI / 2,
+                        end: Math.PI * 1.5,
+                        innerR: 15,
+                        open
+                    })
+                    .attr({
+                        fill: 'red'
+                    })
+                    .add(),
+                point = ren.box.createSVGPoint();
+
+            point.x = x + 30;
+            point.y = 100;
+            assert.notOk(
+                ring.element.isPointInFill(point),
+                `Full ring should keep its hole, x=${x}, open=${open}`
+            );
+
+            point.y = 78;
+            assert.ok(
+                ring.element.isPointInFill(point),
+                `Full ring should be filled, x=${x}, open=${open}`
+            );
+        });
+    });
 });
 
 QUnit.test('Square/rect', assert => {

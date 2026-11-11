@@ -1,10 +1,12 @@
 /* *
  *
- *  (c) 2010-2024 Torstein Honsi
+ *  (c) 2010-2026 Highsoft AS
+ *  Author: Torstein Hønsi
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  * */
 
@@ -19,28 +21,17 @@
 import type ColumnRangePointOptions from './ColumnRangePointOptions.js';
 import type ColumnRangeSeries from './ColumnRangeSeries.js';
 
-import SeriesRegistry from '../../Core/Series/SeriesRegistry.js';
-const {
-    seriesTypes: {
-        column: {
-            prototype: {
-                pointClass: {
-                    prototype: columnProto
-                }
-            }
-        },
-        arearange: {
-            prototype: {
-                pointClass: AreaRangePoint
-            }
-        }
-    }
-} = SeriesRegistry;
-import U from '../../Core/Utilities.js';
-const {
-    extend,
-    isNumber
-} = U;
+import AreaRangePoint from '../AreaRange/AreaRangePoint.js';
+import ColumnSeries from '../Column/ColumnSeries.js';
+import { extend, isNumber } from '../../Shared/Utilities.js';
+
+/* *
+ *
+ *  Constants
+ *
+ * */
+
+const ColumnPoint = ColumnSeries.prototype.pointClass;
 
 /* *
  *
@@ -58,6 +49,7 @@ class ColumnRangePoint extends AreaRangePoint {
 
     public options!: ColumnRangePointOptions;
 
+    /** @internal */
     public series!: ColumnRangeSeries;
 
     /* *
@@ -66,6 +58,7 @@ class ColumnRangePoint extends AreaRangePoint {
      *
      * */
 
+    /** @internal */
     public isValid(): boolean {
         return isNumber(this.low);
     }
@@ -77,14 +70,18 @@ class ColumnRangePoint extends AreaRangePoint {
  *
  * */
 
+/** @internal */
 interface ColumnRangePoint {
-    barX: typeof columnProto.barX;
-    pointWidth: typeof columnProto.pointWidth;
-    shapeType: typeof columnProto.shapeType;
+    /** @internal */
+    barX: typeof ColumnPoint.prototype.barX;
+    /** @internal */
+    pointWidth: typeof ColumnPoint.prototype.pointWidth;
+    /** @internal */
+    shapeType: typeof ColumnPoint.prototype.shapeType;
 
 }
 extend(ColumnRangePoint.prototype, {
-    setState: columnProto.setState
+    setState: ColumnPoint.prototype.setState
 });
 
 /* *

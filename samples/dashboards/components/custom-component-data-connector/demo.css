@@ -1,6 +1,5 @@
-@import url("https://code.highcharts.com/css/highcharts.css");
 @import url("https://code.highcharts.com/dashboards/css/dashboards.css");
-@import url("https://code.highcharts.com/dashboards/css/datagrid.css");
+@import url("https://code.highcharts.com/grid-pro/css/grid-pro.css");
 
 .revenue {
     height: 100%;
@@ -17,4 +16,10 @@
 .revenue .value {
     font-size: 20px;
     text-decoration: underline;
+}
+
+@media screen and (max-width: 576px) {
+    .highcharts-dashboards-cell {
+        flex: 1 1 100%;
+    }
 }

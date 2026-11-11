@@ -1,10 +1,12 @@
 /* *
  *
- *  (c) 2010-2024 Torstein Honsi
+ *  (c) 2010-2026 Highsoft AS
+ *  Author: Torstein Hønsi
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  * */
 
@@ -17,29 +19,22 @@
  * */
 
 import type Chart from '../../Chart/Chart';
-import type Series from '../../Series/Series';
 import type { StackOverflowValue } from './StackingOptions';
 import type SVGElement from '../../Renderer/SVG/SVGElement';
-import type { YAxisOptions } from '../AxisOptions';
 
-import A from '../../Animation/AnimationUtilities.js';
-const { getDeferredAnimation } = A;
+import { getDeferredAnimation } from '../../Animation/AnimationUtilities.js';
 import Axis from '../Axis.js';
-import SeriesRegistry from '../../Series/SeriesRegistry.js';
-const { series: { prototype: seriesProto } } = SeriesRegistry;
+import Series from '../../Series/Series.js';
 import StackItem from './StackItem.js';
-import U from '../../Utilities.js';
-const {
+import {
     addEvent,
     correctFloat,
     defined,
     destroyObjectProperties,
     fireEvent,
-    isArray,
     isNumber,
-    objectEach,
-    pick
-} = U;
+    objectEach
+} from '../../../Shared/Utilities.js';
 
 /* *
  *
@@ -47,32 +42,36 @@ const {
  *
  * */
 
+/** @internal */
 declare module '../AxisComposition' {
     interface AxisComposition {
         stacking?: AxisAdditions;
     }
 }
 
-declare module '../../Chart/ChartLike'{
-    interface ChartLike {
+/** @internal */
+declare module '../../Chart/ChartBase'{
+    interface ChartBase {
         getStacks(): void;
     }
 }
 
-declare module '../../Series/PointLike' {
-    interface PointLike {
+/** @internal */
+declare module '../../Series/PointBase' {
+    interface PointBase {
         leftCliff?: number;
         rightCliff?: number;
     }
 }
 
-declare module '../../Series/SeriesLike' {
-    interface SeriesLike {
+/** @internal */
+declare module '../../Series/SeriesBase' {
+    interface SeriesBase {
         isRadialBar?: boolean;
         negStacks?: boolean;
         singleStacks?: false;
         stack?: StackOverflowValue;
-        stackedYData?: (Array<number>|Array<Array<number>>);
+        stackedYData?: Array<number>;
         stackKey?: string;
         getStackIndicator(
             stackIndicator: (StackItemIndicatorObject|undefined),
@@ -96,6 +95,7 @@ declare module '../../Series/SeriesLike' {
     }
 }
 
+/** @internal */
 interface StackerFunction {
     (
         this: Series,
@@ -105,15 +105,12 @@ interface StackerFunction {
     ): void;
 }
 
+/** @internal */
 export interface StackItemIndicatorObject {
     index: number;
     key?: string;
     stackKey?: string;
     x: number;
-}
-
-declare class StackingAxis extends Axis {
-    stacking: AxisAdditions;
 }
 
 /* *
@@ -125,7 +122,7 @@ declare class StackingAxis extends Axis {
 /**
  * Generate stacks for each series and calculate stacks total values
  *
- * @private
+ * @internal
  * @function Highcharts.Chart#getStacks
  */
 function chartGetStacks(
@@ -136,18 +133,18 @@ function chartGetStacks(
 
     // Reset stacks for each axis
     chart.axes.forEach((axis): void => {
-        if (axis.stacking && axis.stacking.stacks && axis.hasVisibleSeries) {
+        if (axis.stacking?.stacks && axis.hasVisibleSeries) {
             axis.stacking.oldStacks = axis.stacking.stacks;
         }
     });
 
     chart.series.forEach((series): void => {
-        const xAxisOptions = series.xAxis && series.xAxis.options || {};
+        const xAxisOptions = series.xAxis?.options || {};
 
         if (series.options.stacking && series.reserveSpace()) {
             series.stackKey = [
                 series.type,
-                pick(series.options.stack, ''),
+                (series.options.stack ?? ''),
                 inverted ? xAxisOptions.top : xAxisOptions.left,
                 inverted ? xAxisOptions.height : xAxisOptions.width
             ].join(',');
@@ -155,9 +152,7 @@ function chartGetStacks(
     });
 }
 
-/**
- * @private
- */
+/** @internal */
 function onAxisDestroy(this: Axis): void {
     const stacking = this.stacking;
 
@@ -178,9 +173,7 @@ function onAxisDestroy(this: Axis): void {
 
 }
 
-/**
- * @private
- */
+/** @internal */
 function onAxisInit(this: Axis): void {
     if (!this.stacking) {
         this.stacking = new AxisAdditions(this as StackingAxis);
@@ -191,7 +184,7 @@ function onAxisInit(this: Axis): void {
  * Get stack indicator, according to it's x-value, to determine points with the
  * same x-value
  *
- * @private
+ * @internal
  * @function Highcharts.Series#getStackIndicator
  */
 function seriesGetStackIndicator(
@@ -226,7 +219,7 @@ function seriesGetStackIndicator(
 /**
  * Iterate over all stacks and compute the absolute values to percent
  *
- * @private
+ * @internal
  * @function Highcharts.Series#modifyStacks
  */
 function seriesModifyStacks(
@@ -236,7 +229,7 @@ function seriesModifyStacks(
         yAxis = series.yAxis as StackingAxis,
         stackKey = series.stackKey || '',
         stacks = yAxis.stacking.stacks,
-        processedXData = series.processedXData,
+        processedXData = series.getColumn('x', true),
         stacking = series.options.stacking,
         stacker: (StackerFunction|undefined) =
             (series as AnyRecord)[stacking + 'Stacker'];
@@ -271,7 +264,7 @@ function seriesModifyStacks(
 /**
  * Modifier function for percent stacks. Blows up the stack to 100%.
  *
- * @private
+ * @internal
  * @function Highcharts.Series#percentStacker
  */
 function seriesPercentStacker(
@@ -294,7 +287,7 @@ function seriesPercentStacker(
  * and `stacking` is not enabled, we need a pseudo (horizontal) stack in order
  * to handle grouping of points within the same category.
  *
- * @private
+ * @internal
  * @function Highcharts.Series#setGroupedPoints
  * @return {void}
  */
@@ -308,13 +301,10 @@ function seriesSetGroupedPoints(
     if (this.is('column') || this.is('columnrange')) {
         if (
             this.options.centerInCategory &&
-            // With stacking enabled, we already have stacks that we can compute
-            // from
-            !this.options.stacking &&
             // With only one series, we don't need to consider centerInCategory
             this.chart.series.length > 1
         ) {
-            seriesProto.setStackedPoints.call(this, axis, 'group');
+            Series.prototype.setStackedPoints.call(this, axis, 'group');
 
         // After updating, if we now have proper stacks, we must delete the
         // group pseudo stacks (#14980)
@@ -327,7 +317,7 @@ function seriesSetGroupedPoints(
 /**
  * Adds series' points value to corresponding stack
  *
- * @private
+ * @internal
  * @function Highcharts.Series#setStackedPoints
  */
 function seriesSetStackedPoints(
@@ -349,8 +339,8 @@ function seriesSetStackedPoints(
     }
 
     const series = this,
-        xData = series.processedXData,
-        yData = series.processedYData,
+        xData = series.getColumn('x', true),
+        yData = series.getColumn(series.pointValKey || 'y', true),
         stackedYData = [],
         yDataLength = yData.length,
         seriesOptions = series.options,
@@ -371,17 +361,16 @@ function seriesSetStackedPoints(
         other,
         key: string,
         pointKey: string,
-        i,
-        x,
-        y;
-
+        i;
 
     stacking.stacksTouched += 1;
 
     // Loop over the non-null y values and read them into a local array
     for (i = 0; i < yDataLength; i++) {
-        x = (xData as any)[i];
-        y = (yData as any)[i];
+        const x = xData[i] || 0,
+            y = yData[i],
+            yNumber = isNumber(y) && y || 0;
+
         stackIndicator = series.getStackIndicator(
             stackIndicator,
             x,
@@ -391,7 +380,7 @@ function seriesSetStackedPoints(
         // Read stacked values into a stack based on the x value,
         // the sign of y and the stack key. Stacking is also handled for null
         // values (#739)
-        isNegative = negStacks && y < (stackThreshold ? 0 : threshold);
+        isNegative = negStacks && yNumber < (stackThreshold ? 0 : threshold);
         key = isNegative ? negKey : stackKey;
 
         // Create empty object for this stack if it doesn't exist yet
@@ -407,7 +396,6 @@ function seriesSetStackedPoints(
             } else {
                 stacks[key][x] = new StackItem(
                     axis,
-                    (axis.options as YAxisOptions).stackLabels as any,
                     !!isNegative,
                     x,
                     stackOption
@@ -419,7 +407,7 @@ function seriesSetStackedPoints(
         stack = stacks[key][x];
         if (y !== null) {
             stack.points[pointKey] = stack.points[series.index] = [
-                pick(stack.cumulative, stackThreshold)
+                (stack.cumulative ?? stackThreshold)
             ];
 
             // Record the base of the stack
@@ -445,33 +433,27 @@ function seriesSetStackedPoints(
         // Add value to the stack total
         let total = stack.total || 0;
         if (type === 'percent') {
-
             // Percent stacked column, totals are the same for the positive and
             // negative stacks
             other = isNegative ? stackKey : negKey;
             if (negStacks && stacks[other]?.[x]) {
                 other = stacks[other][x];
-                total = other.total =
-                    Math.max(other.total || 0, total) +
-                    Math.abs(y) || 0;
+                total = other.total = Math.max(other.total || 0, total) +
+                    Math.abs(yNumber);
 
             // Percent stacked areas
             } else {
-                total = correctFloat(total + (Math.abs(y) || 0));
+                total = correctFloat(total + Math.abs(yNumber));
             }
 
         } else if (type === 'group') {
-            if (isArray(y)) {
-                y = y[0];
-            }
-
             // In this stack, the total is the number of valid points
-            if (y !== null) {
+            if (isNumber(y)) {
                 total++;
             }
 
         } else {
-            total = correctFloat(total + (y || 0));
+            total = correctFloat(total + yNumber);
         }
 
         if (type === 'group') {
@@ -479,8 +461,7 @@ function seriesSetStackedPoints(
             stack.cumulative = (total || 1) - 1;
         } else {
             stack.cumulative = correctFloat(
-                pick(stack.cumulative, stackThreshold) +
-                (y || 0)
+                (stack.cumulative ?? stackThreshold) + yNumber
             );
         }
         stack.total = total;
@@ -510,9 +491,14 @@ function seriesSetStackedPoints(
  *
  * */
 
+declare class StackingAxis extends Axis {
+    /** @internal */
+    stacking: AxisAdditions;
+}
+
 /**
  * Adds stacking support to axes.
- * @private
+ * @internal
  * @class
  */
 class AxisAdditions {
@@ -523,6 +509,7 @@ class AxisAdditions {
      *
      * */
 
+    /** @internal */
     public constructor(axis: StackingAxis) {
         this.axis = axis;
     }
@@ -533,11 +520,23 @@ class AxisAdditions {
      *
      * */
 
+
+    /** @internal */
     axis: StackingAxis;
+
+    /** @internal */
     oldStacks: Record<string, Record<string, StackItem>> = {};
+
+    /** @internal */
     stacks: Record<string, Record<string, StackItem>> = {};
+
+    /** @internal */
     stacksTouched: number = 0;
+
+    /** @internal */
     stackTotalGroup?: SVGElement;
+
+    /** @internal */
     usePercentage?: boolean;
 
     /* *
@@ -548,7 +547,7 @@ class AxisAdditions {
 
     /**
      * Build the stacks from top down
-     * @private
+     * @internal
      */
     public buildStacks(): void {
         const stacking = this,
@@ -582,9 +581,7 @@ class AxisAdditions {
         fireEvent(axis, 'afterBuildStacks');
     }
 
-    /**
-     * @private
-     */
+    /** @internal */
     public cleanStacks(): void {
         if (this.oldStacks) {
             this.stacks = this.oldStacks;
@@ -601,7 +598,7 @@ class AxisAdditions {
 
     /**
      * Set all the stacks to initial states and destroy unused ones.
-     * @private
+     * @internal
      */
     public resetStacks(): void {
         objectEach(this.stacks, (type): void => {
@@ -624,7 +621,8 @@ class AxisAdditions {
     }
 
     /**
-     * @private
+     * Create the stack totals group and render the individual labels into it
+     * @internal
      */
     public renderStackTotals(): void {
         const stacking = this,
@@ -632,37 +630,48 @@ class AxisAdditions {
             chart = axis.chart,
             renderer = chart.renderer,
             stacks = stacking.stacks,
-            stackLabelsAnim = axis.options.stackLabels?.animation,
+            { animation, enabled } = axis.options.stackLabels || {},
             animationConfig = getDeferredAnimation(
                 chart,
-                stackLabelsAnim || false
+                animation || false
             ),
             stackTotalGroup = stacking.stackTotalGroup = (
                 stacking.stackTotalGroup ||
-                renderer
-                    .g('stack-labels')
-                    .attr({
-                        zIndex: 6,
-                        opacity: 0
-                    })
-                    .add()
+                (
+                    enabled ?
+                        renderer
+                            .g('stack-labels')
+                            .attr({
+                                zIndex: 6,
+                                opacity: 0
+                            })
+                            .add() :
+                        void 0
+                )
             );
 
-        // The plotLeft/Top will change when y axis gets wider so we need to
-        // translate the stackTotalGroup at every render call. See bug #506
-        // and #516
-        stackTotalGroup.translate(chart.plotLeft, chart.plotTop);
+        if (stackTotalGroup) {
+            // The plotLeft/Top will change when y axis gets wider so we need to
+            // translate the stackTotalGroup at every render call. See bug #506
+            // and #516
+            stackTotalGroup.translate(chart.plotLeft, chart.plotTop);
 
-        // Render each stack total
-        objectEach(stacks, (type): void => {
-            objectEach(type, (stack): void => {
-                stack.render(stackTotalGroup);
+            // Render each stack total
+            objectEach(stacks, (type): void => {
+                objectEach(type, (stack): void => {
+                    if (enabled) {
+                        stack.render(stackTotalGroup);
+                    } else {
+                        stack.label = stack.label?.destroy();
+                    }
+                });
             });
-        });
-        stackTotalGroup.animate({
-            opacity: 1
-        }, animationConfig);
+            stackTotalGroup.animate({
+                opacity: 1
+            }, animationConfig);
+        }
     }
+
 }
 
 
@@ -672,6 +681,7 @@ class AxisAdditions {
  *
  * */
 
+/** @internal */
 namespace StackingAxis {
 
     /* *
@@ -682,7 +692,7 @@ namespace StackingAxis {
 
     /**
      * Extends axis with stacking support.
-     * @private
+     * @internal
      */
     export function compose(
         AxisClass: typeof Axis,
@@ -716,6 +726,7 @@ namespace StackingAxis {
  *
  * */
 
+/** @internal */
 declare module '../AxisType' {
     interface AxisTypeRegistry {
         StackingAxis: StackingAxis;

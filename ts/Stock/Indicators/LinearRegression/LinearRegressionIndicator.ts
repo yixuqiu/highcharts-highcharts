@@ -1,10 +1,12 @@
-/**
+/* *
  *
- *  (c) 2010-2024 Kamil Kulig
+ *  (c) 2010-2026 Highsoft AS
+ *  Author: Kamil Kulig
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  * */
 
@@ -15,7 +17,7 @@
  *  Imports
  *
  * */
-
+import type { IndicatorLinkedSeriesBase } from '../IndicatorBase';
 import type IndicatorValuesObject from '../IndicatorValuesObject';
 import type {
     LinearRegressionOptions,
@@ -25,16 +27,9 @@ import type {
 import type LinearRegressionPoint from './LinearRegressionPoint';
 import type LineSeries from '../../../Series/Line/LineSeries';
 
+import SMAIndicator from '../SMA/SMAIndicator.js';
 import SeriesRegistry from '../../../Core/Series/SeriesRegistry.js';
-const {
-    sma: SMAIndicator
-} = SeriesRegistry.seriesTypes;
-import U from '../../../Core/Utilities.js';
-const {
-    isArray,
-    extend,
-    merge
-} = U;
+import { extend, isArray, merge } from '../../../Shared/Utilities.js';
 
 /* *
  *
@@ -45,7 +40,6 @@ const {
 /**
  * Linear regression series type.
  *
- * @private
  * @class
  * @name Highcharts.seriesTypes.linearregression
  *
@@ -69,9 +63,10 @@ class LinearRegressionIndicator extends SMAIndicator {
      * @extends      plotOptions.sma
      * @since        7.0.0
      * @product      highstock
-     * @requires     stock/indicators/indicators
-     * @requires     stock/indicators/regressions
+     * @requires     indicators/indicators
+     * @requires     indicators/regressions
      * @optionparent plotOptions.linearregression
+     * @internal
      */
     public static defaultOptions: LinearRegressionOptions = merge(
         SMAIndicator.defaultOptions,
@@ -105,7 +100,7 @@ class LinearRegressionIndicator extends SMAIndicator {
                  *         xAxisUnit set to 1 minute
                  *
                  * @example
-                 * // In Liniear Regression Slope Indicator series `xAxisUnit`is
+                 * // In Linear Regression Slope Indicator series `xAxisUnit` is
                  * // `86400000` (1 day) and period is `3`. There're 3 points in
                  * // the base series:
                  *
@@ -119,7 +114,8 @@ class LinearRegressionIndicator extends SMAIndicator {
                  * // has a `y` value of `2` (slope of the regression line). If
                  * // we change the `xAxisUnit` to `1` (ms) the value of the
                  * // indicator's point will be `2.3148148148148148e-8` which is
-                 * // harder to interpert for a human.
+                 * // harder to interpret for a human.
+
                  *
                  * @type    {null|number}
                  * @product highstock
@@ -151,7 +147,7 @@ class LinearRegressionIndicator extends SMAIndicator {
     /**
      * Return the slope and intercept of a straight line function.
      *
-     * @private
+     * @internal
      *
      * @param {Array<number>} xData
      * List of all x coordinates in a period.
@@ -215,7 +211,7 @@ class LinearRegressionIndicator extends SMAIndicator {
     /**
      * Return the y value on a straight line.
      *
-     * @private
+     * @internal
      *
      * @param {Highcharts.RegressionLineParametersObject} lineParameters
      * Object that contains the slope and the intercept of a straight line
@@ -238,7 +234,7 @@ class LinearRegressionIndicator extends SMAIndicator {
      * Transform the coordinate system so that x values start at 0 and
      * apply xAxisUnit.
      *
-     * @private
+     * @internal
      *
      * @param {Array<number>} xData
      * List of all x coordinates in a period
@@ -262,7 +258,7 @@ class LinearRegressionIndicator extends SMAIndicator {
 
     /**
      * Find the closest distance between points in the base series.
-     * @private
+     * @internal
      * @param {Array<number>} xData list of all x coordinates in the base series
      * @return {number} - closest distance between points in the base series
      */
@@ -290,9 +286,10 @@ class LinearRegressionIndicator extends SMAIndicator {
     }
 
     // Required to be implemented - starting point for indicator's logic
+    /** @internal */
     public getValues<TLinkedSeries extends LineSeries>(
         this: LinearRegressionIndicator,
-        baseSeries: TLinkedSeries,
+        baseSeries: TLinkedSeries&IndicatorLinkedSeriesBase,
         regressionSeriesParams:
         LinearRegressionParamsOptions
     ): IndicatorValuesObject<TLinkedSeries> {
@@ -300,9 +297,7 @@ class LinearRegressionIndicator extends SMAIndicator {
             yData: Array<number> = (baseSeries.yData as any),
             period: number = (regressionSeriesParams.period as any),
             // Format required to be returned
-            indicatorData: IndicatorValuesObject<
-            TLinkedSeries
-            > = {
+            indicatorData: IndicatorValuesObject<TLinkedSeries> = {
                 xData: [], // By getValues() method
                 yData: [],
                 values: []
@@ -351,8 +346,12 @@ class LinearRegressionIndicator extends SMAIndicator {
                 y: endPointY
             } as any);
 
-            indicatorData.xData.push(endPointX);
-            indicatorData.yData.push(endPointY as any);
+            if (isArray(indicatorData.xData)) {
+                indicatorData.xData.push(endPointX);
+            }
+            if (isArray(indicatorData.yData)) {
+                indicatorData.yData.push(endPointY as any);
+            }
         }
 
         return indicatorData;
@@ -383,10 +382,17 @@ extend(LinearRegressionIndicator.prototype, {
 
 declare module '../../../Core/Series/SeriesType' {
     interface SeriesTypeRegistry {
+        linearregression: typeof LinearRegressionIndicator;
         linearRegression: typeof LinearRegressionIndicator;
     }
 }
 
+SeriesRegistry.registerSeriesType(
+    'linearregression',
+    LinearRegressionIndicator
+);
+
+// Keep for backwards compatibility
 SeriesRegistry.registerSeriesType(
     'linearRegression',
     LinearRegressionIndicator
@@ -414,9 +420,8 @@ export default LinearRegressionIndicator;
  * @extends   series,plotOptions.linearregression
  * @since     7.0.0
  * @product   highstock
- * @excluding dataParser,dataURL
- * @requires  stock/indicators/indicators
- * @requires  stock/indicators/regressions
+ * @requires  indicators/indicators
+ * @requires  indicators/regressions
  * @apioption series.linearregression
  */
 

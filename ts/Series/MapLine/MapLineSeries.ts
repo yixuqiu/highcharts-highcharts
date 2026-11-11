@@ -1,10 +1,12 @@
 /* *
  *
- *  (c) 2010-2024 Torstein Honsi
+ *  (c) 2010-2026 Highsoft AS
+ *  Author: Torstein Hønsi
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  * */
 
@@ -24,11 +26,7 @@ import type SVGAttributes from '../../Core/Renderer/SVG/SVGAttributes';
 import MapLineSeriesDefaults from './MapLineSeriesDefaults.js';
 import MapSeries from '../Map/MapSeries.js';
 import SeriesRegistry from '../../Core/Series/SeriesRegistry.js';
-import U from '../../Core/Utilities.js';
-const {
-    extend,
-    merge
-} = U;
+import { extend, merge } from '../../Shared/Utilities.js';
 
 /* *
  *
@@ -37,7 +35,6 @@ const {
  * */
 
 /**
- * @private
  * @class
  * @name Highcharts.seriesTypes.mapline
  *
@@ -51,6 +48,7 @@ class MapLineSeries extends MapSeries {
      *
      * */
 
+    /** @internal */
     public static defaultOptions: MapLineSeriesOptions = merge(
         MapSeries.defaultOptions,
         MapLineSeriesDefaults
@@ -76,7 +74,7 @@ class MapLineSeries extends MapSeries {
 
     /**
      * Get presentational attributes
-     * @private
+     * @internal
      * @function Highcharts.seriesTypes.mapline#pointAttribs
      */
     public pointAttribs(
@@ -101,6 +99,7 @@ class MapLineSeries extends MapSeries {
  * */
 
 interface MapLineSeries {
+    /** @internal */
     colorProp: 'stroke';
     pointClass: typeof MapLinePoint;
 }

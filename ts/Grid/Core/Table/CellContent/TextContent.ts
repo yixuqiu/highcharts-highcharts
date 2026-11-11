@@ -1,0 +1,157 @@
+/* *
+ *
+ *  Text Cell Content class
+ *
+ *  (c) 2020-2026 Highsoft AS
+ *
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
+ *
+ *
+ *  Authors:
+ *  - Dawid Draguła
+ *
+ * */
+
+'use strict';
+
+/* *
+ *
+ *  Imports
+ *
+ * */
+
+import type { ColumnDataType } from '../Column';
+
+import AST from '../../../../Core/Renderer/HTML/AST.js';
+import CellContent from './CellContent.js';
+import TableCell from '../Body/TableCell';
+
+import GridUtils from '../../GridUtils.js';
+const {
+    setHTMLContent
+} = GridUtils;
+import { defined } from '../../../../Shared/Utilities.js';
+
+
+/* *
+ *
+ *  Class
+ *
+ * */
+
+/**
+ * Represents a text type of content.
+ */
+class TextContent extends CellContent {
+
+    /* *
+     *
+     *  Static Properties
+     *
+     * */
+
+    public static readonly defaultFormatsForDataTypes: Record<ColumnDataType, string> = {
+        string: '{value}',
+        number: '{value:,.f}',
+        'boolean': '{value}',
+        datetime: '{value:%Y-%m-%d %H:%M:%S}'
+    };
+
+
+    /* *
+     *
+     *  Constructor
+     *
+     * */
+
+    constructor(cell: TableCell) {
+        super(cell);
+        this.add();
+    }
+
+
+    /* *
+     *
+     *  Methods
+     *
+     * */
+
+    protected override add(): void {
+        this.update();
+    }
+
+    public override destroy(): void {
+        this.cell.htmlElement.innerHTML = AST.emptyHTML;
+    }
+
+    public override update(): void {
+        const { format, formatter } = this.cell.column.options.cells || {};
+        const content = this.format();
+
+        // Only a format or a formatter is an opt-in to HTML, a raw value is
+        // rendered as text.
+        if (format || formatter) {
+            setHTMLContent(this.cell.htmlElement, content);
+        } else {
+            this.cell.htmlElement.innerText = content;
+        }
+    }
+
+    /**
+     * Returns the formatted value of the cell.
+     *
+     * @internal
+     */
+    private format(): string {
+        const { cell } = this;
+        const cellsDefaults =
+            cell.row.viewport.grid.options?.columnDefaults?.cells || {};
+        const { format, formatter } = cell.column.options.cells || {};
+
+        let value = cell.value;
+        if (!defined(value)) {
+            value = '';
+        }
+
+        let cellContent = '';
+
+        if (!format && !formatter) {
+            return cell.format(
+                TextContent.defaultFormatsForDataTypes[cell.column.dataType]
+            );
+        }
+
+        const isDefaultFormat = cellsDefaults.format === format;
+        const isDefaultFormatter = cellsDefaults.formatter === formatter;
+
+        if (isDefaultFormat && isDefaultFormatter) {
+            cellContent = formatter ?
+                formatter.call(cell).toString() :
+                (
+                    format ? cell.format(format) : value + ''
+                );
+        } else if (isDefaultFormat) {
+            const formattedValue = formatter?.call(cell);
+
+            cellContent = defined(formattedValue) ?
+                String(formattedValue) : value + '';
+
+        } else if (isDefaultFormatter) {
+            cellContent = format ? cell.format(format) : value + '';
+        }
+
+        return cellContent;
+    }
+
+}
+
+
+/* *
+ *
+ *  Default Export
+ *
+ * */
+
+export default TextContent;

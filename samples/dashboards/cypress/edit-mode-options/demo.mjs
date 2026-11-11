@@ -18,8 +18,7 @@ Dashboards.board('container', {
             enabled: false
         },
         contextMenu: {
-            enabled: true,
-            items: ['editMode']
+            enabled: true
         }
     },
     gui: {
@@ -40,6 +39,16 @@ Dashboards.board('container', {
             renderTo: 'dashboard-col-0',
             type: 'Highcharts',
             editableOptions: [{
+                isStandalone: true,
+                name: 'Title',
+                propertyPath: ['title'],
+                type: 'input'
+            }, {
+                isStandalone: true,
+                name: 'Legend',
+                type: 'toggle',
+                propertyPath: ['chartOptions', 'legend', 'enabled']
+            }, {
                 name: 'chartOptions',
                 type: 'nested',
                 nestedOptions: [{
@@ -60,7 +69,21 @@ Dashboards.board('container', {
                             name: 5
                         }]
                     }]
+                }, {
+                    name: 'dataLabels',
+                    propertyPath: [
+                        'chartOptions',
+                        'plotOptions',
+                        'series',
+                        'dataLabels',
+                        'enabled'
+                    ],
+                    showToggle: true
                 }]
+            }, {
+                name: 'connectorName',
+                propertyPath: ['connector', 'id'],
+                type: 'select'
             }],
             chartOptions: {
                 plotOptions: {
@@ -68,6 +91,12 @@ Dashboards.board('container', {
                         animation: false,
                         marker: {
                             radius: 10
+                        },
+                        events: {
+                            update: function () {
+                                document.getElementById('marker-radius').value =
+                                    this.options.marker.radius;
+                            }
                         }
                     }
                 },

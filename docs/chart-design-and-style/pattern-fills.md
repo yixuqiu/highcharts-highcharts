@@ -1,3 +1,10 @@
+---
+description: >-
+  Load the pattern fill module and use predefined patterns, custom SVG paths,
+  or images as chart colors. Configure sizing, point anchoring, and pattern
+  reuse to control how fills are rendered.
+---
+
 Pattern fills
 =============
 
@@ -56,7 +63,7 @@ series: [{
 }]
 ```
 
-In the above example we define a pattern as the series color, and set the `pattern.color` option for each point color. Note the usage of the [series.keys](https://api.highcharts.com/highcharts/plotOptions.series.keys) option to avoid having to create an object structure for each of the points. For an example demo of creating custom SVG patterns, see the [pattern-fill area](http://jsfiddle.net/gh/get/library/pure/highcharts/highcharts/tree/master/samples/highcharts/series/pattern-fill-area/) demo.
+In the above example we define a pattern as the series color, and set the `pattern.color` option for each point color. Note the usage of the [series.keys](https://api.highcharts.com/highcharts/plotOptions.series.keys) option to avoid having to create an object structure for each of the points. For an example demo of creating custom SVG patterns, see the [pattern-fill area](https://jsfiddle.net/gh/get/library/pure/highcharts/highcharts/tree/master/samples/highcharts/series/pattern-fill-area/) demo.
 
 Image patterns
 --------------
@@ -64,6 +71,15 @@ Image patterns
 The module supports image patterns as well, allowing you to use images as colors. To make an image pattern, supply the `pattern.image` option with a URL to an image. Note that if a `pattern.path` option is supplied, this will take precedence, and an SVG pattern will be created instead. Image patterns have intelligent sizing by default. If an image pattern is set on a point color, the image size is set by default to fill the point bounding box. The image will be stretched in both directions to fit. If stretching is not desirable, it is possible to set a fixed aspect ratio by setting the `pattern.aspectRatio` option. In this case, the image will be zoomed to fill the bounding box, while maintaining the aspect ratio. The image will in this case also be centered within the bounding box. As with SVG patterns, points inherit pattern settings of the series, so it is possible to set e.g. an overall aspect ratio for the series, with a different image URL for each point. The following is an example demo of creating image patterns:
 
 <iframe style="width: 100%; height: 680px" src="https://www.highcharts.com/samples/maps/demo/pattern-fill-map/" frameborder="0"></iframe>
+
+Anchoring patterns to points
+----------------------------
+
+By default, patterns are shared across all points and rendered relative to the series rather than individual points.
+
+Setting `anchorToPoint` to `true` anchors the fill to each individual point, ensuring consistent rendering regardless of the point’s position or size. This improves visual consistency and accessibility, especially for small or narrow points, by keeping fills clearly visible as an alternative to color.
+
+<iframe style="width: 100%; height: 470px" src="https://www.highcharts.com/samples/embed/highcharts/series/pattern-fill-anchor-to-point" frameborder="0"></iframe>
 
 Pattern IDs
 -----------

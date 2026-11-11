@@ -2,11 +2,13 @@
  *
  *  Organization chart module
  *
- *  (c) 2018-2024 Torstein Honsi
+ *  (c) 2018-2026 Highsoft AS
+ *  Author: Torstein Hønsi
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  * */
 
@@ -31,19 +33,20 @@ import type SVGLabel from '../../Core/Renderer/SVG/SVGLabel';
 
 import OrganizationPoint from './OrganizationPoint.js';
 import OrganizationSeriesDefaults from './OrganizationSeriesDefaults.js';
+import SankeySeries from '../Sankey/SankeySeries.js';
 import SeriesRegistry from '../../Core/Series/SeriesRegistry.js';
 import PathUtilities from '../PathUtilities.js';
-const {
-    sankey: SankeySeries
-} = SeriesRegistry.seriesTypes;
-import U from '../../Core/Utilities.js';
-const {
+import SVGElement from '../../Core/Renderer/SVG/SVGElement.js';
+import {
+    crisp,
     css,
     extend,
     isNumber,
     merge,
-    pick
-} = U;
+    splat
+} from '../../Shared/Utilities.js';
+import { composeTextPath } from '../../Extensions/TextPath.js';
+composeTextPath(SVGElement);
 
 /* *
  *
@@ -52,7 +55,6 @@ const {
  * */
 
 /**
- * @private
  * @class
  * @name Highcharts.seriesTypes.organization
  *
@@ -67,6 +69,7 @@ class OrganizationSeries extends SankeySeries {
      * */
 
 
+    /** @internal */
     public static defaultOptions = merge(
         SankeySeries.defaultOptions,
         OrganizationSeriesDefaults
@@ -90,19 +93,20 @@ class OrganizationSeries extends SankeySeries {
      *
      * */
 
+    /** @internal */
     public alignDataLabel(
         point: OrganizationPoint,
         dataLabel: SVGLabel,
         options: OrganizationDataLabelOptions
     ): void {
         // Align the data label to the point graphic
-        const shapeArgs = point.shapeArgs;
-
+        const shapeArgs = point.shapeArgs,
+            text = dataLabel.text;
         if (options.useHTML && shapeArgs) {
-            const padjust = (
-                (this.options.borderWidth as any) +
-                2 * (this.options.dataLabels as any).padding
-            );
+            const padding = splat(this.options.dataLabels.padding || 0),
+                borderWidth = this.options.borderWidth || 0,
+                padjustX = borderWidth + 2 * padding[3 % padding.length],
+                padjustY = borderWidth + 2 * padding[0 % padding.length];
 
             let width = shapeArgs.width || 0,
                 height = shapeArgs.height || 0;
@@ -112,26 +116,31 @@ class OrganizationSeries extends SankeySeries {
                 height = shapeArgs.width || 0;
             }
 
-            height -= padjust;
-            width -= padjust;
+            width -= padjustX;
+            height -= padjustY;
 
-            // Set the size of the surrounding div emulating `g`
-            const text = dataLabel.text;
-            if (text) {
-                css(text.element.parentNode, {
-                    width: width + 'px',
-                    height: height + 'px'
-                });
+            text.foreignObject?.attr({
+                x: 0,
+                y: 0,
+                width,
+                height
+            });
 
-                // Set properties for the span emulating `text`
-                css(text.element, {
-                    left: 0,
-                    top: 0,
-                    width: '100%',
-                    height: '100%',
-                    overflow: 'hidden'
-                });
-            }
+            // When foreign object, the parent node is the body. When parallel
+            // HTML, it is the surrounding div emulating `g`
+            css(text.element.parentNode, {
+                width: width + 'px',
+                height: height + 'px'
+            });
+
+            // Set properties for the span emulating `text`
+            css(text.element, {
+                left: 0,
+                top: 0,
+                width: '100%',
+                height: '100%',
+                overflow: 'hidden'
+            });
 
             // The getBBox function is used in `alignDataLabel` to align
             // inside the box
@@ -147,6 +156,7 @@ class OrganizationSeries extends SankeySeries {
         super.alignDataLabel.apply(this, arguments);
     }
 
+    /** @internal */
     public createNode(id: string): OrganizationPoint {
         const node: OrganizationPoint = super.createNode.call(this, id) as any;
 
@@ -157,6 +167,7 @@ class OrganizationSeries extends SankeySeries {
 
     }
 
+    /** @internal */
     public pointAttribs(
         point: OrganizationPoint,
         state?: StatesOptionsKey
@@ -171,48 +182,45 @@ class OrganizationSeries extends SankeySeries {
             levelOptions: OrganizationSeriesLevelOptions =
                 (series.mapOptionsToLevel as any)[level || 0] || {},
             options = point.options,
-            stateOptions: OrganizationSeriesOptions =
-                (levelOptions.states &&
-                    (levelOptions.states as any)[state as any]) ||
-                {},
-            borderRadius = pick(
-                stateOptions.borderRadius,
-                options.borderRadius,
-                levelOptions.borderRadius,
+            stateOptions = levelOptions.states?.[state || 'normal'] || {},
+            borderRadius = (
+                stateOptions.borderRadius ??
+                options.borderRadius ??
+                levelOptions.borderRadius ??
                 series.options.borderRadius
             ),
 
-            linkColor = pick(
-                stateOptions.linkColor,
-                options.linkColor,
-                levelOptions.linkColor,
-                series.options.linkColor,
-                stateOptions.link && stateOptions.link.color,
-                options.link && options.link.color,
-                levelOptions.link && levelOptions.link.color,
-                series.options.link && series.options.link.color
+            linkColor = (
+                stateOptions.linkColor ??
+                options.linkColor ??
+                levelOptions.linkColor ??
+                series.options.linkColor ??
+                stateOptions.link?.color ??
+                options.link?.color ??
+                levelOptions.link?.color ??
+                series.options.link?.color
             ),
 
-            linkLineWidth = pick(
-                stateOptions.linkLineWidth,
-                options.linkLineWidth,
-                levelOptions.linkLineWidth,
-                series.options.linkLineWidth,
-                stateOptions.link && stateOptions.link.lineWidth,
-                options.link && options.link.lineWidth,
-                levelOptions.link && levelOptions.link.lineWidth,
-                series.options.link && series.options.link.lineWidth
+            linkLineWidth = (
+                stateOptions.linkLineWidth ??
+                options.linkLineWidth ??
+                levelOptions.linkLineWidth ??
+                series.options.linkLineWidth ??
+                stateOptions.link?.lineWidth ??
+                options.link?.lineWidth ??
+                levelOptions.link?.lineWidth ??
+                series.options.link?.lineWidth
             ),
 
-            linkOpacity = pick(
-                stateOptions.linkOpacity,
-                options.linkOpacity,
-                levelOptions.linkOpacity,
-                series.options.linkOpacity,
-                stateOptions.link && stateOptions.link.linkOpacity,
-                options.link && options.link.linkOpacity,
-                levelOptions.link && levelOptions.link.linkOpacity,
-                series.options.link && series.options.link.linkOpacity
+            linkOpacity = (
+                stateOptions.linkOpacity ??
+                options.linkOpacity ??
+                levelOptions.linkOpacity ??
+                series.options.linkOpacity ??
+                stateOptions.link?.linkOpacity ??
+                options.link?.linkOpacity ??
+                levelOptions.link?.linkOpacity ??
+                series.options.link?.linkOpacity
             );
 
         if (!point.isNode) {
@@ -229,39 +237,39 @@ class OrganizationSeries extends SankeySeries {
         return attribs;
     }
 
+    /** @internal */
     public translateLink(point: OrganizationPoint): void {
-        const chart = this.chart,
-            options = this.options,
+        const { chart, options } = this,
             fromNode = point.fromNode,
             toNode = point.toNode,
-            linkWidth = pick(options.linkLineWidth, options.link.lineWidth, 0),
-            crisp = (Math.round(linkWidth) % 2) / 2,
-            factor = pick((options.link as any).offset, 0.5),
-            type = pick(
-                point.options.link && point.options.link.type,
-                options.link.type
-            );
+            linkWidth = options.linkLineWidth ?? options.link.lineWidth ?? 0,
+            factor = options.link.offset ?? 0.5,
+            type = point.options.link?.type ?? options.link.type;
+
         if (fromNode.shapeArgs && toNode.shapeArgs) {
-            const hangingIndent: number = options.hangingIndent as any,
+            const hangingIndent = options.hangingIndent || 0,
                 hangingRight = options.hangingSide === 'right',
                 toOffset = toNode.options.offset,
                 percentOffset =
                     /%$/.test(toOffset as any) && parseInt(toOffset as any, 10),
                 inverted = chart.inverted;
 
-            let x1 = Math.floor(
+            let x1 = crisp(
                     (fromNode.shapeArgs.x || 0) +
-                    (fromNode.shapeArgs.width || 0)
-                ) + crisp,
-                y1 = Math.floor(
+                       (fromNode.shapeArgs.width || 0),
+                    linkWidth
+                ),
+                y1 = crisp(
                     (fromNode.shapeArgs.y || 0) +
-                    (fromNode.shapeArgs.height || 0) / 2
-                ) + crisp,
-                x2 = Math.floor(toNode.shapeArgs.x || 0) + crisp,
-                y2 = Math.floor(
+                        (fromNode.shapeArgs.height || 0) / 2,
+                    linkWidth
+                ),
+                x2 = crisp(toNode.shapeArgs.x || 0, linkWidth),
+                y2 = crisp(
                     (toNode.shapeArgs.y || 0) +
-                    (toNode.shapeArgs.height || 0) / 2
-                ) + crisp,
+                        (toNode.shapeArgs.height || 0) / 2,
+                    linkWidth
+                ),
                 xMiddle;
 
             if (inverted) {
@@ -269,13 +277,14 @@ class OrganizationSeries extends SankeySeries {
                 x2 += (toNode.shapeArgs.width || 0);
             }
             xMiddle = this.colDistance ?
-                Math.floor(
+                crisp(
                     x2 +
                         ((inverted ? 1 : -1) *
                             (this.colDistance - this.nodeWidth)) /
-                            2
-                ) + crisp :
-                Math.floor((x2 + x1) / 2) + crisp;
+                            2,
+                    linkWidth
+                ) :
+                crisp((x2 + x1) / 2, linkWidth);
 
             // Put the link on the side of the node when an offset is given. HR
             // node in the main demo.
@@ -283,10 +292,11 @@ class OrganizationSeries extends SankeySeries {
                 percentOffset &&
                 (percentOffset >= 50 || percentOffset <= -50)
             ) {
-                xMiddle = x2 = Math.floor(
+                xMiddle = x2 = crisp(
                     x2 + (inverted ? -0.5 : 0.5) *
-                    (toNode.shapeArgs.width || 0)
-                ) + crisp;
+                        (toNode.shapeArgs.width || 0),
+                    linkWidth
+                );
                 y2 = toNode.shapeArgs.y || 0;
                 if (percentOffset > 0) {
                     y2 += toNode.shapeArgs.height || 0;
@@ -296,30 +306,32 @@ class OrganizationSeries extends SankeySeries {
             if (toNode.hangsFrom === fromNode) {
                 if (chart.inverted) {
                     y1 = !hangingRight ?
-                        Math.floor(
+                        crisp(
                             (fromNode.shapeArgs.y || 0) +
-                            (fromNode.shapeArgs.height || 0) -
-                            hangingIndent / 2
-                        ) + crisp :
-                        Math.floor(
-                            (fromNode.shapeArgs.y || 0) +
-                        hangingIndent / 2
-                        ) + crisp;
+                                (fromNode.shapeArgs.height || 0) -
+                                hangingIndent / 2,
+                            linkWidth
+                        ) :
+                        crisp(
+                            (fromNode.shapeArgs.y || 0) + hangingIndent / 2,
+                            linkWidth
+                        );
                     y2 = !hangingRight ? (
                         (toNode.shapeArgs.y || 0) +
                         (toNode.shapeArgs.height || 0)
                     ) : (toNode.shapeArgs.y || 0) + hangingIndent / 2;
                 } else {
-                    y1 = Math.floor(
-                        (fromNode.shapeArgs.y || 0) +
-                        hangingIndent / 2
-                    ) + crisp;
+                    y1 = crisp(
+                        (fromNode.shapeArgs.y || 0) + hangingIndent / 2,
+                        linkWidth
+                    );
 
                 }
-                xMiddle = x2 = Math.floor(
+                xMiddle = x2 = crisp(
                     (toNode.shapeArgs.x || 0) +
-                    (toNode.shapeArgs.width || 0) / 2
-                ) + crisp;
+                        (toNode.shapeArgs.width || 0) / 2,
+                    linkWidth
+                );
             }
 
             point.plotX = xMiddle;
@@ -349,7 +361,7 @@ class OrganizationSeries extends SankeySeries {
                             ['L', xMiddle, y2],
                             ['L', x2, y2]
                         ],
-                        pick(options.linkRadius, options.link.radius)
+                        options.linkRadius ?? options.link.radius
                     )
                 };
             }
@@ -364,6 +376,7 @@ class OrganizationSeries extends SankeySeries {
         }
     }
 
+    /** @internal */
     public translateNode(
         node: OrganizationPoint,
         column: SankeyColumnComposition.ArrayComposition<OrganizationPoint>
@@ -441,6 +454,7 @@ class OrganizationSeries extends SankeySeries {
         }
     }
 
+    /** @internal */
     public drawDataLabels(): void {
         const dlOptions = this.options.dataLabels;
 
@@ -465,10 +479,12 @@ class OrganizationSeries extends SankeySeries {
  * */
 
 interface OrganizationSeries {
+    /** @internal */
     pointClass: typeof OrganizationPoint;
 }
 extend(OrganizationSeries.prototype, {
-    pointClass: OrganizationPoint
+    pointClass: OrganizationPoint,
+    useCircularLayout: false
 });
 
 /* *

@@ -65,23 +65,18 @@ Dashboards.board('container', {
     editMode: {
         enabled: true,
         contextMenu: {
-            enabled: true,
-            items: ['editMode']
+            enabled: true
         }
     },
     dataPool: {
         connectors: [{
             id: 'connector-1',
             type: 'JSON',
-            options: {
-                data
-            }
+            data
         }, {
             id: 'connector-2',
             type: 'JSON',
-            options: {
-                data
-            }
+            data
         }]
     },
     gui: {

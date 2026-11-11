@@ -1,3 +1,10 @@
+---
+description: >-
+  Load a tiled-web-map series as a basemap from a supported provider or
+  custom URL, then position it through the map view. The article covers
+  provider settings, layer order, CSS filters, and export behavior.
+---
+
 TiledWebMap
 ==========
 
@@ -11,29 +18,35 @@ Configuration
 
 In order to use the `tiledwebmap` series as a base map, firstly import the `tiledwebmap.js` module.
 
-    <script src="https://code.highcharts.com/maps/modules/tiledwebmap.js"></script>
+```html
+<script src="https://code.highcharts.com/maps/modules/tiledwebmap.js"></script>
 
+```
 Secondly, set the series type to `tiledwebmap`. The tiled web map series can be considered a map layer. It does not require any data or GeoJSON geometry to run. The implementer only has to specify which provider should be used to fetch the tiles from. This series doesn’t have information about what region we want to focus at, so in most cases the implementer wants to set either [mapView.center](https://api.highcharts.com/highmaps/mapView.center) and [mapView.zoom](https://api.highcharts.com/highmaps/mapView.zoom) or [mapView.fitToGeometry](https://api.highcharts.com/highmaps/mapView.fitToGeometry) or add another series with geometry data, which will calculate the proper bounds for the map view. There are additional options such as a theme for the tiles, a subdomain for the provider’s URL and an API key if needed.
 
 Sample code:
 
-    series: [{
-        type: 'tiledwebmap',
-        name: 'Basemap Tiles',
-        provider: {
-            type: 'OpenStreetMap',
-            theme: 'Standard',
-            subdomain: 'a'
-        }
-    }]
+```js
+series: [{
+    type: 'tiledwebmap',
+    name: 'Basemap Tiles',
+    provider: {
+        type: 'OpenStreetMap',
+        theme: 'Standard',
+        subdomain: 'a'
+    }
+}]
 
+```
 Alternatively, you can enter your own URL template, and omit all of the aforementioned properties. The URL has to include variables for `{x}`, `{y}` and `{z}`/`{zoom}` in a given format.
 
-    series: [{
-        type: 'tiledwebmap',
-        url: 'https://yourcustomprovider.com/{x}/{y}/{z}.png'
-    }]
+```js
+series: [{
+    type: 'tiledwebmap',
+    url: 'https://yourcustomprovider.com/{x}/{y}/{z}.png'
+}]
 
+```
 Generally in Highcharts Maps, the [series](https://api.highcharts.com/highmaps/series) array can be thought of as layers that are stacked on top of each other, and the ordering of the layers is determined by source order and can be overridden through the [index](https://api.highcharts.com/highmaps/series.tiledwebmap.index) option or the [zIndex](https://api.highcharts.com/highmaps/series.map.zIndex) option.
 
 <iframe style="width: 100%; height: 520px; border: none;" src="https://highcharts.com/samples/embed/maps/demo/twm-providers" allow="fullscreen"></iframe>
@@ -42,7 +55,7 @@ Providers properties
 ------------
 Highcharts by default supports the following tile providers: `OpenStreetMap`, `Thunderforest`, `Esri`, `Stamen`, `USGS` and `LimaLabs`. Each provider has their own themes and possible subdomains. Tiles are provided in a specific map projection, usually it is a WebMercator projection.
 
-Providers supported natively by Highcharts force map chart configuration to set an appropriate map projection. If the user sets their own projection, which is not supported, there will be a warning in the console and tiles might not load properly. Other providers can be added by using a custom URL in the `provider.url` property or another provider can be [custom built and plugged in](https://highcharts.com/samples/maps/series-tiledwebmaps/human-anatomy).
+Providers supported natively by Highcharts force map chart configuration to set an appropriate map projection. If the user sets their own projection, which is not supported, there will be a warning in the console and tiles might not load properly. Other providers can be added by using a custom URL in the `provider.url` property or another provider can be [custom built and plugged in](https://highcharts.com/samples/maps/series-tiledwebmap/human-anatomy).
 
 Available providers
 ------------
@@ -52,43 +65,51 @@ Available providers
 
     Available properties:
 
+    ```js
         theme: 'Standard’, ‘Hot’, ‘Mapnik’, ‘OpenTopoMap’
         subdomain: ‘a’, ‘b’, ‘c’
-
+    ```
 * `Thunderforest`
 
     Thunderforest is a global provider of thoughtfully-created activity maps. URL: https://www.thunderforest.com/
 
     Available properties:
 
-        theme: ‘OpenCycleMap’, ‘Transport’, ‘TransportDark’, ‘SpinalMap’, ‘Landscape’, ‘Outdoors’, ‘Pioneer’, ‘MobileAtlas’, ‘Neighbourhood’
-        subdomain: ‘a’, ‘b’, ‘c’
+    ```js
+    theme: ‘OpenCycleMap’, ‘Transport’, ‘TransportDark’, ‘SpinalMap’, ‘Landscape’, ‘Outdoors’, ‘Pioneer’, ‘MobileAtlas’, ‘Neighbourhood’
+    subdomain: ‘a’, ‘b’, ‘c’
 
+    ```
 * `Esri`
 
     Esri is the global market leader in geographic information system (GIS) software, location intelligence, and mapping. URL: https://www.esri.com/
 
     Available properties:
 
-        theme: ‘WorldStreetMap’, ‘DeLorme’, ‘WorldTopoMap’, ‘WorldImagery’, ‘WorldTerrain’, ‘WorldShadedRelief’, ‘WorldPhysical’, ‘NatGeoWorldMap’, ‘WorldGrayCanvas’
-
+    ```js
+    theme: ‘WorldStreetMap’, ‘DeLorme’, ‘WorldTopoMap’, ‘WorldImagery’, ‘WorldTerrain’, ‘WorldShadedRelief’, ‘WorldPhysical’, ‘NatGeoWorldMap’, ‘WorldGrayCanvas’, ’WorldDarkGrayCanvas’
+    ```
 * `Stamen`
 
-    Stamen is a San Francisco design and development studio focused on data visualization and map-making. Stamen heavily uses OpenStreetMap data in many of their map visualizations, and their developers have worked on many important tools and product offerings around OpenStreetMap. URL: http://maps.stamen.com/
+    Stamen is a San Francisco design and development studio focused on data visualization and map-making. Stamen heavily uses OpenStreetMap data in many of their map visualizations, and their developers have worked on many important tools and product offerings around OpenStreetMap.
+    URL: https://maps.stamen.com/
 
     Available properties:
 
-        theme: ‘Toner’, ‘TonerBackground’, ‘TonerLite’, ‘Terrain’, ‘TerrainBackground’, ‘Watercolor’
-        subdomain: ‘a’, ‘b’, ‘c’, ‘d’
-
+    ```js
+    theme: ‘Toner’, ‘TonerBackground’, ‘TonerLite’, ‘Terrain’, ‘TerrainBackground’, ‘Watercolor’
+    subdomain: ‘a’, ‘b’, ‘c’, ‘d’
+    ```
 * `USGS`
 
-    The United States Geological Survey (USGS), formerly simply known as the Geological Survey, is a scientific agency of the United States government. URL: https://www.usgs.gov/
+    The United States Geological Survey (USGS), formerly simply known as the Geological Survey, is a scientific agency of the United States government.
+    URL: https://www.usgs.gov/
 
     Available properties:
 
+    ```js
     theme: ‘USTopo’, ‘USImagery’, ‘USImageryTopo’
-
+    ```
 * `LimaLabs`
 
     LimaLabs provides tiles as free for any user needing < 20,000,000 tiles yearly. URL: https://maps.lima-labs.com/
@@ -96,7 +117,36 @@ Available providers
 
     Available properties:
 
-        theme: ‘Standard’
+    ```js
+    theme: ‘Standard’
+    ```
+Styling tiles with CSS filters
+------------
+The tiles are rendered as SVG `image` elements inside the series group. The whole base map can therefore be restyled with the CSS [filter](https://developer.mozilla.org/en-US/docs/Web/CSS/filter) property, without any changes to the tile provider or the chart configuration.
+
+```css
+.highcharts-tiledwebmap-series {
+    filter: grayscale(1);
+}
+
+```
+The rule matches the series group, so tiles that are loaded later, while zooming or panning, are styled as well. Other series are drawn in their own groups and keep their colors.
+
+Filter functions can be combined, for example to turn a light base map into a dark one:
+
+```css
+.highcharts-tiledwebmap-series {
+    filter: invert(1) hue-rotate(180deg) brightness(0.9) contrast(0.85);
+}
+
+```
+Scoping the rule to the `highcharts-dark` class makes the base map follow the chart's dark mode.
+
+The filter should be set on the series group and not on the single `image` elements. Filters such as `blur` sample nearby pixels. Applied per tile, they leave visible seams along the tile edges.
+
+Please note that CSS filters are applied by the browser and are not a part of the chart's SVG. They are therefore not included in exported images.
+
+<iframe style="width: 100%; height: 620px; border: none;" src="https://highcharts.com/samples/embed/maps/series-tiledwebmap/css-filters" allow="fullscreen"></iframe>
 
 API Reference
 -------------

@@ -1,12 +1,14 @@
 /* *
  *
- *  (c) 2010-2024 Torstein Honsi
+ *  (c) 2010-2026 Highsoft AS
+ *  Author: Torstein Hønsi
  *
  *  Extensions to the SVGRenderer class to enable 3D shapes
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  * */
 
@@ -31,8 +33,7 @@ import type SVGElement from './SVGElement';
 import type SVGPath from './SVGPath';
 import type SVGRenderer from './SVGRenderer';
 
-import A from '../../Animation/AnimationUtilities.js';
-const { animObject } = A;
+import { animObject } from '../../Animation/AnimationUtilities.js';
 import Color from '../../Color/Color.js';
 const { parse: color } = Color;
 import H from '../../Globals.js';
@@ -40,19 +41,12 @@ const {
     charts,
     deg2rad
 } = H;
-import Math3D from '../../Math3D.js';
-const {
+import {
     perspective,
     shapeArea
-} = Math3D;
+} from '../../Math3D.js';
 import SVGElement3D from './SVGElement3D.js';
-import U from '../../Utilities.js';
-const {
-    defined,
-    extend,
-    merge,
-    pick
-} = U;
+import { defined, extend, merge } from '../../../Shared/Utilities.js';
 
 /* *
  *
@@ -60,8 +54,9 @@ const {
  *
  * */
 
-declare module './SVGElementLike' {
-    interface SVGElementLike {
+/** @internal */
+declare module './SVGElementBase' {
+    interface SVGElementBase {
         attribs?: SVGAttributes;
         parts?: Array<string>;
         pathType?: string;
@@ -70,8 +65,9 @@ declare module './SVGElementLike' {
     }
 }
 
-declare module './SVGRendererLike' {
-    interface SVGRendererLike {
+/** @internal */
+declare module './SVGRendererBase' {
+    interface SVGRendererBase {
         Element3D: typeof SVGElement3D;
         arc3d(attribs: SVGAttributes): SVGElement;
         arc3dPath(shapeArgs: SVGAttributes): SVGArc3D;
@@ -94,6 +90,7 @@ declare module './SVGRendererLike' {
  *
  * */
 
+/** @internal */
 const cos = Math.cos,
     sin = Math.sin,
     PI = Math.PI,
@@ -108,7 +105,7 @@ const cos = Math.cos,
 /**
  * Method to construct a curved path. Can 'wrap' around more then 180
  * degrees.
- * @private
+ * @internal
  */
 function curveTo(
     cx: number,
@@ -168,6 +165,7 @@ function curveTo(
  *
  * */
 
+/** @internal */
 namespace SVGRenderer3D {
 
     /* *
@@ -198,7 +196,7 @@ namespace SVGRenderer3D {
      *
      * */
 
-    /** @private */
+    /** @internal */
     export function compose(
         SVGRendererClass: typeof SVGRenderer
     ): void {
@@ -227,7 +225,7 @@ namespace SVGRenderer3D {
      *
      * */
 
-    /** @private */
+    /** @internal */
     function toLinePath(
         points: Array<PositionObject>,
         closed?: boolean
@@ -252,7 +250,7 @@ namespace SVGRenderer3D {
         return result;
     }
 
-    /** @private */
+    /** @internal */
     function toLineSegments(
         points: Array<PositionObject>
     ): SVGPath {
@@ -272,7 +270,7 @@ namespace SVGRenderer3D {
      * A 3-D Face is defined by it's 3D vertexes, and is only visible if it's
      * vertexes are counter-clockwise (Back-face culling). It is used as a
      * polyhedron Element.
-     * @private
+     * @internal
      */
     function face3d(
         this: Composition,
@@ -301,12 +299,10 @@ namespace SVGRenderer3D {
                     defined(hash.insidePlotArea)
                 )
             ) {
-                this.enabled = pick(hash.enabled, this.enabled);
-                this.vertexes = pick(hash.vertexes, this.vertexes);
-                this.insidePlotArea = pick(
-                    hash.insidePlotArea,
-                    this.insidePlotArea
-                );
+                this.enabled = (hash.enabled ?? this.enabled);
+                this.vertexes = (hash.vertexes ?? this.vertexes);
+                this.insidePlotArea =
+                    hash.insidePlotArea ?? this.insidePlotArea;
                 delete hash.enabled;
                 delete hash.vertexes;
                 delete hash.insidePlotArea;
@@ -339,12 +335,10 @@ namespace SVGRenderer3D {
                     defined(params.insidePlotArea)
                 )
             ) {
-                this.enabled = pick(params.enabled, this.enabled);
-                this.vertexes = pick(params.vertexes, this.vertexes);
-                this.insidePlotArea = pick(
-                    params.insidePlotArea,
-                    this.insidePlotArea
-                );
+                this.enabled = (params.enabled ?? this.enabled);
+                this.vertexes = (params.vertexes ?? this.vertexes);
+                this.insidePlotArea =
+                    params.insidePlotArea ?? this.insidePlotArea;
                 delete params.enabled;
                 delete params.vertexes;
                 delete params.insidePlotArea;
@@ -376,7 +370,7 @@ namespace SVGRenderer3D {
      * A Polyhedron is a handy way of defining a group of 3-D faces. It's only
      * attribute is `faces`, an array of attributes of each one of it's Face3D
      * instances.
-     * @private
+     * @internal
      */
     function polyhedron(
         this: Composition,
@@ -439,7 +433,7 @@ namespace SVGRenderer3D {
             duration?: (boolean|Partial<AnimationOptions>),
             complete?: Function
         ): SVGElement {
-            if (params && params.faces) {
+            if (params?.faces) {
                 while (result.faces.length > params.faces.length) {
                     result.faces.pop().destroy();
                 }
@@ -463,7 +457,7 @@ namespace SVGRenderer3D {
 
     /**
      * Return result, generalization
-     * @private
+     * @internal
      * @requires highcharts-3d
      */
     function element3d(
@@ -479,7 +473,7 @@ namespace SVGRenderer3D {
 
     /**
      * Generalized, so now use simply
-     * @private
+     * @internal
      */
     function cuboid(
         this: Composition,
@@ -490,7 +484,7 @@ namespace SVGRenderer3D {
 
     /**
      * Generates a cuboid path and zIndexes
-     * @private
+     * @internal
      */
     function cuboidPath(
         this: Composition,
@@ -560,7 +554,7 @@ namespace SVGRenderer3D {
 
         /**
          * Helper method to decide which side is visible
-         * @private
+         * @internal
          */
         const mapSidePath = (i: number): Position3DObject => {
                 // Added support for 0 value in columns, where height is 0
@@ -606,7 +600,7 @@ namespace SVGRenderer3D {
             },
             /**
              * Method creating the final side
-             * @private
+             * @internal
              */
             mapPath = (i: number): Position3DObject => (pArr[i]),
 
@@ -617,7 +611,7 @@ namespace SVGRenderer3D {
              *                 path2 and -1 for no path chosen.
              * Third value - string containing information about current side of
              *               cuboid for forcing side rendering.
-             * @private
+             * @internal
              */
             pickShape = (
                 verticesIndex1: Array<number>,
@@ -724,7 +718,7 @@ namespace SVGRenderer3D {
         }; // #4774
     }
 
-    /** @private */
+    /** @internal */
     function arc3d(
         this: Composition,
         attribs: SVGAttributes3D
@@ -732,31 +726,31 @@ namespace SVGRenderer3D {
         const renderer = this,
             wrapper = renderer.g(),
             elementProto = renderer.Element.prototype,
-            customAttribs = ['x', 'y', 'r', 'innerR', 'start', 'end', 'depth'];
+            customAttribs: Array<keyof SVGAttributes3D> = [
+                'alpha', 'beta',
+                'x', 'y', 'r', 'innerR', 'start', 'end', 'depth'
+            ];
 
         /**
          * Get custom attributes. Don't mutate the original object and return an
          * object with only custom attr.
-         * @private
+         * @internal
          */
-        function suckOutCustom(
+        function extractCustom(
             params: SVGAttributes3D
-        ): (SVGAttributes3D|undefined) {
-            const ca = {} as SVGAttributes;
-
-            let hasCA = false,
-                key: string;
+        ): ([SVGAttributes3D, SVGAttributes]|false) {
+            const ca: Record<string, any> = {};
 
             params = merge(params); // Don't mutate the original object
 
+            let key: keyof SVGAttributes3D;
             for (key in params) {
                 if (customAttribs.indexOf(key) !== -1) {
-                    (ca as any)[key] = (params as any)[key];
-                    delete (params as any)[key];
-                    hasCA = true;
+                    ca[key] = params[key];
+                    delete params[key];
                 }
             }
-            return hasCA ? [ca, params] : (false as any);
+            return Object.keys(ca).length ? [ca, params] : false;
         }
 
         attribs = merge(attribs);
@@ -781,7 +775,7 @@ namespace SVGRenderer3D {
             wrapper.top.add(wrapper);
 
             // These faces are added outside the wrapper group because the
-            // z-index relates to neighbour elements as well
+            // z-index relates to neighbor elements as well
             for (const face of ['out', 'inn', 'side1', 'side2']) {
                 wrapper[face]
                     .attr({
@@ -804,7 +798,7 @@ namespace SVGRenderer3D {
 
         /**
          * Compute the transformed paths and set them to the composite shapes
-         * @private
+         * @internal
          */
         wrapper.setPaths = function (attribs: SVGAttributes3D): void {
 
@@ -834,7 +828,7 @@ namespace SVGRenderer3D {
 
         /**
          * Apply the fill to the top and a darker shade to the sides
-         * @private
+         * @internal
          */
         wrapper.fillSetter = function (
             this: SVGElement,
@@ -876,18 +870,27 @@ namespace SVGRenderer3D {
             this: SVGElement,
             params?: (string|SVGAttributes)
         ): (number|string|SVGElement) {
-            let ca, paramArr;
-
             if (typeof params === 'object') {
-                paramArr = suckOutCustom(params);
+                const paramArr = extractCustom(params);
                 if (paramArr) {
-                    ca = (paramArr as any)[0];
-                    arguments[0] = (paramArr as any)[1];
+                    const ca = paramArr[0];
+                    arguments[0] = paramArr[1];
+
+                    // Translate alpha and beta to rotation
+                    if (ca.alpha !== void 0) {
+                        ca.alpha *= deg2rad;
+                    }
+                    if (ca.beta !== void 0) {
+                        ca.beta *= deg2rad;
+                    }
+
                     extend(wrapper.attribs, ca);
-                    wrapper.setPaths(wrapper.attribs as any);
+                    if (wrapper.attribs) {
+                        wrapper.setPaths(wrapper.attribs);
+                    }
                 }
             }
-            return elementProto.attr.apply(wrapper, arguments as any);
+            return elementProto.attr.apply(wrapper, arguments);
         } as any;
 
         // Override the animate function by sucking out custom parameters
@@ -900,26 +903,20 @@ namespace SVGRenderer3D {
             complete?: Function
         ): SVGElement {
             const from = this.attribs,
-                randomProp = (
-                    'data-' + Math.random().toString(26).substring(2, 9)
-                );
-
-            let paramArr,
-                to: SVGAttributes;
+                randomProp = 'data-' +
+                    Math.random().toString(26).substring(2, 9);
 
             // Attribute-line properties connected to 3D. These shouldn't have
             // been in the attribs collection in the first place.
             delete params.center;
             delete params.z;
-            delete params.alpha;
-            delete params.beta;
 
             const anim = animObject(
-                pick(animation, this.renderer.globalAnimation)
+                (animation ?? this.renderer.globalAnimation)
             );
 
             if (anim.duration) {
-                paramArr = suckOutCustom(params);
+                const paramArr = extractCustom(params);
                 // Params need to have a property in order for the step to run
                 // (#5765, #7097, #7437)
                 wrapper[randomProp] = 0;
@@ -927,24 +924,27 @@ namespace SVGRenderer3D {
                 wrapper[randomProp + 'Setter'] = H.noop;
 
                 if (paramArr) {
-                    to = (paramArr as any)[0]; // Custom attr
-                    anim.step = function (a: unknown, fx: Fx): void {
-                        const interpolate = (key: string): number => (
+                    const to = paramArr[0], // Custom attr
+                        interpolate = (
+                            key: keyof SVGAttributes,
+                            pos: number
+                        ): number => (
                             (from as any)[key] + (
-                                pick((to as any)[key], (from as any)[key]) -
+                                (to[key] ?? (from as any)[key]) -
                                 (from as any)[key]
-                            ) * fx.pos
+                            ) * pos
                         );
 
-                        if (fx.prop === randomProp) {
-                            (fx.elem as any).setPaths(merge(from, {
-                                x: interpolate('x'),
-                                y: interpolate('y'),
-                                r: interpolate('r'),
-                                innerR: interpolate('innerR'),
-                                start: interpolate('start'),
-                                end: interpolate('end'),
-                                depth: interpolate('depth')
+                    anim.step = function (a: unknown, fx: Fx): void {
+                        if (fx.prop === randomProp && fx.elem) {
+                            (fx.elem as SVGElement).setPaths(merge(from, {
+                                x: interpolate('x', fx.pos),
+                                y: interpolate('y', fx.pos),
+                                r: interpolate('r', fx.pos),
+                                innerR: interpolate('innerR', fx.pos),
+                                start: interpolate('start', fx.pos),
+                                end: interpolate('end', fx.pos),
+                                depth: interpolate('depth', fx.pos)
                             }));
                         }
                     };
@@ -997,7 +997,7 @@ namespace SVGRenderer3D {
 
     /**
      * Generate the paths required to draw a 3D arc.
-     * @private
+     * @internal
      */
     function arc3dPath(shapeArgs: SVGAttributes3D): SVGArc3D {
         const cx = shapeArgs.x || 0, // X coordinate of the center
@@ -1165,7 +1165,7 @@ namespace SVGRenderer3D {
 
         /**
          * Set to 0-PI range
-         * @private
+         * @internal
          */
         function toZeroPIRange(angle: number): number {
             angle = angle % (2 * Math.PI);
@@ -1178,7 +1178,7 @@ namespace SVGRenderer3D {
         angleStart = toZeroPIRange(angleStart);
         angleMid = toZeroPIRange(angleMid);
 
-        // *1e5 is to compensate pInt in zIndexSetter
+        // Keep angle-derived z-indices well spaced.
         const incPrecision = 1e5,
             a1 = angleMid * incPrecision,
             a2 = angleStart * incPrecision,
@@ -1207,4 +1207,5 @@ namespace SVGRenderer3D {
  *
  * */
 
+/** @internal */
 export default SVGRenderer3D;

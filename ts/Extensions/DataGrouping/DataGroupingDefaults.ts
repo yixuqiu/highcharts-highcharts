@@ -1,10 +1,12 @@
 /* *
  *
- *  (c) 2010-2024 Torstein Honsi
+ *  (c) 2010-2026 Highsoft AS
+ *  Author: Torstein Hønsi
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  * */
 
@@ -16,6 +18,7 @@
  *
  * */
 
+import type DataGroupingOptions from './DataGroupingOptions';
 import type {
     SeriesTypePlotOptions
 } from '../../Core/Series/SeriesType';
@@ -28,7 +31,7 @@ import type {
 
 /**
  * Common options
- * @private
+ * @internal
  */
 const common = {
     /// enabled: null, // (true for stock charts, false for basic),
@@ -39,44 +42,44 @@ const common = {
     // dealing with a range
     dateTimeLabelFormats: {
         millisecond: [
-            '%A, %e %b, %H:%M:%S.%L',
-            '%A, %e %b, %H:%M:%S.%L',
-            '-%H:%M:%S.%L'
+            '%[AebHMSL]',
+            '%[AebHMSL]',
+            '-%[HMSL]'
         ],
         second: [
-            '%A, %e %b, %H:%M:%S',
-            '%A, %e %b, %H:%M:%S',
-            '-%H:%M:%S'
+            '%[AebHMS]',
+            '%[AebHMS]',
+            '-%[HMS]'
         ],
         minute: [
-            '%A, %e %b, %H:%M',
-            '%A, %e %b, %H:%M',
-            '-%H:%M'
+            '%[AebHM]',
+            '%[AebHM]',
+            '-%[HM]'
         ],
         hour: [
-            '%A, %e %b, %H:%M',
-            '%A, %e %b, %H:%M',
-            '-%H:%M'
+            '%[AebHM]',
+            '%[AebHM]',
+            '-%[HM]'
         ],
         day: [
-            '%A, %e %b %Y',
-            '%A, %e %b',
-            '-%A, %e %b %Y'
+            '%[AebY]',
+            '%[Aeb]',
+            '-%[AebY]'
         ],
         week: [
-            'Week from %A, %e %b %Y',
-            '%A, %e %b',
-            '-%A, %e %b %Y'
+            '%v %[AebY]',
+            '%[Aeb]',
+            '-%[AebY]'
         ],
         month: [
-            '%B %Y',
-            '%B',
-            '-%B %Y'
+            '%[BY]',
+            '%[B]',
+            '-%[BY]'
         ],
         year: [
-            '%Y',
-            '%Y',
-            '-%Y'
+            '%[Y]',
+            '%[Y]',
+            '-%[Y]'
         ]
     }
     /// smoothed = false, // enable this for navigator series only
@@ -84,7 +87,7 @@ const common = {
 
 /**
  * Extends common options
- * @private
+ * @internal
  */
 const seriesSpecific = {
     line: {},
@@ -116,9 +119,9 @@ const seriesSpecific = {
 /**
  * Units are defined in a separate array to allow complete overriding in
  * case of a user option.
- * @private
+ * @internal
  */
-const units = [
+const units: Required<DataGroupingOptions>['units'] = [
     [
         'millisecond', // Unit name
         [1, 2, 5, 10, 20, 25, 50, 100, 200, 500] // Allowed multiples
@@ -152,10 +155,12 @@ const units = [
  *
  * */
 
+/** @internal */
 const DataGroupingDefaults = {
     common,
     seriesSpecific,
     units
 };
 
+/** @internal */
 export default DataGroupingDefaults;

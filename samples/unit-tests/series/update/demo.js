@@ -144,21 +144,21 @@ QUnit.test('Series.update', function (assert) {
     // Color
     assert.strictEqual(
         chart.series[0].graph.element.getAttribute('stroke'),
-        Highcharts.getOptions().colors[0],
+        'var(--highcharts-color-0)',
         'Color initial'
     );
     chart.series[0].update({
-        color: color ? null : Highcharts.getOptions().colors[1]
+        color: color ? null : 'var(--highcharts-color-1)'
     });
     color = !color;
     assert.strictEqual(
         chart.series[0].graph.element.getAttribute('stroke'),
-        Highcharts.getOptions().colors[1],
+        'var(--highcharts-color-1)',
         'Color changed - graph'
     );
     assert.strictEqual(
         chart.series[0].points[0].graphic.element.getAttribute('fill'),
-        Highcharts.getOptions().colors[1],
+        'var(--highcharts-color-1)',
         'Color changed - marker'
     );
 
@@ -308,6 +308,33 @@ QUnit.test('Series.update', function (assert) {
         chart.series[0].options.animation, false, 'Series ' +
         'animation on update should always be false even if set from options'
     );
+
+    // Type registered after chart creation (#24254)
+    const lateColumnType = 'latecolumn';
+    assert.notOk(
+        chart.options.plotOptions[lateColumnType],
+        'Chart should not have plotOptions for a type registered later (#24254)'
+    );
+
+    Highcharts.seriesType(lateColumnType, 'column', {
+        customProp: 'from-defaults'
+    });
+
+    chart.series[0].update({ type: lateColumnType });
+
+    assert.strictEqual(
+        chart.series[0].type,
+        lateColumnType,
+        'Series should update without throwing (#24254)'
+    );
+    assert.strictEqual(
+        chart.series[0].options.customProp,
+        'from-defaults',
+        'Should use default plotOptions for the new type (#24254)'
+    );
+
+    delete Highcharts.seriesTypes[lateColumnType];
+    delete Highcharts.getOptions().plotOptions[lateColumnType];
 });
 
 QUnit.test('Series.update and mouse interaction', function (assert) {
@@ -380,6 +407,40 @@ QUnit.test('Series.update and mouse interaction', function (assert) {
             chart.series[0].points[0].options.dataLabels.enabled,
         true,
         'Data labels should not be enabled.'
+    );
+
+    const color = '#ff0000';
+
+    chart.series[0].update({
+        point: {
+            events: {
+                mouseOver: function () {
+                    this.update({
+                        color: color
+                    });
+                },
+                mouseOut: function () {
+                    this.update({
+                        color: void 0
+                    });
+                }
+            }
+        }
+    });
+
+    chart.series[0].points[0].onMouseOver();
+    assert.strictEqual(
+        chart.series[0].points[0].options.color,
+        color,
+        `Color should be set on mouse over - updated callback should work
+        correctly (#20435).`
+    );
+    assert.notEqual(
+        chart.series[0].points[0].options.dataLabels &&
+            chart.series[0].points[0].options.dataLabels.enabled,
+        true,
+        `Data labels should not be enabled - callback before update shouldn't
+        work (#20435).`
     );
 
     chart.series[0].update({
@@ -518,6 +579,27 @@ QUnit.test('Series.update and events', assert => {
         1,
         'The new click event option should take over'
     );
+
+
+    let arrowFunctionWorks = false;
+    chart.series[0].update({
+        events: {
+            mouseOver: (e, ctx) => {
+                arrowFunctionWorks = (
+                    (e && ctx && true) || false
+                );
+            }
+        }
+    });
+
+    const controller3 = new TestController(chart);
+    controller3.moveTo(100, 130);
+
+    assert.strictEqual(
+        arrowFunctionWorks,
+        true,
+        'Arrow-function callbacks should be called with context'
+    );
 });
 
 QUnit.test('Series.update and setData', function (assert) {
@@ -583,9 +665,28 @@ QUnit.test('Series.update and setData', function (assert) {
     });
 
     assert.strictEqual(
-        chart.series[0].options.data[0].customProp,
+        chart.series[0].points[0].options.customProp,
         true,
         'Custom property should be available in options after update (#11244)'
+    );
+
+    chart.series[0].update({
+        keys: ['x', 'name', 'y'],
+        data: [
+            [0, 'First', 20]
+        ]
+    });
+
+    assert.strictEqual(
+        chart.series[0].points[0].y,
+        20,
+        'The point value should be updated when using keys'
+    );
+
+    assert.strictEqual(
+        chart.series[0].points[0].name,
+        'First',
+        'The point name should be updated when using keys'
     );
 });
 

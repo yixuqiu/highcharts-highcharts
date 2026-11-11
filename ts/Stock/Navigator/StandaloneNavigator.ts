@@ -1,10 +1,12 @@
 /* *
  *
- *  (c) 2010-2024 Mateusz Bernacik
+ *  (c) 2010-2026 Highsoft AS
+ *  Author: Mateusz Bernacik
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  * */
 
@@ -18,24 +20,92 @@
 
 import type { StandaloneNavigatorOptions } from './NavigatorOptions';
 import type { SeriesOptions } from '../../Core/Series/SeriesOptions';
+import type { DeepPartial } from '../../Shared/Types';
 import type { Options } from '../../Core/Options';
-import Chart from '../../Core/Chart/Chart.js';
-import Navigator, { SetRangeEvent } from './Navigator.js';
-import G from '../../Core/Globals.js';
-import U from '../../Core/Utilities.js';
-import Axis from '../../Core/Axis/Axis.js';
-import standaloneNavigatorDefaults from './StandaloneNavigatorDefaults.js';
-const {
-    merge,
-    addEvent,
-    fireEvent,
-    pick
-} = U;
+import type Navigator from './Navigator';
+import type { SetRangeEvent } from './Navigator';
 
-declare module '../../Core/GlobalsLike.d.ts' {
-    interface GlobalsLike {
+import Chart from '../../Core/Chart/Chart.js';
+import G from '../../Core/Globals.js';
+import Axis from '../../Core/Axis/Axis.js';
+import standaloneNavigatorDefaults, {
+    getChartDefaults
+} from './StandaloneNavigatorDefaults.js';
+import {
+    addEvent,
+    defined,
+    find,
+    fireEvent,
+    merge
+} from '../../Shared/Utilities.js';
+import { error } from '../../Core/Utilities.js';
+
+/** @internal */
+declare module '../../Core/GlobalsBase' {
+    interface GlobalsBase {
         navigators: Array<StandaloneNavigator>;
     }
+}
+
+/** @internal */
+interface BoundAxis {
+    axis: Axis;
+    callbacks: Array<Function>;
+    oldMin?: (null|number|string);
+    oldMax?: (null|number|string);
+}
+
+/* *
+ *
+ *  Functions
+ *
+ * */
+
+/**
+ * Support for the deprecated `chart` option, renamed to `chartOptions`.
+ * The new option takes precedence. #24715
+ *
+ * @internal
+ */
+function compatChartOptions(
+    options: StandaloneNavigatorOptions,
+    chart?: Chart
+): StandaloneNavigatorOptions {
+    if (options.chart) {
+        error(32, false, chart, {
+            'standaloneNavigator.chart':
+                'use standaloneNavigator.chartOptions'
+        });
+
+        return merge({ chartOptions: options.chart }, options);
+    }
+
+    return options;
+}
+
+/** @internal */
+function getSizeOptions(
+    options: StandaloneNavigatorOptions
+): DeepPartial<Options> {
+    const { height, width, margin, inverted } =
+            options.chartOptions?.chart || {},
+        chartHeight = height ?? (
+            !inverted && options.height ?
+                options.height + 30 :
+                void 0
+        ),
+        chartWidth = width ?? (
+            inverted && options.height ?
+                options.height + 20 :
+                void 0
+        );
+
+    return merge(
+        getChartDefaults(inverted, chartWidth),
+        defined(margin) ? { chart: { margin } } : void 0,
+        defined(chartWidth) ? { chart: { width: chartWidth } } : void 0,
+        defined(chartHeight) ? { chart: { height: chartHeight } } : void 0
+    );
 }
 
 /* *
@@ -49,6 +119,7 @@ declare module '../../Core/GlobalsLike.d.ts' {
  * creating a standalone navigator component that synchronizes the extremes
  * across multiple bound charts.
  *
+ * @internal
  * @class
  * @name Highcharts.StandaloneNavigator
  *
@@ -61,7 +132,7 @@ declare module '../../Core/GlobalsLike.d.ts' {
 class StandaloneNavigator {
 
     public navigator: Navigator;
-    public boundAxes: Array<{ axis: Axis, callbacks: Array<Function> }> = [];
+    public boundAxes: Array<BoundAxis> = [];
     public chartOptions: Partial<Options>;
     public userOptions: StandaloneNavigatorOptions;
 
@@ -110,28 +181,25 @@ class StandaloneNavigator {
         element: (string | globalThis.HTMLElement),
         userOptions: StandaloneNavigatorOptions
     ) {
-        this.userOptions = userOptions;
+        this.userOptions = userOptions = compatChartOptions(userOptions);
+
         this.chartOptions = merge(
             (G as any).getOptions(),
             standaloneNavigatorDefaults,
-            { navigator: userOptions }
+            userOptions.chartOptions,
+            getSizeOptions(userOptions),
+            { navigator: userOptions },
+            { navigator: { enabled: true } }
         );
 
-        const chart = new Chart(element, this.chartOptions);
+        const chart = new Chart(element, this.chartOptions),
+            navigator = this.navigator = chart.navigator as Navigator,
+            { min, max } = navigator.xAxis.getExtremes();
 
-        chart.options = merge(
-            chart.options,
-            { navigator: { enabled: true }, scrollbar: { enabled: true } }
-        );
+        chart.xAxis[0].userMin = min;
+        chart.xAxis[0].userMax = max;
 
-        if (this.chartOptions.navigator && this.chartOptions.scrollbar) {
-            this.chartOptions.navigator.enabled = true;
-            this.chartOptions.scrollbar.enabled = true;
-        }
-
-        this.navigator = new Navigator(chart);
-        chart.navigator = this.navigator;
-        this.initNavigator();
+        navigator.render(min, max);
     }
 
     /**
@@ -164,7 +232,8 @@ class StandaloneNavigator {
             return;
         }
 
-        const { min, max } = this.navigator.xAxis,
+        const navigator = this.navigator,
+            { min, max } = navigator.xAxis,
             removeEventCallbacks = [];
 
         if (twoWay) {
@@ -175,13 +244,15 @@ class StandaloneNavigator {
                     if (
                         e.trigger === 'pan' ||
                         e.trigger === 'zoom' ||
-                        e.trigger === 'mouseWheelZoom'
+                        e.trigger === 'mousewheel' ||
+                        e.trigger === 'rangeSelectorButton' ||
+                        e.trigger === 'rangeSelectorInput'
                     ) {
                         nav.setRange(
                             e.min,
                             e.max,
                             true,
-                            e.trigger !== 'pan',
+                            e.trigger !== 'pan' && e.trigger !== 'mousewheel',
                             { trigger: axis }
                         );
                     }
@@ -191,7 +262,7 @@ class StandaloneNavigator {
         }
 
         const removeSetRangeEvent = addEvent(
-            this.navigator,
+            navigator,
             'setRange',
             (e: SetRangeEvent): void => {
                 axis.setExtremes(e.min, e.max, e.redraw, e.animation);
@@ -199,12 +270,22 @@ class StandaloneNavigator {
         );
         removeEventCallbacks.push(removeSetRangeEvent);
 
-        let boundAxis = this.boundAxes.filter(function (boundAxis): boolean {
-            return boundAxis.axis === axis;
-        })[0];
+        let boundAxis = find(
+            this.boundAxes,
+            (boundAxis): boolean => boundAxis.axis === axis
+        );
 
         if (!boundAxis) {
             boundAxis = { axis, callbacks: [] };
+
+            // A navigator bound to a yAxis defines the full range the axis
+            // should cover. Stash the axis' own bounds before overriding them,
+            // so `unbind` can restore them, #24716
+            if (axis.coll === 'yAxis') {
+                boundAxis.oldMin = axis.options.min ?? axis.min;
+                boundAxis.oldMax = axis.options.max ?? axis.max;
+            }
+
             this.boundAxes.push(boundAxis);
         }
         boundAxis.callbacks = removeEventCallbacks;
@@ -216,14 +297,19 @@ class StandaloneNavigator {
             }
         });
 
+        // Bind a yAxis to the navigator's full range so vertical panning isn't
+        // capped at the series' data extremes, #24716
+        if (axis.coll === 'yAxis') {
+            const { dataMin, dataMax } = navigator.xAxis.getExtremes();
+            axis.update({ min: dataMin, max: dataMax }, false);
+        }
+
         // Set extremes to match the navigator's extremes
         axis.setExtremes(min, max);
 
         // Unbind the axis before it's destroyed
-        addEvent(axis, 'destroy', (e: AnyRecord): void => {
-            if (!e.keepEvents) {
-                this.unbind(axis);
-            }
+        addEvent(axis, 'destroy', (): void => {
+            this.unbind(axis);
         });
     }
 
@@ -239,14 +325,18 @@ class StandaloneNavigator {
      *        Passing a Chart object unbinds the first X axis of the chart,
      *        an Axis object unbinds that specific axis,
      *        and undefined unbinds all axes bound to the navigator.
+     * @param {boolean} restoreExtremes
+     *        Whether to restore the axis' original min/max that were
+     *        overridden when binding a yAxis.
      */
-    public unbind(axisOrChart?: Chart | Axis): void {
+    public unbind(
+        axisOrChart?: Chart | Axis,
+        restoreExtremes?: boolean
+    ): void {
         // If no axis or chart is provided, unbind all bound axes
         if (!axisOrChart) {
-            this.boundAxes.forEach(({ callbacks }): void => {
-                callbacks.forEach(
-                    (removeCallback): void => removeCallback()
-                );
+            this.boundAxes.forEach((boundAxis): void => {
+                this.releaseAxis(boundAxis, restoreExtremes);
             });
 
             this.boundAxes.length = 0;
@@ -260,11 +350,40 @@ class StandaloneNavigator {
 
         for (let i = this.boundAxes.length - 1; i >= 0; i--) {
             if (this.boundAxes[i].axis === axis) {
-                this.boundAxes[i].callbacks.forEach(
-                    (callback): void => callback()
-                );
+                this.releaseAxis(this.boundAxes[i], restoreExtremes);
                 this.boundAxes.splice(i, 1);
             }
+        }
+    }
+
+    /**
+     * Disconnect a bound axis' events and restore the axis' own bounds that
+     * were overridden when binding a yAxis.
+     *
+     * @internal
+     *
+     * @param {BoundAxis} boundAxis
+     *        The bound axis entry to release.
+     * @param {boolean} [restoreExtremes=false]
+     *        Whether to restore the axis' original min/max that were
+     *        overridden when binding a yAxis.
+     */
+    private releaseAxis(
+        boundAxis: BoundAxis,
+        restoreExtremes = false
+    ): void {
+        // Disconnect events
+        boundAxis.callbacks.forEach(
+            (removeCallback): void => removeCallback()
+        );
+
+        // Restore the axis' original min/max that were overridden in `bind`
+        if (boundAxis.axis.coll === 'yAxis' && restoreExtremes) {
+            const min = boundAxis.oldMin ?? void 0,
+                max = boundAxis.oldMax ?? void 0;
+
+            boundAxis.axis.update({ min, max }, false);
+            boundAxis.axis.setExtremes(min, max);
         }
     }
 
@@ -272,13 +391,14 @@ class StandaloneNavigator {
      * Destroys allocated standalone navigator elements.
      *
      * @function Highcharts.StandaloneNavigator#destroy
+     *
+     * @param {boolean} restoreExtremes
+     *        Whether to restore the axis' original min/max that were
+     *        overridden when binding a yAxis.
      */
-    public destroy(): void {
-        // Disconnect events
-        this.boundAxes.forEach(({ callbacks }): void => {
-            callbacks.forEach(
-                (removeCallback): void => removeCallback()
-            );
+    public destroy(restoreExtremes?: boolean): void {
+        this.boundAxes.forEach((boundAxis): void => {
+            this.releaseAxis(boundAxis, restoreExtremes);
         });
         this.boundAxes.length = 0;
         this.navigator.destroy();
@@ -305,7 +425,16 @@ class StandaloneNavigator {
         newOptions: StandaloneNavigatorOptions,
         redraw?: boolean
     ): void {
-        this.chartOptions = merge(this.chartOptions, { navigator: newOptions });
+        newOptions = compatChartOptions(newOptions, this.navigator.chart);
+
+        this.userOptions = merge(this.userOptions, newOptions);
+
+        this.chartOptions = merge(
+            this.chartOptions,
+            newOptions.chartOptions,
+            getSizeOptions(this.userOptions),
+            { navigator: newOptions }
+        );
 
         this.navigator.chart.update(this.chartOptions, redraw);
     }
@@ -322,7 +451,7 @@ class StandaloneNavigator {
     /**
      * Adds a series to the standalone navigator.
      *
-     * @private
+     * @internal
      *
      * @param {SeriesOptions} seriesOptions
      *        Options for the series to be added to the navigator.
@@ -330,36 +459,10 @@ class StandaloneNavigator {
     public addSeries(seriesOptions: SeriesOptions): void {
         this.navigator.chart.addSeries(merge(
             seriesOptions,
-            { showInNavigator: pick(seriesOptions.showInNavigator, true) }
+            { showInNavigator: (seriesOptions.showInNavigator ?? true) }
         ));
 
         this.navigator.setBaseSeries();
-    }
-
-    /**
-     * Initialize the standalone navigator.
-     *
-     * @private
-     */
-    public initNavigator(): void {
-        const nav = this.navigator;
-        nav.top = 1;
-        nav.xAxis.setScale();
-        nav.yAxis.setScale();
-        nav.xAxis.render();
-        nav.yAxis.render();
-        nav.series?.forEach((s): void => {
-            s.translate();
-            s.render();
-            s.redraw();
-        });
-
-        const { min, max } = this.getInitialExtremes();
-
-        nav.chart.xAxis[0].userMin = min;
-        nav.chart.xAxis[0].userMax = max;
-
-        nav.render(min, max);
     }
 
     /**
@@ -379,8 +482,8 @@ class StandaloneNavigator {
                 this.navigator.xAxis.getExtremes();
 
         return {
-            min: pick(min, dataMin),
-            max: pick(max, dataMax),
+            min: (min ?? dataMin),
+            max: (max ?? dataMax),
             dataMin,
             dataMax,
             userMin,
@@ -423,25 +526,9 @@ class StandaloneNavigator {
             }
         );
     }
-
-    /**
-     * Get the initial, options based extremes for the standalone navigator.
-     *
-     * @private
-     *
-     * @return {{ min: number, max: number }}
-     *         The initial minimum and maximum extremes values.
-     */
-    public getInitialExtremes(): { min: number, max: number } {
-        const { min, max } = this.navigator.xAxis.getExtremes();
-
-        return {
-            min: min,
-            max: max
-        };
-    }
 }
 
+/** @internal */
 export default StandaloneNavigator;
 
 /* *

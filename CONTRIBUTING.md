@@ -2,35 +2,71 @@
 
 First of all, thank you for contributing to Highcharts! :+1: :confetti_ball:
 
-This file outlines the guidelines for contributing source code to the Highcharts repository,
-as well as writing good issue reports.
+This file outlines the guidelines for contributing source code to the Highcharts
+repository, as well as writing good issue reports.
 
 ## Contents
 
-[Reporting Bugs](#reporting-bugs)
-[Suggesting Features and/or Enhancements](#suggesting-features-and-enhancements)
-[Contributing Code](#contributing-code)
-  [Licensing And Legal](#licensing-and-legal)
-  [Style Guide](#style-guide)
-  [Pull Requests](#pull-requests)
+1. [Reporting Bugs](#reporting-bugs)
+    1. [Test a fix](#test-a-fix)
+    2. [Writing a Clear Bug Report](#writing-a-clear-bug-report)
+2. [Suggesting Features and/or Enhancements](#suggesting-features-and-enhancements)
+3. [Contributing Code](#contributing-code)
+    1. [Licensing and Legal](#licensing-and-legal)
+    2. [Review and Acceptance Policy](#review-and-acceptance-policy)
+    3. [Use of AI Tools](#use-of-ai-tools)
+    4. [Style Guide](#style-guide)
+    5. [Pull Requests](#pull-requests)
+    6. [Writing content for the changelog](#writing-content-for-the-changelog)
 
 ## Reporting Bugs
 
 We track bugs on the repository's [GitHub issue tracker](https://github.com/highcharts/highcharts/issues).
 
-Before submitting a new bug report, please try to search existing (open and closed) issues to 
-see if the issue is already reported. If you find an existing open issue, please
-add any additional information you might have on the bug to the existing ticket.
+Before submitting a [new bug report](https://github.com/highcharts/highcharts/issues/new/choose),
+please try to search existing (open and closed) issues to see if the issue is
+already reported. If you find an existing open issue, please add any additional
+information you might have on the bug to the existing ticket.
+
+We use GitHub Issues as our official bug tracker. We strive to keep this a
+clean, maintainable and searchable record of our open and closed bugs, therefore
+we kindly ask you to obey some rules before reporting an issue:
+
+1. Make sure the report is accompanied by a reproducible demo. The ideal demo is
+created by forking [our standard jsFiddle](http://jsfiddle.net/highcharts/LLExL/),
+adding your own code and stripping it down to an absolute minimum needed to
+demonstrate the bug.
+2. Always add information on what browser it applies to, and other information
+needed for us to debug.
+3. It may be that the bug is already fixed. See [Test a fix](#test-a-fix).
 
 If you find a closed issue describing your problem, please open a new issue and 
-link to the closed one in your issue description (use `#<ticket number>`, e.g. `#1234`).
+link to the closed one in your issue description (use `#<ticket number>`, e.g.
+`#12345`).
 
-Please also follow the directions in our [ticket submission template](https://github.com/highcharts/highcharts/blob/master/ISSUE_TEMPLATE.md).
+When you report a new bug, please follow the [bug report template](https://github.com/highcharts/highcharts/issues/new/choose).
+
+### Test a fix
+
+When an issue is resolved, we commit a fix and mark the issue closed. This
+doesn't mean that a new release is available with the fix applied, but that it
+is fixed in the development code and will be added to the next stable release.
+Stable versions are typically released every 1-3 months.
+
+To try out the fix immediately, using the official CDN, you can run
+http://github.highcharts.com/highcharts.js or
+http://github.highcharts.com/highstock.js from any website, but do not use these
+URLs in production.
+
+A nightly build is available as a Node module and is fully described in the
+[documentation](https://www.highcharts.com/docs/getting-started/install-from-npm#installing-nightly-builds-of-highcharts).
+It can also be access by a CDN, like jsdelivr, (e.g.
+`https://cdn.jsdelivr.net/gh/highcharts/highcharts-dist@nightly/highcharts.js`).
 
 ### Writing a Clear Bug Report
 
-To help us find and resolve issues as quickly as possible, it's important that your 
-issue description contains a clear description of the problem. 
+To help us find and resolve issues as quickly as possible, it's important that
+your issue description contains a clear description of the problem.
 
 Your issue should:
 
@@ -38,22 +74,31 @@ Your issue should:
 * include any `console.error` output related to the issue.
 * describe the expected behaviour/output.
 * link to a JSFiddle demo of the issue.
-* if it's not reproducible in a minimal demo, explain what actions where done to trigger the bug.
+* if it's not reproducible in a minimal demo, explain what actions where done to
+trigger the bug.
 * include the tested Highcharts and browser version(s).
+* if you can, say how the bug affects you, for example whether it blocks a
+release or is only cosmetic, and describe any workaround you found.
 
 ## Suggesting Features and Enhancements
 
-Features and enhancements can be suggested on [UserVoice](https://highcharts.uservoice.com/).
+Features and enhancements can be suggested as a [Github issue: feature request](https://github.com/highcharts/highcharts/issues/new?assignees=&labels=Type%3A+Feature+Request&projects=&template=feature_request.md&title=).
+
+Before submitting, please try to search existing (open and closed) issues to see
+if the issue is already reported.
 
 ## Contributing Code
+
+Note: We strongly encourage contributors to open an issue for discussion before investing significant time in a pull request, especially for non-trivial changes. See details below.
 
 ### Licensing And Legal
 
 Please note that when you contribute code to the Highcharts repository that code 
 will be part of the Highcharts source base, which is a commercial product.
 
-For this reason, submissions may not contain code that prevents or limits commercial usage in closed-source applications.
-To ensure this, submissions must be licensed using one of the following licenses:
+For this reason, submissions may not contain code that prevents or limits
+commercial usage in closed-source applications. To ensure this, submissions must
+be licensed using one of the following licenses:
 
 * [Apache License 2.0](https://opensource.org/licenses/apache2.0)
 * [BSD Licence](https://opensource.org/licenses/BSD-3-Clause)
@@ -62,8 +107,9 @@ To ensure this, submissions must be licensed using one of the following licenses
 
 No other license is permitted for contributions.
 
-A reference to the license and the author of the code *must* be present in a comment leading into the submitted code block,
-in a way that makes it clear *which code falls under the license, and where/who it came from*.
+A reference to the license and the author of the code *must* be present in a
+comment leading into the submitted code block, in a way that makes it clear
+*which code falls under the license, and where/who it came from*.
 
 As an example:
 ```
@@ -76,24 +122,69 @@ function anMITLicensedFunction () {
 }
 ```
 
+### Review and Acceptance Policy
+
+We welcome and appreciate contributions from the community. However, please be aware that all submissions are evaluated at the maintainers' discretion, and we reserve the right to decline any pull request, including those that:
+
+- do not follow the guidelines outlined in this document,
+- do not meet the quality standards of the existing codebase,
+- introduce changes that are unnecessarily broad, unfocused, or not aligned with the product direction,
+- add more code to the core or to edge-case fixes than the change needs (see [Keep the code lean](ts/README.md#keep-the-code-lean)),
+- show insufficient understanding of the code being modified, or
+- would require more maintainer effort to review, correct, and iterate on than the contribution warrants.
+
+We strongly encourage contributors to open an issue for discussion before investing significant time in a pull request, especially for non-trivial changes. This helps ensure your effort is directed toward something the team is likely to accept, and gives us the opportunity to provide early guidance.
+
+Please also note the following:
+
+- **CI and review:** every pull request from outside the team needs passing CI checks and a review by a maintainer. Passing CI doesn't mean the pull request will be accepted. We don't review a pull request while its CI checks fail because of the change. Failures unrelated to the change, such as some visual comparison checks, don't block the review.
+- **Open pull requests:** to keep reviews manageable, contributors without write access to the repository should have no more than three pull requests open at the same time, drafts included. We may close pull requests above this limit without review.
+- **First pull request:** a maintainer may adjust the change and merge it in their own commit. In that case, you are credited as a co-author with a `Co-authored-by` trailer, so the contribution still shows up on your GitHub profile.
+
+This policy is in no way meant to discourage contributions. By setting clear expectations upfront, we hope to make the process more productive and respectful of everyone's time, both yours and ours.
+
+### Use of AI Tools
+
+If you contribute from outside the Highcharts team, you may use AI tools to
+write code, tests or descriptions, but you must say so. Add a line to the pull
+request description, below the first paragraph, in this format:
+
+```
+AI assistance: none | partial | substantial (<name of the tool>)
+```
+
+Use `partial` when the tool helped with parts of the change and `substantial`
+when it wrote most of it. We also recommend a trailer in the commit message,
+such as `Co-authored-by: <tool> <email>` or `Assisted-by: <tool>`. Some tools
+add this automatically.
+
+You are responsible for every line you submit, whoever or whatever wrote it.
+Be ready to explain any part of the change during review.
+
+Team members are encouraged, but not required, to disclose AI use in the same
+way.
+
 ### Style Guide
 
 **Commit Messages**
 
 Commits should use the following format:
-* past tense, e.g. `Fixed..` rather than `Fixes..`: this is because we use the commit messages to generate changelogs
+* past tense, e.g. `Fixed..` rather than `Fixes..`
 * try to limit the name to <=100 characters
-* fixes should refer to issues where applicable, i.e. `Fixed #1235, <description>`
+* fixes should refer to issues where applicable, i.e.
+`Fixed #1235, <description>`
 
-**JavaScript**
+**TypeScript**
 
-We use the following JavaScript style:
+We use the following TypeScript style:
 * spaces over tabs.
 * 4 character indentation.
 * max columns in a line is 80.
-* top-level var declarations.
-* no `console.*`
+* top-level declarations.
+* no `console.*`.
 * single quotes.
+
+More about coding recommendations can be found in [Highcharts Internals](ts/README.md).
 
 This style is enforced by ESLint, which is run in a post-commit hook.
 
@@ -105,14 +196,46 @@ feature/fix branches, and then merged through pull requests.
 We use a standard naming convention for these branches:
 
 * `feature/<description>`: the branch contains a new feature.
-* `bugfix/<issuenumber>-<description>`: the branch contains a bugfix for an open issue.
+* `bugfix/<issuenumber>-<description>`: the branch contains a bugfix for an open
+issue.
 * `docs/<description>`: the branch contains a fix to the documentation/doclets.
 
 Your pull request should:
 
-* use the branch name (or follow the branch naming convention if the PR is based on the master branch on a fork) as the title.
+* use the branch name (or follow the branch naming convention if the PR is based
+on the master branch on a fork) as the title.
 * contain a link to an open issue - if there is one - in the description.
 * contain a description of what the pull request implements/fixes.
+* focus on a single problem. Don't split one fix across several pull requests,
+and check that no open pull request already addresses the same issue. We may
+close duplicates.
+* include a regression test for bug fixes. See [test/readme.md](test/readme.md)
+for how to write and run tests.
+* if you contribute from outside the Highcharts team, state whether AI tools
+were used. See [Use of AI Tools](#use-of-ai-tools).
 
+### Writing content for the changelog
 
+The changelog is generated from PR descriptions. The following rules apply:
 
+1. All PRs that should go into the changelog must be labeled with either
+`Changelog: Feature` or `Changelog: Bugfix`. Everything else is ignored.
+2. Label the PR with `Product: Highcharts Stock`, `Product: Highcharts Maps`
+etc. for specific products. PRs with no product tags go into the Highcharts
+changelog.
+3. Only the first paragraph of the description is used. Anything below the first
+line break `\n` is removed (except upgrade notes).
+4. Upgrade notes are marked with `#### Upgrade note`, then the _next paragraph_,
+or the _subsequent items of a bullet list_ after this will be parsed as upgrade
+notes into the changelog.
+5. For consistency, bug fixes should start with "Fixed #xxxx,
+[some description...]". Lower case after the comma.
+6. Since the changelog refers to changes that were done by a past release, write
+in past tense.
+7. Describe bug fixes in a way that users recognize and can relate to their
+issue. It should describe the bug it fixes, rather than (or in addition to)
+describing the internals of how it was fixed.
+8. Names of API members should be written with code formatting.
+    * Bad: Fixed issue with dataGrouping.
+    * Good: Fixed issue with `dataGrouping`.
+    * Good: Fixed issue with data grouping.

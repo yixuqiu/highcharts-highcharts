@@ -2,11 +2,13 @@
  *
  *  Networkgraph series
  *
- *  (c) 2010-2024 Paweł Fus
+ *  (c) 2010-2026 Highsoft AS
+ *  Author: Paweł Fus
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  * */
 
@@ -32,7 +34,6 @@ import QuadTreeNode from './QuadTreeNode.js';
  * The QuadTree class. Used in Networkgraph chart as a base for Barnes-Hut
  * approximation.
  *
- * @private
  * @class
  * @name Highcharts.QuadTree
  *
@@ -53,6 +54,7 @@ class QuadTree {
      *
      * */
 
+    /** @internal */
     public constructor(
         x: number,
         y: number,
@@ -82,10 +84,13 @@ class QuadTree {
      *
      * */
 
+    /** @internal */
     public box: Record<string, number>;
 
+    /** @internal */
     public maxDepth: number;
 
+    /** @internal */
     public root: QuadTreeNode;
 
     /* *
@@ -96,6 +101,7 @@ class QuadTree {
 
     /**
      * Calculate mass of the each QuadNode in the tree.
+     * @internal
      */
     public calculateMassAndCenter(): void {
         this.visitNodeRecursive(
@@ -112,6 +118,7 @@ class QuadTree {
      *
      * @param {Array<Highcharts.Point>} points
      *        Points as nodes
+     * @internal
      */
     public insertNodes(
         points: Array<Point>
@@ -122,7 +129,7 @@ class QuadTree {
     }
 
     /**
-     * Depth first treversal (DFS). Using `before` and `after` callbacks,
+     * Depth first traversal (DFS). Using `before` and `after` callbacks,
      * we can get two results: preorder and postorder traversals, reminder:
      *
      * ```
@@ -143,6 +150,7 @@ class QuadTree {
      *        Function to be called before visiting children nodes.
      * @param {Function} [afterCallback]
      *        Function to be called after visiting children nodes.
+     * @internal
      */
     public visitNodeRecursive(
         node: (QuadTreeNode|null),

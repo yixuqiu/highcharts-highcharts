@@ -1,13 +1,14 @@
 /* *
  *
- *  Tilemaps module
+ *  Tilemap module
  *
- *  (c) 2010-2024 Highsoft AS
+ *  (c) 2010-2026 Highsoft AS
  *  Author: Øystein Moseng
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  * */
 
@@ -50,7 +51,9 @@ import type TilemapSeriesOptions from './TilemapSeriesOptions';
  * @excluding    jitter, joinBy, shadow, allAreas, mapData, marker, data,
  *               dataSorting, boostThreshold, boostBlending
  * @product      highcharts highmaps
- * @requires     modules/tilemap.js
+ * @requires     modules/tilemap
+ * @requires     product:highmaps
+ * @requires     modules/heatmap
  * @optionparent plotOptions.tilemap
  */
 const TilemapSeriesDefaults: TilemapSeriesOptions = {
@@ -85,6 +88,24 @@ const TilemapSeriesDefaults: TilemapSeriesOptions = {
      *         Point padding on tiles
      */
     pointPadding: 2,
+
+    /**
+     * When using automatic point colors pulled from the global
+     * [colors](#colors) collection, this option determines whether the chart
+     * should receive one color per series or one color per point.
+     *
+     * In styled mode, the `colors` array is not supported, and instead this
+     * option gives the points individual color class names on the form
+     * `highcharts-color-{n}`.
+     *
+     * @sample maps/demo/diamondmap
+     *         Diamondmap tilemap with one color per point
+     *
+     * @type      {boolean}
+     * @default   false
+     * @product   highcharts highmaps
+     * @apioption plotOptions.tilemap.colorByPoint
+     */
 
     /**
      * The column size - how many X axis units each column in the tilemap
@@ -125,7 +146,8 @@ const TilemapSeriesDefaults: TilemapSeriesOptions = {
      * @sample maps/demo/diamondmap
      *         Diamond tile shapes
      *
-     * @type {Highcharts.TilemapShapeValue}
+     * @declare Highcharts.TilemapShapeValue
+     * @type    {"circle"|"diamond"|"hexagon"|"square"}
      */
     tileShape: 'hexagon'
 
@@ -136,11 +158,13 @@ const TilemapSeriesDefaults: TilemapSeriesOptions = {
  * not specified, it is inherited from [chart.type](#chart.type).
  *
  * @extends   series,plotOptions.tilemap
- * @excluding allAreas, dataParser, dataURL, joinBy, mapData, marker,
+ * @excluding allAreas, joinBy, mapData, marker,
  *            pointRange, shadow, stack, dataSorting, boostThreshold,
  *            boostBlending
  * @product   highcharts highmaps
- * @requires  modules/tilemap.js
+ * @requires  modules/tilemap
+ * @requires  product:highmaps
+ * @requires  modules/heatmap
  * @apioption series.tilemap
  */
 
@@ -197,6 +221,7 @@ const TilemapSeriesDefaults: TilemapSeriesOptions = {
  * @sample {highcharts} highcharts/series/data-array-of-objects/
  *         Config objects
  *
+ * @basic
  * @type      {Array<Array<(number|string),number>|Array<(number|string),number,number>|*>}
  * @extends   series.heatmap.data
  * @excluding marker
@@ -205,11 +230,11 @@ const TilemapSeriesDefaults: TilemapSeriesOptions = {
  */
 
 /**
- * The color of the point. In tilemaps the point color is rarely set
+ * The color of the point. In tilemap, the point color is rarely set
  * explicitly, as we use the color to denote the `value`. Options for
  * this are set in the [colorAxis](#colorAxis) configuration.
  *
- * @type      {Highcharts.ColorString|Highcharts.GradientColorObject|Highcharts.PatternObject}
+ * @type      {Highcharts.ColorType}
  * @product   highcharts highmaps
  * @apioption series.tilemap.data.color
  */

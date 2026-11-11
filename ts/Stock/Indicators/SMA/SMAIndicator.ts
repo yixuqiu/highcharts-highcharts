@@ -1,8 +1,9 @@
 /* *
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  * */
 
@@ -13,8 +14,10 @@
  *  Imports
  *
  * */
-
-import type IndicatorLike from '../IndicatorLike';
+import type {
+    IndicatorBase,
+    IndicatorLinkedSeriesBase
+} from '../IndicatorBase';
 import type IndicatorValuesObject from '../IndicatorValuesObject';
 import type LineSeriesType from '../../../Series/Line/LineSeries';
 import type {
@@ -24,21 +27,17 @@ import type {
 import type SMAPoint from './SMAPoint';
 
 import Chart from '../../../Core/Chart/Chart.js';
+import DataTableCore from '../../../Data/DataTableCore.js';
+import LineSeries from '../../../Series/Line/LineSeries.js';
 import SeriesRegistry from '../../../Core/Series/SeriesRegistry.js';
-const {
-    line: LineSeries
-} = SeriesRegistry.seriesTypes;
-import U from '../../../Core/Utilities.js';
-const {
+import {
     addEvent,
-    fireEvent,
-    error,
     extend,
+    fireEvent,
     isArray,
-    merge,
-    pick,
-    splat
-} = U;
+    merge
+} from '../../../Shared/Utilities.js';
+import { error } from '../../../Core/Utilities.js';
 
 /* *
  *
@@ -46,16 +45,43 @@ const {
  *
  * */
 
-declare module '../../../Core/Series/SeriesOptions' {
-    interface SeriesOptions {
-        useOhlcData?: boolean;
-    }
-}
-
+/** @internal */
 interface CalculateOnObject {
     chart: string;
     xAxis?: string;
 }
+
+
+/**
+ *
+ * Return the parent series values in the legacy two-dimensional yData
+ * format
+ * @internal
+ */
+const tableToMultiYData = <TLinkedSeries extends LineSeriesType>(
+    series: TLinkedSeries,
+    processed?: boolean
+): Array<number|null|Array<number|null>> => {
+    const yData = [],
+        pointArrayMap = series.pointArrayMap,
+        table = processed && series.dataTable.getModified() || series.dataTable;
+
+    if (!pointArrayMap) {
+        return series.getColumn('y', processed);
+    }
+
+    const columns = pointArrayMap.map((key): Array<number> =>
+        series.getColumn(key, processed)
+    );
+
+    for (let i = 0; i < table.rowCount; i++) {
+        const values = pointArrayMap.map((key, colIndex): number =>
+            columns[colIndex]?.[i] || 0
+        );
+        yData.push(values);
+    }
+    return yData;
+};
 
 /* *
  *
@@ -66,7 +92,6 @@ interface CalculateOnObject {
 /**
  * The SMA series type.
  *
- * @private
  */
 class SMAIndicator extends LineSeries {
 
@@ -77,22 +102,10 @@ class SMAIndicator extends LineSeries {
      * */
 
     /**
-     * The parameter allows setting line series type and use OHLC indicators.
-     * Data in OHLC format is required.
-     *
-     * @sample {highstock} stock/indicators/use-ohlc-data
-     *         Use OHLC data format to plot line chart
-     *
-     * @type      {boolean}
-     * @product   highstock
-     * @apioption plotOptions.line.useOhlcData
-     */
-
-    /**
      * Simple moving average indicator (SMA). This series requires `linkedTo`
      * option to be set.
      *
-     * @sample stock/indicators/sma
+     * @sample {highstock} stock/indicators/sma
      *         Simple moving average indicator
      *
      * @extends      plotOptions.line
@@ -102,8 +115,9 @@ class SMAIndicator extends LineSeries {
      *               pointPlacement, pointRange, pointStart, showInNavigator,
      *               stacking, useOhlcData
      * @product      highstock
-     * @requires     stock/indicators/indicators
+     * @requires     indicators/indicators
      * @optionparent plotOptions.sma
+     * @internal
      */
     public static defaultOptions: SMAOptions = merge(LineSeries.defaultOptions, {
 
@@ -174,10 +188,13 @@ class SMAIndicator extends LineSeries {
 
     public data!: Array<SMAPoint>;
 
+    /** @internal */
     public dataEventsToUnbind!: Array<Function>;
 
-    public linkedParent!: LineSeriesType;
+    /** @internal */
+    public linkedParent!: LineSeriesType&IndicatorLinkedSeriesBase;
 
+    /** @internal */
     public nameBase?: string;
 
     public options!: SMAOptions;
@@ -190,9 +207,7 @@ class SMAIndicator extends LineSeries {
      *
      * */
 
-    /**
-     * @private
-     */
+    /** @internal */
     public destroy(): void {
         this.dataEventsToUnbind.forEach(function (
             unbinder: Function
@@ -202,9 +217,7 @@ class SMAIndicator extends LineSeries {
         super.destroy.apply(this, arguments);
     }
 
-    /**
-     * @private
-     */
+    /** @internal */
     public getName(): string {
         const params: Array<string> = [];
         let name = this.name;
@@ -212,10 +225,14 @@ class SMAIndicator extends LineSeries {
         if (!name) {
 
             (this.nameComponents || []).forEach(
-                function (component: string, index: number): void {
+                function (
+                    this: SMAIndicator,
+                    component: string,
+                    index: number
+                ): void {
                     params.push(
                         (this.options.params as any)[component] +
-                        pick(this.nameSuffixes[index], '')
+                        (this.nameSuffixes[index] ?? '')
                     );
                 },
                 this
@@ -228,15 +245,13 @@ class SMAIndicator extends LineSeries {
         return name;
     }
 
-    /**
-     * @private
-     */
+    /** @internal */
     public getValues<TLinkedSeries extends LineSeriesType>(
-        series: TLinkedSeries,
+        series: TLinkedSeries&IndicatorLinkedSeriesBase,
         params: SMAParamsOptions
     ): (IndicatorValuesObject<TLinkedSeries>|undefined) {
         const period: number = params.period as any,
-            xVal: Array<number> = series.xData as any,
+            xVal = series.xData || [],
             yVal: Array<(number|Array<(number|null)>|null)> = series.yData as any,
             yValLen = yVal.length,
             SMA: Array<Array<number>> = [],
@@ -286,9 +301,7 @@ class SMAIndicator extends LineSeries {
         } as IndicatorValuesObject<TLinkedSeries>;
     }
 
-    /**
-     * @private
-     */
+    /** @internal */
     public init(
         chart: Chart,
         options: SMAOptions
@@ -344,7 +357,10 @@ class SMAIndicator extends LineSeries {
 
                     // Most indicators are being calculated on chart's init.
                     if (indicator.calculateOn.chart === 'init') {
-                        if (!indicator.processedYData) {
+                        // When closestPointRange is set, it is an indication
+                        // that `Series.processData` has run. If it hasn't we
+                        // need to `recalculateValues`.
+                        if (!indicator.closestPointRange) {
                             indicator.recalculateValues();
                         }
                     } else if (!hasEvents) {
@@ -381,41 +397,76 @@ class SMAIndicator extends LineSeries {
         indicator.eventsToUnbind.push(linkedSeriesUnbiner);
     }
 
-    /**
-     * @private
-     */
+    /** @internal */
     public recalculateValues(): void {
-        const croppedDataValues = [],
-            indicator = this,
-            oldData = indicator.points || [],
-            oldDataLength = (indicator.xData || []).length,
+        const indicator = this,
+            table = this.dataTable,
+            oldDataLength = indicator.dataTable.rowCount,
             emptySet: IndicatorValuesObject<typeof LineSeries.prototype> = {
                 values: [],
                 xData: [],
                 yData: []
             };
         let overwriteData = true,
-            oldFirstPointIndex,
-            oldLastPointIndex,
-            croppedData,
             min,
-            max,
-            i;
+            max;
+
+        // For the newer data table, temporarily set the parent series `yData`
+        // to the legacy format that is documented for custom indicators, and
+        // get the xData from the data table
+        const yData = indicator.linkedParent.yData,
+            processedYData = indicator.linkedParent.processedYData;
+        indicator.linkedParent.xData = indicator.linkedParent
+            .getColumn('x');
+        indicator.linkedParent.yData = tableToMultiYData(
+            indicator.linkedParent
+        ) as any;
+        indicator.linkedParent.processedYData = tableToMultiYData(
+            indicator.linkedParent,
+            true
+        ) as any;
+
 
         // Updating an indicator with redraw=false may destroy data.
         // If there will be a following update for the parent series,
         // we will try to access Series object without any properties
         // (except for prototyped ones). This is what happens
         // for example when using Axis.setDataGrouping(). See #16670
-        const processedData: IndicatorValuesObject<typeof LineSeries.prototype> = indicator.linkedParent.options &&
-            indicator.linkedParent.yData && // #18176, #18177 indicators should
-            indicator.linkedParent.yData.length ? // Work with empty dataset
+        const processedData: IndicatorValuesObject<
+            typeof LineSeries.prototype
+        > = indicator.linkedParent.options &&
+            // #18176, #18177 indicators should work with empty dataset
+            indicator.linkedParent.dataTable.rowCount ?
             (
                 indicator.getValues(
                     indicator.linkedParent,
                     indicator.options.params as any
                 ) || emptySet
             ) : emptySet;
+
+        processedData.xData.length = processedData.values.length;
+
+        // Reset
+        delete indicator.linkedParent.xData;
+        indicator.linkedParent.yData = yData;
+        indicator.linkedParent.processedYData = processedYData;
+
+        const pointArrayMap = indicator.pointArrayMap || ['y'],
+            valueColumns: Record<string, Array<number|null>> = {};
+
+        // Split legacy two-dimensional values into value columns
+        (processedData.yData as any)
+            .forEach((values: number|null|Array<number|null>): void => {
+                pointArrayMap.forEach((key, index): void => {
+                    const column = valueColumns[key] || [];
+                    column.push(
+                        isArray(values) ? values[index] : values
+                    );
+                    if (!valueColumns[key]) {
+                        valueColumns[key] = column;
+                    }
+                });
+            });
 
         // We need to update points to reflect changes in all,
         // x and y's, values. However, do it only for non-grouped
@@ -426,83 +477,105 @@ class SMAIndicator extends LineSeries {
             indicator.visible &&
             indicator.points
         ) {
-            // When data is cropped update only avaliable points (#9493)
+            const oldX = indicator.getColumn('x'),
+                newX = processedData.xData,
+                overlapLast = Math.min(oldDataLength, newX.length) - 1;
+
+            let isIncrementalUpdate =
+                Math.abs(newX.length - oldDataLength) === 1 &&
+                overlapLast >= 0 &&
+                oldX[overlapLast] === newX[overlapLast];
+
+            // If x only grew/shrank by one point, also check that y
+            // (and other value columns) are unchanged in the overlap.
+            // Otherwise setData that rewrites values is mistaken for an
+            // incremental add/remove (#22081).
+            if (isIncrementalUpdate) {
+                for (const key of pointArrayMap) {
+                    const oldColumn = indicator.getColumn(key),
+                        newColumn = valueColumns[key];
+
+                    if (newColumn && oldColumn) {
+                        for (let i = 0; i <= overlapLast; i++) {
+                            if (newColumn[i] !== oldColumn[i]) {
+                                isIncrementalUpdate = false;
+                                break;
+                            }
+                        }
+
+                        if (!isIncrementalUpdate) {
+                            break;
+                        }
+                    }
+                }
+            }
+
+            // When data is cropped update only available points (#9493)
             if (indicator.cropped) {
                 if (indicator.xAxis) {
                     min = indicator.xAxis.min;
                     max = indicator.xAxis.max;
                 }
 
-                croppedData = indicator.cropData(
-                    processedData.xData,
-                    processedData.yData,
+                const croppedData = indicator.cropData(
+                    table,
                     min as any,
                     max as any
                 );
 
-                for (i = 0; i < croppedData.xData.length; i++) {
-                    // (#10774)
-                    croppedDataValues.push([
-                        croppedData.xData[i]
-                    ].concat(
-                        splat(croppedData.yData[i])
-                    ));
-                }
-
-                oldFirstPointIndex = processedData.xData.indexOf(
-                    (indicator.xData as any)[0]
-                );
-                oldLastPointIndex = processedData.xData.indexOf(
-                    (indicator.xData as any)[
-                        (indicator.xData as any).length - 1
-                    ]
-                );
-
-                // Check if indicator points should be shifted (#8572)
-                if (
-                    oldFirstPointIndex === -1 &&
-                    oldLastPointIndex === processedData.xData.length - 2
-                ) {
-                    if (croppedDataValues[0][0] === oldData[0].x) {
-                        croppedDataValues.shift();
-                    }
-                }
-
-                indicator.updateData(croppedDataValues);
+                indicator.setData(croppedData.modified, false);
 
             } else if (
                 indicator.updateAllPoints || // #18710
-                // Omit addPoint() and removePoint() cases
-                processedData.xData.length !== oldDataLength - 1 &&
-                processedData.xData.length !== oldDataLength + 1
+                // Distinguish edge add/remove points from setData (#22081).
+                !isIncrementalUpdate
             ) {
                 overwriteData = false;
-                indicator.updateData(processedData.values as any);
+
+                this.setData(new DataTableCore({
+                    columns: {
+                        x: processedData.xData,
+                        ...valueColumns
+                    }
+                }), false);
+
             }
         }
 
         if (overwriteData) {
-            indicator.xData = processedData.xData;
-            indicator.yData = (processedData.yData as any);
-            indicator.options.data = (processedData.values as any);
+            const columns = valueColumns;
+            columns.x = processedData.xData;
+
+            // Add the processedData.values to the data table
+            processedData.values.reduce((columns, val, i): any => {
+                Object.keys(val).forEach((key): void => {
+                    if (!columns[key]) {
+                        columns[key] = [];
+                    }
+                    columns[key][i] = val[key as any];
+                });
+                return columns;
+            }, columns);
+
+            table.setColumns(columns);
+            delete indicator.xColumn;
+            delete indicator.xColumnIsNumbers;
         }
 
-        // Removal of processedXData property is required because on
-        // first translate processedXData array is empty
-        if (indicator.calculateOn.xAxis && indicator.processedXData) {
-            delete (indicator as Partial<typeof indicator>).processedXData;
-
+        if (
+            indicator.calculateOn.xAxis &&
+            indicator.getColumn('x', true).length
+        ) {
             indicator.isDirty = true;
             indicator.redraw();
         }
 
         indicator.isDirtyData = !!indicator.linkedSeries.length;
         fireEvent(indicator, 'updatedData'); // #18689
+
     }
 
-    /**
-     * @private
-     */
+    /** @internal */
     public processData(): (boolean|undefined) {
         const series = this,
             compareToMain = series.options.compareToMain,
@@ -531,7 +604,7 @@ class SMAIndicator extends LineSeries {
  *
  * */
 
-interface SMAIndicator extends IndicatorLike {
+interface SMAIndicator extends IndicatorBase {
     calculateOn: CalculateOnObject;
     hasDerivedData: boolean;
     nameComponents: Array<string>|undefined;
@@ -584,8 +657,8 @@ export default SMAIndicator;
  * @extends   series,plotOptions.sma
  * @since     6.0.0
  * @product   highstock
- * @excluding dataParser, dataURL, useOhlcData
- * @requires  stock/indicators/indicators
+ * @excluding useOhlcData
+ * @requires  indicators/indicators
  * @apioption series.sma
  */
 

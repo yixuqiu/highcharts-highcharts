@@ -1,5 +1,5 @@
 QUnit.test(
-    'Default alignment of opposite axis titles(#4691)',
+    'Default alignment of opposite axis titles (#4691)',
     function (assert) {
         var chart = $('#container')
             .highcharts({
@@ -195,75 +195,70 @@ QUnit.test('textAlign', function (assert) {
  * Checks that the option *Axis.title.reserveSpace works as intended
  */
 QUnit.test('title.reserveSpace', function (assert) {
-    var reserveSpaceTrue,
-        reserveSpaceFalse,
-        noTitle,
-        chart = Highcharts.chart('container', {
+    let reserveSpaceFalse,
+        reserveSpaceTrueAxisGroup,
+        reserveSpaceFalseAxisGroup,
+        noTitle;
+    const chart = Highcharts.chart('container', {
             chart: {
                 animation: false
             },
 
-            yAxis: [
-                {
-                    title: {
-                        text: 'Left Vertical Axis 1'
-                    }
-                },
-                {
-                    title: {
-                        text: 'Left Vertical Axis 2'
-                    },
-                    linkedTo: 0
-                },
-                {
-                    title: {
-                        text: 'Right Vertical Axis 1'
-                    },
-                    linkedTo: 0,
-                    opposite: true
-                },
-                {
-                    title: {
-                        text: 'Right Vertical Axis 2'
-                    },
-                    linkedTo: 0,
-                    opposite: true
+            yAxis: [{
+                title: {
+                    text: 'Left Vertical Axis 1'
                 }
-            ],
+            },
+            {
+                title: {
+                    text: 'Left Vertical Axis 2'
+                },
+                linkedTo: 0
+            },
+            {
+                title: {
+                    text: 'Right Vertical Axis 1'
+                },
+                linkedTo: 0,
+                opposite: true
+            },
+            {
+                title: {
+                    text: 'Right Vertical Axis 2'
+                },
+                linkedTo: 0,
+                opposite: true
+            }],
 
-            xAxis: [
-                {
-                    title: {
-                        text: 'Bottom Horizontal Axis 1'
-                    }
-                },
-                {
-                    title: {
-                        text: 'Bottom Horizontal Axis 2'
-                    },
-                    linkedTo: 0
-                },
-                {
-                    title: {
-                        text: 'Top Horizontal Axis 1'
-                    },
-                    linkedTo: 0,
-                    opposite: true
-                },
-                {
-                    title: {
-                        text: 'Top Horizontal Axis 2'
-                    },
-                    linkedTo: 0,
-                    opposite: true
+            xAxis: [{
+                title: {
+                    text: 'Bottom Horizontal Axis 1'
                 }
-            ],
+            },
+            {
+                title: {
+                    text: 'Bottom Horizontal Axis 2'
+                },
+                linkedTo: 0
+            },
+            {
+                title: {
+                    text: 'Top Horizontal Axis 1'
+                },
+                linkedTo: 0,
+                opposite: true
+            },
+            {
+                title: {
+                    text: 'Top Horizontal Axis 2'
+                },
+                linkedTo: 0,
+                opposite: true
+            }],
 
-            series: [
-                {
-                    data: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
-                }
-            ]
+            series: [{
+                data: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+            }]
         }),
         axes = chart.axes;
 
@@ -280,7 +275,7 @@ QUnit.test('title.reserveSpace', function (assert) {
             undefined,
             axisName + ': title.reserveSpace is true by default'
         );
-        reserveSpaceTrue = axis.labelGroup.getBBox()[dir];
+        reserveSpaceTrueAxisGroup = axis.axisGroup.getBBox()[dir];
 
         // Set reserveSpace to false
         axis.update(
@@ -290,6 +285,7 @@ QUnit.test('title.reserveSpace', function (assert) {
                 }
             })
         );
+        reserveSpaceFalseAxisGroup = axis.axisGroup.getBBox()[dir];
         reserveSpaceFalse = axis.labelGroup.getBBox()[dir];
 
         // Set title to null
@@ -303,8 +299,8 @@ QUnit.test('title.reserveSpace', function (assert) {
 
         assert.ok(
             lessThan ?
-                reserveSpaceTrue < reserveSpaceFalse :
-                reserveSpaceTrue > reserveSpaceFalse,
+                reserveSpaceTrueAxisGroup < reserveSpaceFalseAxisGroup :
+                reserveSpaceTrueAxisGroup > reserveSpaceFalseAxisGroup,
             axisName +
                 ': reserveSpaceTrue ' +
                 dir +
@@ -378,7 +374,7 @@ QUnit.test('Axis title multiline', function (assert) {
     chart.yAxis[0].update({
         title: {
             style: {
-                textOverflow: 'ellipsis'
+                whiteSpace: 'nowrap'
             }
         }
     });
@@ -394,32 +390,28 @@ QUnit.test('Axis title multiline', function (assert) {
 // Highcharts 4.0.1, Issue #3027
 // Category labels are truncated when setting axis title offset
 QUnit.test('Axis title offset (#3027)', function (assert) {
-    TestTemplate.test(
-        'highcharts/column',
-        {
-            yAxis: {
-                title: {
-                    align: 'high',
-                    offset: 0,
-                    text: 'Rai',
-                    rotation: 0,
-                    y: -10
-                }
-            },
-            series: [
-                {
-                    data: [100, 200, 300]
-                }
-            ]
+    const chart = Highcharts.chart('container', {
+        chart: {
+            type: 'column'
         },
-        function (template) {
-            var chart = template.chart,
-                labelGroupBox = chart.yAxis[0].labelGroup.getBBox();
+        yAxis: {
+            title: {
+                align: 'high',
+                offset: 0,
+                text: 'Rai',
+                rotation: 0,
+                y: -10
+            }
+        },
+        series: [
+            {
+                data: [100, 200, 300]
+            }
+        ]
+    });
 
-            assert.ok(
-                labelGroupBox.x >= 0,
-                'Labels of y axis should start inside container.'
-            );
-        }
+    assert.ok(
+        chart.yAxis[0].labelGroup.getBBox().x >= 0,
+        'Labels of y axis should start inside container.'
     );
 });

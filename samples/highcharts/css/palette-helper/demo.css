@@ -17,12 +17,21 @@ fieldset {
     padding: 1em;
 }
 
-#demo-content {
+#demo-content,
+.demo-content {
     box-shadow: none;
     background: none;
     max-width: 1200px;
     margin: 0 auto;
     padding: 0.5em;
+}
+
+.warning {
+    background-color: #fc0;
+    color: #630;
+    border: 1px solid #630;
+    border-radius: 0.25rem;
+    padding: 1rem;
 }
 
 pre {

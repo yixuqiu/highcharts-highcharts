@@ -1,0 +1,7 @@
+---
+ name: Highcharts Grid Pro Demo
+ authors:
+   - Dawid Draguła
+   - Sebastian Bochan
+ js_wrap: b
+...

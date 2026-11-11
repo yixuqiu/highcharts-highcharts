@@ -1,5 +1,30 @@
 QUnit.test('Packed Bubble layouts operations', function (assert) {
-    const chart = Highcharts.chart('container', {
+    let chart = Highcharts.chart('container', {
+        chart: {
+            type: 'packedbubble',
+            height: '100%'
+        },
+        plotOptions: {
+            packedbubble: {
+                useSimulation: false,
+                dataLabels: {
+                    enabled: true
+                }
+            }
+        },
+        series: [{
+            data: [7]
+        }]
+    });
+
+    assert.notEqual(
+        chart.series[0].dataLabelsGroup.opacity,
+        0,
+        `Series data labels groups is visible from the start, at init of the
+        chart #19663.`
+    );
+
+    chart = Highcharts.chart('container', {
         chart: {
             type: 'packedbubble',
             height: '100%'
@@ -159,4 +184,120 @@ QUnit.test('Packed Bubble layouts operations', function (assert) {
         'After clicking on the selected parent, all selected parents should ' +
         'be deselected.'
     );
+
+    chart.update({
+        plotOptions: {
+            packedBubble: {
+                layoutAlgorithm: {
+                    gravitationalConstant: 0.05,
+                    seriesInteraction: true,
+                    dragBetweenSeries: true,
+                    parentNodeLimit: false,
+                    splitSeries: true,
+                    enableSimulation: false
+                },
+                dataLabels: {
+                    enabled: true,
+                    format: '{point.name}',
+                    style: {
+                        color: 'black',
+                        textOutline: 'none',
+                        fontWeight: 'normal'
+                    }
+                }
+            }
+        },
+        series: [
+            {
+                data: [5, 9, 2, 7, 4],
+                layoutAlgorithm: {
+                    splitSeries: true
+                }
+            },
+            {
+                data: [3, 12, 3, 5, 7, 8],
+                layoutAlgorithm: {
+                    splitSeries: false
+                }
+            }
+        ]
+    });
+
+    assert.deepEqual(
+        chart.series[0].parentNode !== undefined,
+        true,
+        'Series should have parentNode'
+    );
+
+    assert.deepEqual(
+        chart.series[1].parentNode === undefined,
+        true,
+        'Series should lack parentNode'
+    );
+});
+
+QUnit.test('Packed Bubble parent node dragging, #25421', function (assert) {
+    if (!window.requestAnimationFrame) {
+        assert.ok(true, 'Skipped: requestAnimationFrame unavailable.');
+        return;
+    }
+
+    const done = assert.async();
+
+    const chart = Highcharts.chart('container', {
+        chart: {
+            type: 'packedbubble'
+        },
+        plotOptions: {
+            packedbubble: {
+                layoutAlgorithm: {
+                    enableSimulation: true,
+                    splitSeries: true
+                }
+            }
+        },
+        series: [{
+            data: []
+        }, {
+            data: [1, 2, 3]
+        }]
+    });
+
+    const series = chart.series[0],
+        unbind = Highcharts.addEvent(series, 'afterSimulation', () => {
+            unbind();
+            drag();
+        });
+
+    function drag() {
+        const dragController = new TestController(chart),
+            { parentNode, parentNodeRadius } = series,
+            startX = parentNode.plotX,
+            dx = startX < chart.plotWidth / 2 ? 20 : -20,
+            x = startX + chart.plotLeft,
+            y = parentNode.plotY + chart.plotTop;
+
+        dragController.triggerEvent('mouseover', x, y);
+        dragController.mouseDown(x, y);
+        dragController.mouseMove(x + dx, y);
+        dragController.mouseMove(x + 2 * dx, y);
+
+        requestAnimationFrame(() => {
+            assert.close(
+                parentNode.graphic.attr('x') + parentNodeRadius,
+                startX + 2 * dx,
+                1,
+                'Dragged parent node graphic should follow the mouse, #25421.'
+            );
+            assert.close(
+                parentNode.graphic.attr('x') + parentNodeRadius,
+                parentNode.plotX,
+                1,
+                'Dragged parent node graphic should follow its position, ' +
+                '#25421.'
+            );
+            dragController.mouseUp(x + 2 * dx, y);
+            done();
+        });
+    }
 });

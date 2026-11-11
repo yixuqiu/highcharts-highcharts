@@ -1,3 +1,10 @@
+---
+description: >-
+  Use activeWhen on instrument or speech tracks to play only when a callback
+  or configuration condition matches. The example creates chart zones with
+  different audio settings and points to notification use.
+---
+
 Conditional Tracks
 ===
 
@@ -7,7 +14,7 @@ This option can either be a function callback or a configuration object. By defa
 
 Below is a demo showing how this can be used to create "zones" in the chart with different configurations for different areas of the chart.
 
-<iframe style="width: 100%; height: 455px; border: none;" src=https://www.highcharts.com/samples/embed/highcharts/sonification/mapping-zones allow="fullscreen"></iframe>
+<iframe style="width: 100%; height: 455px; border: none;" src="https://www.highcharts.com/samples/embed/highcharts/sonification/mapping-zones" allow="fullscreen"></iframe>
 
 Next Steps
 ----------

@@ -1,13 +1,14 @@
 /* *
  *
- *  (c) 2009-2024 Highsoft AS
+ *  (c) 2009-2026 Highsoft AS
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  *  Authors:
- *  - Karol Kolodziej
+ *  - Karol Kołodziej
  *
  * */
 
@@ -21,8 +22,10 @@
  * */
 
 
-import type Globals from '../../Globals';
+import type { DeepPartial } from '../../../Shared/Types';
 import type Options from './HTMLComponentOptions';
+
+import Component from '../Component.js';
 
 /* *
  *
@@ -30,9 +33,21 @@ import type Options from './HTMLComponentOptions';
  *
  * */
 
-const HTMLComponentDefaults: Globals.DeepPartial<Options> = {
+const HTMLComponentDefaults: DeepPartial<Options> = {
     type: 'HTML',
-    elements: []
+    className: [
+        Component.defaultOptions.className,
+        `${Component.defaultOptions.className}-html`
+    ].join(' '),
+    elements: [],
+    editableOptions: [
+        ...Component.defaultOptions.editableOptions || [],
+        {
+            name: 'htmlInput',
+            propertyPath: ['html'],
+            type: 'textarea'
+        }
+    ]
 };
 
 /* *

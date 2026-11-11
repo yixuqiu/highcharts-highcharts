@@ -1,10 +1,12 @@
 /* *
  *
- *  (c) 2010-2024 Pawel Lysy
+ *  (c) 2010-2026 Highsoft AS
+ *  Author: Paweł Lysy
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  * */
 
@@ -30,6 +32,7 @@ import TreemapNode from '../Treemap/TreemapNode.js';
  *
  * */
 
+/** @internal */
 class SunburstNode extends TreemapNode {
 
     /* *
@@ -52,6 +55,7 @@ class SunburstNode extends TreemapNode {
  *
  * */
 
+/** @internal */
 interface SunburstNode {
     series: SunburstSeries;
     children: Array<SunburstNode>;
@@ -63,6 +67,7 @@ interface SunburstNode {
  *
  * */
 
+/** @internal */
 namespace SunburstNode {
 
     /* *
@@ -93,4 +98,5 @@ namespace SunburstNode {
  *
  * */
 
+/** @internal */
 export default SunburstNode;

@@ -1,6 +1,4 @@
 ---
- name: Highcharts column border radius
- authors:
-   - Torstein Hønsi
- js_wrap: b
+name: Demo of plotOptions.column.borderRadius options
+js_wrap: b
 ...

@@ -12,9 +12,7 @@ Dashboards.board('container', {
         connectors: [{
             id: 'sample',
             type: 'JSON',
-            options: {
-                data
-            }
+            data
         }]
     },
     gui: {
@@ -93,28 +91,34 @@ Dashboards.board('container', {
         }
     }, {
         renderTo: 'dashboard-col-1',
-        type: 'DataGrid',
+        type: 'Grid',
         connector: {
             id: 'sample'
         },
-        className: 'datagrid',
+        className: 'grid',
         sync: {
             highlight: true
         },
-        dataGridOptions: {
+        gridOptions: {
+            credits: {
+                enabled: false
+            },
             columns: {
-                'Vitamin A': {
-                    headerFormat: '{text} μg'
+                id: 'Vitamin A',
+                header: {
+                    format: '{id} μg'
                 }
             }
         }
     }]
 }, true);
 
+// Override theme from demo page
+document.body.className = '';
 [...document.querySelectorAll('input[name="color-mode"]')]
     .forEach(input => {
         input.addEventListener('click', e => {
-            document.getElementById('container').className =
+            document.body.className =
                 e.target.value === 'none' ? '' : `highcharts-${e.target.value}`;
         });
     });

@@ -1,10 +1,12 @@
 /* *
  *
- *  (c) 2010-2024 Torstein Honsi
+ *  (c) 2010-2026 Highsoft AS
+ *  Author: Torstein Hønsi
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  * */
 
@@ -21,11 +23,7 @@ import type BarSeriesOptions from './BarSeriesOptions';
 
 import ColumnSeries from '../Column/ColumnSeries.js';
 import SeriesRegistry from '../../Core/Series/SeriesRegistry.js';
-import U from '../../Core/Utilities.js';
-const {
-    extend,
-    merge
-} = U;
+import { extend, merge } from '../../Shared/Utilities.js';
 
 /* *
  *
@@ -36,7 +34,6 @@ const {
 /**
  * Bar series type.
  *
- * @private
  * @class
  * @name Highcharts.seriesTypes.bar
  *
@@ -54,12 +51,13 @@ class BarSeries extends ColumnSeries {
      * A bar series is a special type of column series where the columns are
      * horizontal.
      *
-     * @sample highcharts/demo/bar-basic/
+     * @sample highcharts/demo/bar-chart/
      *         Bar chart
      *
      * @extends      plotOptions.column
      * @product      highcharts
      * @optionparent plotOptions.bar
+     * @internal
      */
     public static defaultOptions: BarSeriesOptions = merge(ColumnSeries.defaultOptions, {
         // Nothing here yet
@@ -123,7 +121,7 @@ export default BarSeries;
  * it is inherited from [chart.type](#chart.type).
  *
  * @extends   series,plotOptions.bar
- * @excluding connectNulls, dashStyle, dataParser, dataURL, gapSize, gapUnit,
+ * @excluding connectNulls, dashStyle, gapSize, gapUnit,
  *            linecap, lineWidth, marker, connectEnds, step
  * @product   highcharts
  * @apioption series.bar
@@ -183,6 +181,7 @@ export default BarSeries;
  * @sample {highcharts} highcharts/series/data-array-of-objects/
  *         Config objects
  *
+ * @basic
  * @type      {Array<number|Array<(number|string),(number|null)>|null|*>}
  * @extends   series.column.data
  * @product   highcharts

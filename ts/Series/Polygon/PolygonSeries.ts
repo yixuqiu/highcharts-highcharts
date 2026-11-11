@@ -1,10 +1,12 @@
 /* *
  *
- *  (c) 2010-2024 Torstein Honsi
+ *  (c) 2010-2026 Highsoft AS
+ *  Author: Torstein Hønsi
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  * */
 
@@ -23,17 +25,11 @@ import type SVGPath from '../../Core/Renderer/SVG/SVGPath';
 import H from '../../Core/Globals.js';
 const { noop } = H;
 import PolygonSeriesDefaults from './PolygonSeriesDefaults.js';
+import AreaSeries from '../Area/AreaSeries.js';
+import LineSeries from '../Line/LineSeries.js';
+import ScatterSeries from '../Scatter/ScatterSeries.js';
 import SeriesRegistry from '../../Core/Series/SeriesRegistry.js';
-const {
-    area: AreaSeries,
-    line: LineSeries,
-    scatter: ScatterSeries
-} = SeriesRegistry.seriesTypes;
-import U from '../../Core/Utilities.js';
-const {
-    extend,
-    merge
-} = U;
+import { extend, merge } from '../../Shared/Utilities.js';
 
 /* *
  *
@@ -49,6 +45,7 @@ class PolygonSeries extends ScatterSeries {
      *
      * */
 
+    /** @internal */
     public static defaultOptions: PolygonSeriesOptions = merge(
         ScatterSeries.defaultOptions,
         PolygonSeriesDefaults
@@ -60,6 +57,7 @@ class PolygonSeries extends ScatterSeries {
      *
      * */
 
+    /** @internal */
     public areaPath?: SVGPath;
     public data!: Array<PolygonPoint>;
     public options!: PolygonSeriesOptions;
@@ -71,6 +69,7 @@ class PolygonSeries extends ScatterSeries {
      *
      * */
 
+    /** @internal */
     public getGraphPath(): SVGPath {
         const graphPath: SVGPath = LineSeries.prototype.getGraphPath.call(this);
 
@@ -86,9 +85,10 @@ class PolygonSeries extends ScatterSeries {
         return graphPath;
     }
 
+    /** @internal */
     public drawGraph(): void {
-        // Hack into the fill logic in area.drawGraph
-        this.options.fillColor = this.color;
+        // Borrow the fill logic from area.drawGraph, honoring `fillOpacity`
+        // and an optional `fillColor`
         AreaSeries.prototype.drawGraph.call(this);
     }
 
@@ -101,7 +101,9 @@ class PolygonSeries extends ScatterSeries {
  * */
 
 interface PolygonSeries {
+    /** @internal */
     pointClass: typeof PolygonPoint;
+    /** @internal */
     type: string;
 }
 

@@ -1,12 +1,13 @@
 /* *
  *
- *  (c) 2010-2024 Highsoft AS
+ *  (c) 2010-2026 Highsoft AS
  *
  *  Authors: Magdalena Gut, Piotr Madej
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  * */
 
@@ -25,12 +26,12 @@ import type GeoHeatmapSeriesOptions from './GeoHeatmapSeriesOptions.js';
 import type { InterpolationObject } from './GeoHeatmapSeriesOptions.js';
 import type MapView from '../../Maps/MapView.js';
 import type SVGElement from '../../Core/Renderer/SVG/SVGElement';
-import A from '../../Core/Animation/AnimationUtilities.js';
-const {
+import {
     animObject,
     stop
-} = A;
+} from '../../Core/Animation/AnimationUtilities.js';
 import GeoHeatmapPoint from './GeoHeatmapPoint.js';
+import GeoHeatmapSeriesDefaults from './GeoHeatmapSeriesDefaults.js';
 import H from '../../Core/Globals.js';
 const {
     noop
@@ -42,25 +43,20 @@ const {
 } = IU;
 import Point from '../../Core/Series/Point.js';
 import PointerEvent from '../../Core/PointerEvent.js';
+import MapSeries from '../Map/MapSeries.js';
 import SeriesRegistry from '../../Core/Series/SeriesRegistry.js';
-const {
-    seriesTypes: {
-        map: MapSeries
-    }
-} = SeriesRegistry;
-import U from '../../Core/Utilities.js';
-const {
+import {
     addEvent,
     extend,
     isNumber,
     isObject,
-    merge,
-    pick
-} = U;
+    merge
+} from '../../Shared/Utilities.js';
+import { error } from '../../Core/Utilities.js';
 
 /**
- * Normalize longitute value to -180:180 range.
- * @private
+ * Normalize longitude value to -180:180 range.
+ * @internal
  */
 function normalizeLonValue(lon: number): number {
     return lon - Math.floor((lon + 180) / 360) * 360;
@@ -68,7 +64,7 @@ function normalizeLonValue(lon: number): number {
 
 /**
  * Get proper point's position for PixelData array.
- * @private
+ * @internal
  */
 function scaledPointPos(
     lon: number,
@@ -93,7 +89,6 @@ function scaledPointPos(
 /**
  * The Geo Heatmap series type.
  *
- * @private
  * @class
  * @name Highcharts.seriesTypes.geoheatmap
  *
@@ -108,132 +103,8 @@ class GeoHeatmapSeries extends MapSeries {
      *
      * */
 
-    /**
-     * A `geoheatmap` series is a variety of heatmap series, composed into
-     * the map projection, where the units are expressed in the latitude
-     * and longitude, and individual values contained in a matrix are
-     * represented as colors.
-     *
-     * @sample maps/demo/geoheatmap-europe/
-     *         GeoHeatmap Chart with interpolation on Europe map
-     * @sample maps/series-geoheatmap/geoheatmap-equalearth/
-     *         GeoHeatmap Chart on the Equal Earth Projection
-     *
-     * @extends      plotOptions.map
-     * @since        11.0.0
-     * @product      highmaps
-     * @excluding    allAreas, dragDrop, findNearestPointBy, geometry, joinBy,
-     * negativeColor, onPoint, stickyTracking
-     * @requires     modules/geoheatmap
-     * @optionparent plotOptions.geoheatmap
-     */
-
     public static defaultOptions: GeoHeatmapSeriesOptions =
-        merge(MapSeries.defaultOptions, {
-
-            nullColor: 'transparent',
-
-            tooltip: {
-                pointFormat: 'Lat: {point.lat}, Lon: {point.lon}, Value: {point.value}<br/>'
-            },
-
-            /**
-             * The border width of each geoheatmap tile.
-             *
-             * In styled mode, the border stroke width is given in the
-             * `.highcharts-point` class.
-             *
-             * @sample maps/demo/geoheatmap-orthographic/
-             *         borderWidth set to 1 to create a grid
-             *
-             * @type      {number|null}
-             * @default   0
-             * @product   highmaps
-             * @apioption plotOptions.geoheatmap.borderWidth
-             */
-            borderWidth: 0,
-
-            /**
-             * The column size - how many longitude units each column in the
-             * geoheatmap should span.
-             *
-             * @sample maps/demo/geoheatmap-europe/
-             *         1 by default, set to 5
-             *
-             * @type      {number}
-             * @default   1
-             * @since 11.0.0
-             * @product   highmaps
-             * @apioption plotOptions.geoheatmap.colsize
-             */
-            colsize: 1,
-
-            /**
-             * The main color of the series. In heat maps this color is rarely
-             * used, as we mostly use the color to denote the value of each
-             * point. Unless options are set in the [colorAxis](#colorAxis), the
-             * default value is pulled from the [options.colors](#colors) array.
-             *
-             * @type      {Highcharts.ColorString|Highcharts.GradientColorObject|Highcharts.PatternObject}
-             * @since 11.0.0
-             * @product   highmaps
-             * @apioption plotOptions.geoheatmap.color
-             */
-
-            /**
-             * The rowsize size - how many latitude units each row in the
-             * geoheatmap should span.
-             *
-             * @sample maps/demo/geoheatmap-europe/
-             *         1 by default, set to 5
-             *
-             * @type      {number}
-             * @default   1
-             * @since 11.0.0
-             * @product   highmaps
-             * @apioption plotOptions.geoheatmap.rowsize
-             */
-            rowsize: 1,
-
-            stickyTracking: true,
-
-            /**
-             * Make the geoheatmap render its data points as an interpolated
-             * image. It can be used to show a Temperature Map-like charts.
-             *
-             * @sample maps/demo/geoheatmap-earth-statistics
-             *         Advanced demo of GeoHeatmap interpolation with multiple
-             *         datasets
-             *
-             * @type      {boolean|Highcharts.InterpolationOptionsObject}
-             * @since     @next
-             * @product   highmaps
-             */
-            interpolation: {
-                /**
-                 * Enable or disable the interpolation of the geoheatmap series.
-                 *
-                 * @since     @next
-                 */
-                enabled: false,
-                /**
-                 * Represents how much blur should be added to the interpolated
-                 * image. Works best in the range of 0-1, all higher values
-                 * would need a lot more performance of the machine to calculate
-                 * more detailed interpolation.
-                 *
-                 *  * **Note:** Useful, if the data is spread into wide range of
-                 *  longitude and latitude values.
-                 *
-                 * @sample maps/series-geoheatmap/turkey-fire-areas
-                 *         Simple demo of GeoHeatmap interpolation
-                 *
-                 * @since     @next
-                 */
-                blur: 1
-            }
-
-        } as GeoHeatmapSeriesOptions);
+        merge(MapSeries.defaultOptions, GeoHeatmapSeriesDefaults);
 
     /* *
      *
@@ -247,10 +118,13 @@ class GeoHeatmapSeries extends MapSeries {
 
     public points!: Array<GeoHeatmapPoint>;
 
+    /** @internal */
     public canvas?: HTMLCanvasElement;
 
+    /** @internal */
     public context?: CanvasRenderingContext2D;
 
+    /** @internal */
     public isDirtyCanvas: boolean = true;
 
     /* *
@@ -259,11 +133,10 @@ class GeoHeatmapSeries extends MapSeries {
      *
      * */
 
-    /* eslint-disable valid-jsdoc */
 
     /**
      * For updated colsize and rowsize options
-     * @private
+     * @internal
      */
     public update(): void {
         const series = this;
@@ -284,7 +157,7 @@ class GeoHeatmapSeries extends MapSeries {
 
     /**
      * Override translate method to not fire if not needed.
-     * @private
+     * @internal
      */
     public translate(): void {
         if (
@@ -300,7 +173,7 @@ class GeoHeatmapSeries extends MapSeries {
 
     /**
      * Create the extended object out of the boolean
-     * @private
+     * @internal
      */
     public getInterpolation(): InterpolationObject {
         if (!isObject(this.options.interpolation)) {
@@ -314,7 +187,7 @@ class GeoHeatmapSeries extends MapSeries {
 
     /**
      * Overriding drawPoints original method to apply new features.
-     * @private
+     * @internal
      */
     public drawPoints(): void {
         const
@@ -333,8 +206,8 @@ class GeoHeatmapSeries extends MapSeries {
                     points
                 } = series,
                 [colsize, rowsize] = [
-                    pick(seriesOptions.colsize, 1),
-                    pick(seriesOptions.rowsize, 1)
+                    (seriesOptions.colsize ?? 1),
+                    (seriesOptions.rowsize ?? 1)
                 ],
                 // Calculate dimensions based on series bounds
                 topLeft = mapView.projectedUnitsToPixels({
@@ -347,12 +220,16 @@ class GeoHeatmapSeries extends MapSeries {
                 });
 
             if (canvas && ctx && colorAxis && topLeft && bottomRight) {
-                const dimensions = {
-                    x: topLeft.x,
-                    y: topLeft.y,
-                    width: bottomRight.x - topLeft.x,
-                    height: bottomRight.y - topLeft.y
-                };
+                const
+                    { x, y } = topLeft,
+                    width = bottomRight.x - x,
+                    height = bottomRight.y - y,
+                    dimensions = {
+                        x,
+                        y,
+                        width,
+                        height
+                    };
 
                 if (
                     // Do not calculate new canvas if not necessary
@@ -362,27 +239,62 @@ class GeoHeatmapSeries extends MapSeries {
                     // Always calculate new canvas for Orthographic projection
                     mapView.projection.options.name === 'Orthographic'
                 ) {
-                    series.isDirtyCanvas = true;
                     const canvasWidth = canvas.width = ~~(360 / colsize) + 1,
                         canvasHeight = canvas.height = ~~(180 / rowsize) + 1,
                         canvasArea = canvasWidth * canvasHeight,
-                        pixelData = new Uint8ClampedArray(canvasArea * 4);
-                    series.directTouch = false; // Needed for tooltip
+                        pixelData = new Uint8ClampedArray(canvasArea * 4),
+                        // Guess if we have to round lon/lat with this data
+                        { lat = 0, lon = 0 } = points[0].options,
+                        unEvenLon = lon % rowsize !== 0,
+                        unEvenLat = lat % colsize !== 0,
+                        getAdjustedLon = (
+                            unEvenLon ?
+                                (lon: number): number => (
+                                    Math.round(lon / rowsize) * rowsize
+                                ) :
+                                (lon: number): number => lon
+                        ),
+                        getAdjustedLat = (
+                            unEvenLat ?
+                                (lat: number): number => (
+                                    Math.round(lat / colsize) * colsize
+                                ) :
+                                (lat: number): number => lat
+                        ),
+                        pointsLen = points.length;
+
+                    if (unEvenLon || unEvenLat) {
+                        error(
+                            'Highcharts Warning: For best performance,' +
+                            ' lon/lat datapoints should spaced by a single ' +
+                            'colsize/rowsize',
+                            false,
+                            series.chart,
+                            {
+                                colsize: String(colsize),
+                                rowsize: String(rowsize)
+                            }
+                        );
+                    }
+
+                    // Needed for tooltip
+                    series.directTouch = false;
+                    series.isDirtyCanvas = true;
 
                     // First pixelData represents the geo coordinates
-                    for (let i = 0; i < points.length; i++) {
+                    for (let i = 0; i < pointsLen; i++) {
                         const p = points[i],
-                            sourceArr = new Uint8ClampedArray(
-                                colorFromPoint(p.value, p)
-                            ),
                             { lon, lat } = p.options;
-
                         if (isNumber(lon) && isNumber(lat)) {
                             pixelData.set(
-                                sourceArr,
+                                colorFromPoint(p.value, p),
                                 scaledPointPos(
-                                    lon, lat, canvasWidth, canvasHeight,
-                                    colsize, rowsize
+                                    getAdjustedLon(lon),
+                                    getAdjustedLat(lat),
+                                    canvasWidth,
+                                    canvasHeight,
+                                    colsize,
+                                    rowsize
                                 ) * 4
                             );
                         }
@@ -392,8 +304,8 @@ class GeoHeatmapSeries extends MapSeries {
                         blurFactor = blur === 0 ? 1 : blur * 11,
                         upscaledWidth = ~~(canvasWidth * blurFactor),
                         upscaledHeight = ~~(canvasHeight * blurFactor),
-                        projectedWidth = ~~dimensions.width,
-                        projectedHeight = ~~dimensions.height,
+                        projectedWidth = ~~width,
+                        projectedHeight = ~~height,
                         img =
                             new ImageData(pixelData, canvasWidth, canvasHeight);
 
@@ -412,32 +324,35 @@ class GeoHeatmapSeries extends MapSeries {
                     ctx.drawImage(
                         canvas,
                         0, 0, img.width, img.height, // Grab the ImageData
-                        0, 0, canvas.width, canvas.height // Scale it
+                        0, 0, upscaledWidth, upscaledHeight // Scale it
                     );
 
                     // Add projection to upscaled ImageData
-                    const cartesianImageData = ctx.getImageData(
-                            0, 0, canvas.width, canvas.height
-                        ),
+                    const
                         projectedPixelData = this.getProjectedImageData(
                             mapView,
                             projectedWidth,
                             projectedHeight,
-                            cartesianImageData,
+                            ctx.getImageData(
+                                0, 0, upscaledWidth, upscaledHeight
+                            ),
                             canvas,
-                            dimensions.x,
-                            dimensions.y
-                        ),
-                        projectedImg = new ImageData(
-                            projectedPixelData,
-                            projectedWidth,
-                            projectedHeight
+                            x,
+                            y
                         );
 
-                    ctx.globalCompositeOperation = 'copy';
                     canvas.width = projectedWidth;
                     canvas.height = projectedHeight;
-                    ctx.putImageData(projectedImg, 0, 0);
+
+                    ctx.putImageData(
+                        new ImageData(
+                            projectedPixelData as ImageDataArray,
+                            projectedWidth,
+                            projectedHeight
+                        ),
+                        0,
+                        0
+                    );
                 }
 
                 if (image) {
@@ -459,26 +374,27 @@ class GeoHeatmapSeries extends MapSeries {
                             now,
                             fx
                         ): void => {
+                            const pos = fx.pos;
                             image.attr({
                                 x: (
                                     startX + (
-                                        dimensions.x - startX
-                                    ) * fx.pos
+                                        x - startX
+                                    ) * pos
                                 ),
                                 y: (
                                     startY + (
-                                        dimensions.y - startY
-                                    ) * fx.pos
+                                        y - startY
+                                    ) * pos
                                 ),
                                 width: (
                                     startWidth + (
-                                        dimensions.width - startWidth
-                                    ) * fx.pos
+                                        width - startWidth
+                                    ) * pos
                                 ),
                                 height: (
                                     startHeight + (
-                                        dimensions.height - startHeight
-                                    ) * fx.pos
+                                        height - startHeight
+                                    ) * pos
                                 )
                             });
                         };
@@ -536,7 +452,7 @@ class GeoHeatmapSeries extends MapSeries {
 
     /**
      * Project ImageData to actual mapView projection used on a chart.
-     * @private
+     * @internal
      */
     public getProjectedImageData(
         mapView: MapView,
@@ -550,10 +466,7 @@ class GeoHeatmapSeries extends MapSeries {
         const projectedPixelData = new Uint8ClampedArray(
                 projectedWidth * projectedHeight * 4
             ),
-            lambda = pick(
-                mapView.projection.options.rotation?.[0],
-                0
-            ),
+            lambda = (mapView.projection.options.rotation?.[0] ?? 0),
             widthFactor = canvas.width / 360,
             heightFactor = -1 * canvas.height / 180;
         let y = -1;
@@ -617,9 +530,10 @@ class GeoHeatmapSeries extends MapSeries {
         return projectedPixelData;
     }
 
+    /** @internal */
     public searchPoint(
         e: PointerEvent,
-        compareX?: boolean | undefined
+        compareX?: boolean
     ): Point | undefined {
         const series = this,
             chart = this.chart,
@@ -728,10 +642,11 @@ export default GeoHeatmapSeries;
  * specified, it is inherited from [chart.type](#chart.type).
  *
  * @extends   series,plotOptions.geoheatmap
- * @excluding allAreas, dataParser, dataURL, dragDrop, findNearestPointBy,
+ * @excluding allAreas, dragDrop, findNearestPointBy,
  *            joinBy, marker, mapData, negativeColor, onPoint, shadow,
  *            stickyTracking
  * @product   highmaps
+ * @requires  modules/geoheatmap
  * @apioption series.geoheatmap
  */
 
@@ -774,6 +689,7 @@ export default GeoHeatmapSeries;
  * @sample maps/series-geoheatmap/geoheatmap-equalearth/
  *         GeoHeatmap Chart on the Equal Earth Projection
  *
+ * @basic
  * @type      {Array<Array<number>|*>}
  * @extends   series.map.data
  * @product   highmaps
@@ -784,7 +700,7 @@ export default GeoHeatmapSeries;
  * Individual color for the point. By default the color is either used
  * to denote the value, or pulled from the global `colors` array.
  *
- * @type      {Highcharts.ColorString|Highcharts.GradientColorObject|Highcharts.PatternObject}
+ * @type      {Highcharts.ColorType}
  * @product   highmaps
  * @apioption series.geoheatmap.data.color
  */

@@ -118,9 +118,11 @@ Highcharts.ganttChart('container', {
         series: {
             dataLabels: {
                 enabled: true,
+                backgroundColor: 'contrast',
                 format: '{point.name}',
                 style: {
                     fontWeight: 'normal',
+                    textOutline: 'none',
                     textOverflow: 'ellipsis'
                 }
             }
@@ -160,7 +162,11 @@ Highcharts.ganttChart('container', {
         }
     },
     xAxis: {
-        currentDateIndicator: true
+        currentDateIndicator: {
+            label: {
+                allowOverlap: true
+            }
+        }
     },
     yAxis: {
         type: 'category',

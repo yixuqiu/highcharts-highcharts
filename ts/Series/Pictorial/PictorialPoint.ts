@@ -1,10 +1,12 @@
 /* *
  *
- *  (c) 2010-2024 Torstein Honsi, Magdalena Gut
+ *  (c) 2010-2026 Highsoft AS
+ *  Author: Torstein Hønsi, Magdalena Gut
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  * */
 
@@ -19,11 +21,11 @@ import type PictorialPointOptions from './PictorialPointOptions';
 import type PictorialSeries from './PictorialSeries';
 import type SVGPath from '../../Core/Renderer/SVG/SVGPath';
 
-import SeriesRegistry from '../../Core/Series/SeriesRegistry.js';
+import ColumnSeries from '../Column/ColumnSeries.js';
 import PictorialUtilities from './PictorialUtilities.js';
 
 const ColumnPoint: typeof ColumnPointType =
-    SeriesRegistry.seriesTypes.column.prototype.pointClass;
+    ColumnSeries.prototype.pointClass;
 
 const {
     rescalePatternFill,
@@ -45,7 +47,9 @@ class PictorialPoint extends ColumnPoint {
      * */
 
     public options!: PictorialPointOptions;
+    /** @internal */
     public series!: PictorialSeries;
+    /** @internal */
     public pathDef!: string | SVGPath | undefined;
 
     /* *
@@ -54,6 +58,7 @@ class PictorialPoint extends ColumnPoint {
      *
      * */
 
+    /** @internal */
     public setState(): void {
         const point = this;
 

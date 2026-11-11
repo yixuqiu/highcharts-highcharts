@@ -48,6 +48,7 @@ QUnit.test('Axes zoom', function (assert) {
             }
         },
         pane: {
+            center: ['50%', '50%'],
             size: 200
         },
         yAxis: {
@@ -372,5 +373,86 @@ QUnit.test('Axes zoom', function (assert) {
     assert.ok(
         !isSelection,
         'Zoom shouldn\'t work outside bottom semi circle'
+    );
+});
+
+QUnit.test(
+    'Points should be hoverable at various startAngles',
+    function (assert) {
+        const angles = [-180, -90, -45, 0, 45, 90, 180];
+
+        const chart = Highcharts.chart('container', {
+            chart: {
+                polar: true
+            },
+            pane: {
+                startAngle: 0
+            },
+            series: [{
+                data: [1, 2]
+            }]
+        });
+
+        angles.forEach(angle => {
+            chart.update({
+                pane: {
+                    startAngle: angle
+                }
+            });
+
+            const pointer = chart.pointer,
+                points = chart.series[0].points;
+
+            let hovered = 0;
+
+            points.forEach(point => {
+                const e = {
+                    chartX: point.plotX + chart.plotLeft,
+                    chartY: point.plotY + chart.plotTop,
+                    type: 'mousemove'
+                };
+
+                pointer.runPointActions(e);
+
+                if (chart.hoverPoint === point) {
+                    hovered++;
+                }
+            });
+
+            assert.strictEqual(
+                hovered,
+                points.length,
+                `All points hovered at angle ${angle}`
+            );
+        });
+    }
+);
+
+QUnit.test('Panning radial y-axis (#21809)', function (assert) {
+    const chart = Highcharts.chart('container', {
+            chart: {
+                panning: {
+                    enabled: true,
+                    type: 'xy'
+                },
+                polar: true
+            },
+            yAxis: {
+                max: 6
+            },
+            series: [{
+                data: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+            }]
+        }),
+        yAxis = chart.yAxis[0],
+        initialMax = yAxis.max,
+        x = chart.plotLeft + chart.pane[0].center[0] + 20,
+        y = chart.plotTop + chart.pane[0].center[1] + 20;
+
+    new TestController(chart).pan([x, y], [x + 40, y + 40]);
+
+    assert.ok(
+        yAxis.max > initialMax,
+        'Dragging below the pane center should pan the radial y-axis'
     );
 });

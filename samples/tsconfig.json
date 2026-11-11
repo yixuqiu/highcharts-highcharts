@@ -1,19 +1,26 @@
 {
     "compilerOptions": {
-        "downlevelIteration": true,
-        "sourceMap": true,
-        "noEmitOnError": true,
+        "sourceMap": false,
         "noImplicitAny": true,
         "noImplicitThis": true,
         "strict": false,
-        "baseUrl": "../",
-        "module": "none",
-        "moduleResolution": "node",
-        "target": "es5",
+        "stripInternal": true,
+        "module": "es2022",
+        "moduleDetection": "auto",
+        "allowUmdGlobalAccess": true,
+        "moduleResolution": "bundler",
+        "target": "ES2022",
         "lib": [
             "dom",
-            "es5"
+            "ES2015",
+            "ES2017.SharedMemory"
         ],
+        "paths": {
+            "highcharts": ["../code/highcharts"],
+            "highcharts/*": ["../code/*"],
+            "@highcharts/dashboards": ["../code/dashboards/dashboards"],
+            "@highcharts/dashboards/*": ["../code/dashboards/dashboards/*"]
+        },
         "types": [
             // disable node types
         ]
@@ -21,7 +28,11 @@
     "files": [
         "tsglobal.d.ts",
     ],
-    "include": [
-        "unit-tests/**/*.ts"
+    "references": [
+        { "path": "./tsconfig.gantt.json" },
+        { "path": "./tsconfig.highcharts.json" },
+        { "path": "./tsconfig.maps.json" },
+        { "path": "./tsconfig.stock.json" },
+        { "path": "./tsconfig.unit-tests.json" }
     ]
 }

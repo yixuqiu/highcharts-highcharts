@@ -228,7 +228,6 @@ QUnit.test(
             `When the last point anchor is set to lastPoint,
         the point should be placed where the last point in group is.`
         );
-
     });
 
 QUnit.test('Deprecated smoothed option.', function (assert) {
@@ -414,6 +413,10 @@ QUnit.test('DataGrouping unequal series length', function (assert) {
         chart: {
             height: 500
         },
+        lang: {
+            // Spanish resolves date formats reliably between browsers
+            locale: 'es'
+        },
         xAxis: {
             tickInterval: 3600 * 1000,
             ordinal: false
@@ -466,7 +469,7 @@ QUnit.test('DataGrouping unequal series length', function (assert) {
     let content = chart.tooltip.tt.text.element.childNodes[0].innerHTML;
     assert.equal(
         content,
-        'Thursday,  1 Jan, 00:00-01:59',
+        'Jueves, 1 ene, 00:00-01:59',
         `Tooltip\'s content should show correct group range for the point with
         anchor: middle`
     );
@@ -482,7 +485,7 @@ QUnit.test('DataGrouping unequal series length', function (assert) {
     content = chart.tooltip.tt.text.element.childNodes[0].innerHTML;
     assert.equal(
         content,
-        'Thursday,  1 Jan, 10:00-11:59',
+        'Jueves, 1 ene, 10:00-11:59',
         `Tooltip's content should show correct group range of the last point
         when lastAnchor is set to 'lastPoint'`
     );

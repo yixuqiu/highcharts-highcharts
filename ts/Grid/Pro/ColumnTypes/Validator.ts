@@ -1,0 +1,616 @@
+/* *
+ *
+ *  Grid cell content validator
+ *
+ *  (c) 2009-2026 Highsoft AS
+ *
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
+ *
+ *
+ *  Authors:
+ *  - Dawid Draguła
+ *
+ * */
+
+'use strict';
+
+/* *
+ *
+ *  Imports
+ *
+ * */
+
+import type { ColumnDataType } from '../../Core/Table/Column';
+import type { EditModeContent } from '../CellEditing/CellEditMode';
+import type Table from '../../Core/Table/Table';
+import type TableCell from '../../Core/Table/Body/TableCell';
+import type { CellRendererTypeRegistry } from '../CellRendering/CellRendererType';
+import type { CellType as DataTableCellType } from '../../../Data/DataTable';
+
+import AST from '../../../Core/Renderer/HTML/AST.js';
+import Globals from '../../Core/Globals.js';
+import GridUtils from '../../Core/GridUtils.js';
+import Cell from '../../Core/Table/Cell.js';
+import { defined } from '../../../Shared/Utilities.js';
+
+const {
+    makeDiv
+} = GridUtils;
+
+/* *
+ *
+ *  Class
+ *
+ * */
+
+/**
+ * Class for validating cell content.
+ */
+class Validator {
+
+    /**
+     * The class names used by the validator functionality.
+     */
+    public static readonly classNames = {
+        notifContainer: Globals.classNamePrefix + 'notification',
+        notifError: Globals.classNamePrefix + 'notification-error',
+        notifAnimation: Globals.classNamePrefix + 'notification-animation',
+        editedCellError: Globals.classNamePrefix + 'edited-cell-error'
+    } as const;
+
+
+    /**
+     * Definition of default validation rules.
+     */
+    public static readonly rulesRegistry: RulesRegistryType = {
+        notEmpty: {
+            validate: ({ value, rawValue }): boolean => (
+                defined(value) && rawValue.length > 0
+            ),
+            notification: 'Value cannot be empty.'
+        },
+        number: {
+            validate: ({ rawValue }): boolean => Number.isFinite(+rawValue),
+            notification: 'Value has to be a number.'
+        },
+        datetime: {
+            validate: ({ value }): boolean => (
+                !defined(value) || Number.isFinite(+value)
+            ),
+            notification: 'Value has to be parsed to a valid timestamp.'
+        },
+        'boolean': {
+            validate: ({ rawValue }): boolean => (
+                rawValue === 'true' || rawValue === 'false' ||
+                Number(rawValue) === 1 || Number(rawValue) === 0
+            ),
+            notification: 'Value has to be a boolean.'
+        },
+        arrayNumber: {
+            validate: function ({ rawValue }): boolean {
+                return rawValue
+                    .split(',')
+                    .every(
+                        (item): boolean => !Number.isNaN(Number(item.trim()))
+                    );
+            },
+            notification:
+                'Value should be a list of numbers separated by commas.'
+        },
+        json: {
+            validate: function ({ rawValue }): boolean {
+                try {
+                    JSON.parse(rawValue);
+                    return true;
+                } catch {
+                    return false;
+                }
+            },
+            notification: 'Value should be a valid JSON.'
+        },
+        sparkline: {
+            validate: function ({ rawValue }): boolean {
+                const arrayNumberValidate =
+                    Validator.rulesRegistry.arrayNumber.validate as
+                    (args: { rawValue: string }) => boolean;
+                const jsonValidate = Validator.rulesRegistry.json.validate as
+                    (args: { rawValue: string }) => boolean;
+
+                return arrayNumberValidate({ rawValue }) ||
+                    jsonValidate({ rawValue });
+            },
+            notification: 'Value should be a valid JSON or a list of numbers ' +
+                'separated by commas.'
+        },
+        ignoreCaseUnique: {
+            validate: function ({ rawValue }): boolean {
+                const oldValue = String(this.value).toLowerCase();
+                const rowValueString = rawValue.toLowerCase();
+
+                if (oldValue === rowValueString) {
+                    return true;
+                }
+
+                // Local dataset only
+                // TODO(enhancement): Implement this for remote dataset.
+                const columnData = this.column.data;
+                const isDuplicate = columnData?.some(
+                    (value: DataTableCellType): boolean => (
+                        String(value).toLowerCase() ===
+                        rowValueString
+                    )
+                );
+
+                return !isDuplicate;
+
+            },
+            notification:
+                'Value must be unique within this column (case-insensitive).'
+        },
+        unique: {
+            validate: function ({ rawValue }): boolean {
+                const oldValue = this.value;
+
+                if (oldValue === rawValue) {
+                    return true;
+                }
+
+                // Local dataset only
+                // TODO(enhancement): Implement this for remote dataset.
+                const columnData = this.column.data;
+                const isDuplicate = columnData?.some(
+                    (value: DataTableCellType): boolean => value === rawValue
+                );
+
+                return !isDuplicate;
+            },
+            notification:
+                'Value must be unique within this column (case-sensitive).'
+        }
+    };
+
+    /**
+     * Default validation rules for each dataType.
+     */
+    public static readonly predefinedRules: {
+        dataType: Record<ColumnDataType, RuleKey[]>;
+        renderer: { [K in keyof CellRendererTypeRegistry]?: RuleKey[] };
+    } = {
+            dataType: {
+                'boolean': ['boolean'],
+                datetime: ['datetime'],
+                number: ['number'],
+                string: []
+            },
+            renderer: {
+                sparkline: ['sparkline']
+            }
+        };
+
+    /* *
+     *
+     *  Properties
+     *
+     * */
+
+    public viewport: Table;
+
+    /**
+     * The cell that has an error.
+     */
+    public errorCell?: Cell;
+
+    /**
+     * HTML Element for the errors.
+     */
+    public notifContainer: HTMLElement;
+
+
+    /* *
+     *
+     *  Constructor
+     *
+     * */
+
+    constructor(viewport: Table) {
+        this.viewport = viewport;
+        this.notifContainer = makeDiv(Validator.classNames.notifContainer);
+        this.viewport.grid.contentWrapper?.appendChild(
+            this.notifContainer
+        );
+    }
+
+
+    /* *
+     *
+     *  Methods
+     *
+     * */
+
+    /**
+     * Validates the cell content.
+     *
+     * @param cell
+     * Edited cell.
+     *
+     * @param errors
+     * An output array for error messages.
+     *
+     * @returns
+     * Returns true if the value is valid, false otherwise.
+     */
+    public validate(
+        cell: TableCell,
+        errors: string[] = []
+    ): boolean {
+        const { options, dataType } = cell.column;
+        const validationNotifications =
+            cell.row.viewport.grid.options?.lang?.validationNotifications;
+        const rendererType = cell.column.options?.cells?.renderer?.type;
+        let rules = Array.from(options?.cells?.editMode?.validationRules || []);
+
+        // Remove duplicates in validationRules
+        const isArrayString = rules.every(
+            (rule): boolean => typeof rule === 'string'
+        );
+
+        if (rules.length > 0 && isArrayString) {
+            rules = [...new Set(rules)];
+        } else {
+            const predefined = [
+                ...(Validator.predefinedRules.dataType[dataType] ?? [])
+            ];
+
+            if (rendererType) {
+                predefined.push(
+                    ...Validator.predefinedRules.renderer[rendererType] ?? []
+                );
+            }
+
+            const hasPredefined = rules.some(
+                (rule): boolean =>
+                    typeof rule !== 'string' &&
+                    typeof rule.validate === 'string' &&
+                    predefined.includes(rule.validate)
+            );
+
+            if (!hasPredefined) {
+                rules.push(...predefined);
+            }
+        }
+
+        for (const rule of rules) {
+            let ruleDef: RuleDefinition|undefined;
+            let err: ValidationNotification|undefined;
+
+            if (typeof rule === 'string') {
+                ruleDef = Validator.rulesRegistry[rule];
+                err = validationNotifications?.[rule];
+            } else {
+                ruleDef = rule;
+            }
+
+            if (!ruleDef) {
+                continue;
+            }
+
+            let validateFn: ValidateFunction;
+
+            if (typeof ruleDef.validate === 'string') {
+                const predefinedRules = (
+                    Validator.rulesRegistry[ruleDef.validate]
+                ) as RuleDefinition;
+                validateFn =
+                    predefinedRules?.validate as ValidateFunction;
+            } else {
+                validateFn = ruleDef.validate as ValidateFunction;
+            }
+
+            const { editModeContent } = cell.column.viewport.cellEditing || {};
+
+            if (
+                typeof validateFn === 'function' &&
+                editModeContent &&
+                !validateFn.call(cell, editModeContent)
+            ) {
+                if (typeof err === 'function') {
+                    err = err.call(cell, editModeContent);
+                } else if (typeof ruleDef.notification === 'function') {
+                    err = ruleDef.notification.call(cell, editModeContent);
+                }
+                errors.push((err || ruleDef.notification) as string);
+            }
+        }
+
+        return !errors.length;
+    }
+
+    /**
+     * Set content of notification and adjust the position.
+     *
+     * @param cell
+     * Cell that is currently edited and is not valid.
+     *
+     * @param errors
+     * An array of error messages.
+     *
+     */
+    public initErrorBox(cell: TableCell, errors: string[]): void {
+        const { grid } = this.viewport;
+
+        this.errorCell = cell;
+
+        // Set error container position
+        this.reflow();
+
+        // Text nodes rather than markup, as a notification may echo the
+        // value the user typed
+        this.notifContainer.replaceChildren();
+        for (let i = 0, iEnd = errors.length; i < iEnd; ++i) {
+            if (i) {
+                this.notifContainer.appendChild(
+                    document.createElement('br')
+                );
+            }
+            this.notifContainer.appendChild(
+                document.createTextNode(errors[i])
+            );
+        }
+
+        // A11y announcement
+        if (grid.options?.accessibility?.announcements?.cellEditing) {
+            this.viewport.grid.accessibility?.announce(
+                (grid.options?.lang?.accessibility?.cellEditing
+                    ?.announcements?.notValid || ''
+                ) + ' ' + errors.join('. '),
+                true
+            );
+        }
+
+        this.show();
+    }
+
+    /**
+     * Highlight the non-valid cell and display error in the notification box.
+     */
+    public show(): void {
+        this.errorCell?.htmlElement.classList.add(
+            Validator.classNames.editedCellError
+        );
+
+        this.notifContainer.classList.add(
+            Validator.classNames.notifError,
+            Validator.classNames.notifAnimation
+        );
+
+        // Set for the aria-errormessage attribute.
+        this.notifContainer.setAttribute('id', 'notification-error');
+    }
+
+    /**
+     * Hide the notification, error and unset highlight on cell.
+     *
+     * @param hideErrorBox
+     * The flag that hides the error on edited cell.
+     *
+     */
+    public hide(
+        hideErrorBox: boolean = true
+    ): void {
+        this.errorCell?.htmlElement.classList.remove(
+            Validator.classNames.editedCellError
+        );
+
+        this.notifContainer.classList.remove(
+            Validator.classNames.notifError,
+            Validator.classNames.notifAnimation
+        );
+
+        this.notifContainer.removeAttribute('id');
+
+        if (hideErrorBox) {
+            this.errorCell = void 0;
+        }
+
+        this.notifContainer.innerHTML = AST.emptyHTML;
+    }
+
+    /**
+     * Set the position of the error box.
+     */
+    public reflow(): void {
+        const vp = this.viewport,
+            errorCell = this.errorCell?.htmlElement,
+            tableElement = vp.grid.tableElement,
+            contentWrapper = vp.grid.contentWrapper;
+
+        if (!errorCell || !tableElement || !contentWrapper) {
+            return;
+        }
+
+        const tableTop = tableElement.offsetTop,
+            tableHeight = tableElement.offsetHeight,
+            middlePoint = tableTop + (tableHeight / 2),
+            errorCellTop = errorCell.offsetTop - tableTop;
+
+        if (errorCellTop > middlePoint) {
+            this.notifContainer.style.top = // Avoid header overlap
+                tableTop + (vp.theadElement?.offsetHeight || 0) + 'px';
+            this.notifContainer.style.bottom = 'auto';
+        } else {
+            this.notifContainer.style.top = 'auto';
+            this.notifContainer.style.bottom =
+                contentWrapper.offsetHeight - tableTop - tableHeight + 'px';
+        }
+    }
+
+    /**
+     * Destroy validator.
+     */
+    public destroy(): void {
+        this.errorCell = void 0;
+        this.notifContainer.remove();
+    }
+}
+
+
+/* *
+ *
+ *  Declarations
+ *
+ * */
+
+/**
+ * Callback function that checks if field is valid.
+ */
+export type ValidateFunction = (
+    this: TableCell,
+    content: EditModeContent
+) => boolean;
+
+/**
+ * Callback function that returns a validation notification.
+ */
+export type ValidationNotificationFunction = (
+    this: TableCell,
+    content?: EditModeContent
+) => string;
+
+/**
+ * Validation notification content.
+ */
+export type ValidationNotification =
+    string|ValidationNotificationFunction;
+
+/**
+ * Definition of the validation rule that should contain validate method
+ * and validation notification.
+ */
+export interface RuleDefinition {
+    /**
+     * Validation logic for the rule.
+     *
+     * Use a built-in rule key to reuse one of the predefined validators, or
+     * provide a custom callback function.
+     */
+    validate: RuleKey|ValidateFunction;
+
+    /**
+     * Notification displayed when the validation fails.
+     *
+     * Can be defined as a static string or a callback function returning a
+     * string.
+     *
+     * When `validate` references one of the predefined rule keys, this
+     * property overrides that rule's built-in notification.
+     *
+     * Localized notifications for predefined rules configured directly by key
+     * can be customized through `lang.validationNotifications`.
+     */
+    notification: ValidationNotification;
+}
+
+/**
+ *  Definition of default validation rules.
+ */
+export interface RulesRegistryType {
+    boolean: RuleDefinition;
+    datetime: RuleDefinition;
+    notEmpty: RuleDefinition;
+    number: RuleDefinition;
+    ignoreCaseUnique: RuleDefinition;
+    unique: RuleDefinition;
+    arrayNumber: RuleDefinition;
+    json: RuleDefinition;
+    sparkline: RuleDefinition;
+}
+
+/**
+ * Definition of localized validation notifications keyed by validator name.
+ *
+ * Built-in validator names are listed below, and custom validators can be
+ * addressed by their registry key as well.
+ */
+export interface ValidationNotificationsType
+    extends Record<string, ValidationNotification|undefined> {
+
+    // Built-in validator names listed here to be included in the api docs.
+    /**
+     * Notification text for the `boolean` validator.
+     *
+     * @default 'Value has to be a boolean.'
+     */
+    boolean?: ValidationNotification;
+
+    /**
+     * Notification text for the `datetime` validator.
+     *
+     * @default 'Value has to be parsed to a valid timestamp.'
+     */
+    datetime?: ValidationNotification;
+
+    /**
+     * Notification text for the `notEmpty` validator.
+     *
+     * @default 'Value cannot be empty.'
+     */
+    notEmpty?: ValidationNotification;
+
+    /**
+     * Notification text for the `number` validator.
+     *
+     * @default 'Value has to be a number.'
+     */
+    number?: ValidationNotification;
+
+    /**
+     * Notification text for the `ignoreCaseUnique` validator.
+     *
+     * @default 'Value must be unique within this column (case-insensitive).'
+     */
+    ignoreCaseUnique?: ValidationNotification;
+
+    /**
+     * Notification text for the `unique` validator.
+     *
+     * @default 'Value must be unique within this column (case-sensitive).'
+     */
+    unique?: ValidationNotification;
+
+    /**
+     * Notification text for the `arrayNumber` validator.
+     *
+     * @default 'Value should be a list of numbers separated by commas.'
+     */
+    arrayNumber?: ValidationNotification;
+
+    /**
+     * Notification text for the `json` validator.
+     *
+     * @default 'Value should be a valid JSON.'
+     */
+    json?: ValidationNotification;
+
+    /**
+     * Notification text for the `sparkline` validator.
+     *
+     * @default 'Value should be a valid JSON or a list of numbers separated by commas.'
+     */
+    sparkline?: ValidationNotification;
+}
+
+/**
+ * Type of rule: `notEmpty`, `number` or `boolean`.
+ */
+export type RuleKey = keyof RulesRegistryType;
+
+
+/* *
+ *
+ *  Default Export
+ *
+ * */
+
+export default Validator;

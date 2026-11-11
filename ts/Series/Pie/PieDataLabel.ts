@@ -1,10 +1,12 @@
 /* *
  *
- *  (c) 2010-2024 Torstein Honsi
+ *  (c) 2010-2026 Highsoft AS
+ *  Author: Torstein Hønsi
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  * */
 
@@ -28,20 +30,17 @@ const {
     composed,
     noop
 } = H;
-import { Palette } from '../../Core/Color/Palettes.js';
 import R from '../../Core/Renderer/RendererUtilities.js';
 const { distribute } = R;
-import SeriesRegistry from '../../Core/Series/SeriesRegistry.js';
-const { series: Series } = SeriesRegistry;
-import U from '../../Core/Utilities.js';
-const {
+import Series from '../../Core/Series/Series.js';
+import {
     arrayMax,
     clamp,
     defined,
-    pick,
+    isNumber,
     pushUnique,
     relativeLength
-} = U;
+} from '../../Shared/Utilities.js';
 
 /* *
  *
@@ -49,8 +48,9 @@ const {
  *
  * */
 
-declare module '../../Core/Renderer/SVG/SVGElementLike' {
-    interface SVGElementLike {
+/** @internal */
+declare module '../../Core/Renderer/SVG/SVGElementBase' {
+    interface SVGElementBase {
         connector?: SVGElement;
         dataLabelPosition?: DataLabel.LabelPositionObject;
     }
@@ -62,6 +62,7 @@ declare module '../../Core/Renderer/SVG/SVGElementLike' {
  *
  * */
 
+/** @internal */
 namespace ColumnDataLabel {
 
     /* *
@@ -82,7 +83,7 @@ namespace ColumnDataLabel {
         },
 
         // Get the x - use the natural x position for labels near the top and
-        // bottom, to prevent the top and botton slice connectors from touching
+        // bottom, to prevent the top and bottom slice connectors from touching
         // each other on either side. Based on the value computed in Highcharts'
         // distribute algorithm.
         radialDistributionX: function (
@@ -93,7 +94,7 @@ namespace ColumnDataLabel {
             dataLabel: SVGElement
         ): number {
             const pos = dataLabel.dataLabelPosition;
-            return series.getX(
+            return series.getXPos(
                 y < (pos?.top || 0) + 2 || y > (pos?.bottom || 0) - 2 ?
                     naturalY :
                     y,
@@ -160,7 +161,7 @@ namespace ColumnDataLabel {
      *
      * */
 
-    /** @private */
+    /** @internal */
     export function compose(PieSeriesClass: typeof PieSeries): void {
 
         DataLabel.compose(Series);
@@ -178,15 +179,38 @@ namespace ColumnDataLabel {
 
     }
 
-    /** @private */
+    /** @internal */
     function getDataLabelPosition(
         this: PieSeries,
         point: PiePoint,
         distance: number
     ): DataLabel.LabelPositionObject {
+
+        const halfPI = Math.PI / 2,
+            { start = 0, end = 0 } = point.shapeArgs || {};
+
+        let angle = point.angle || 0;
+
+        // If a large slice is crossing the lowest point, prefer rendering it 45
+        // degrees out at either lower right or lower left. That's where there's
+        // most likely to be space available and avoid text being truncated
+        // (#22100). Technically this logic should also apply to the top point,
+        // but that is more of an edge case since the default start angle is at
+        // the top.
+        if (
+            distance > 0 &&
+            // Crossing the bottom
+            start < halfPI && end > halfPI &&
+            // Angle within the bottom quadrant
+            angle > halfPI / 2 && angle < halfPI * 1.5
+        ) {
+            angle = angle <= halfPI ?
+                Math.max(halfPI / 2, (start + halfPI) / 2) :
+                Math.min(halfPI * 1.5, (halfPI + end) / 2);
+        }
+
         const { center, options } = this,
             r = center[2] / 2,
-            angle = point.angle || 0,
             cosAngle = Math.cos(angle),
             sinAngle = Math.sin(angle),
             x = center[0] + cosAngle * r,
@@ -195,6 +219,7 @@ namespace ColumnDataLabel {
                 (options.slicedOffset || 0) + (options.borderWidth || 0),
                 distance / 5
             ); // #1678
+
         return {
             natural: {
                 // Initial position of the data label - it's utilized for
@@ -211,6 +236,7 @@ namespace ColumnDataLabel {
             // Center - data label overlaps the pie
             alignment: distance < 0 ? 'center' : point.half ? 'right' : 'left',
             connectorPosition: {
+                angle,
                 breakAt: { // Used in connectorShapes.fixedOffset
                     x: x + cosAngle * finalConnectorOffset,
                     y: y + sinAngle * finalConnectorOffset
@@ -225,8 +251,8 @@ namespace ColumnDataLabel {
     }
 
     /**
-     * Override the base drawDataLabels method by pie specific functionality
-     * @private
+     * Override the base drawDataLabels method by pie specific functionality.
+     * @internal
      */
     function drawDataLabels(
         this: PieSeries
@@ -363,6 +389,9 @@ namespace ColumnDataLabel {
                             );
                             size = dataLabel.getBBox().height || 21;
 
+                            dataLabel.lineHeight = chart.renderer.fontMetrics(
+                                dataLabel.text || dataLabel
+                            ).h + 2 * dataLabel.padding;
                             point.distributeBox = {
                                 target: (
                                     (
@@ -370,12 +399,11 @@ namespace ColumnDataLabel {
                                             ?.natural.y || 0
                                     ) -
                                     labelPosition.top +
-                                    size / 2
+                                    dataLabel.lineHeight / 2
                                 ),
                                 size,
                                 rank: point.y
                             };
-
                             positions.push(point.distributeBox);
                         }
                     });
@@ -386,6 +414,31 @@ namespace ColumnDataLabel {
                     distributionLength,
                     distributionLength / 5
                 );
+
+                // Uncomment this to visualize the boxes
+                /*
+                points.forEach((point): void => {
+                    const box = point.distributeBox;
+                    point.dlBox?.destroy();
+                    if (box?.pos) {
+                        point.dlBox = chart.renderer.rect(
+                            chart.plotLeft + this.center[0] + (
+                                halfIdx ?
+                                    -this.center[2] / 2 - 100 :
+                                    this.center[2] / 2
+                            ),
+                            chart.plotTop + box.pos,
+                            100,
+                            box.size
+                        )
+                            .attr({
+                                stroke: 'silver',
+                                'stroke-width': 1
+                            })
+                            .add();
+                    }
+                });
+                // */
             }
 
             // Now the used slots are sorted, fill them up sequentially
@@ -399,7 +452,11 @@ namespace ColumnDataLabel {
                         labelPosition = dataLabel.dataLabelPosition,
                         naturalY = labelPosition?.natural.y || 0,
                         connectorPadding = dataLabelOptions
-                            .connectorPadding || 0;
+                            .connectorPadding || 0,
+                        lineHeight = dataLabel.lineHeight || 21,
+                        bBox = dataLabel.getBBox(),
+                        topOffset = (lineHeight - bBox.height) / 2;
+
 
                     let x = 0,
                         y = naturalY,
@@ -460,7 +517,7 @@ namespace ColumnDataLabel {
                                     ).radialDistributionX(
                                         series,
                                         point,
-                                        y,
+                                        y - topOffset,
                                         naturalY,
                                         dataLabel
                                     );
@@ -484,14 +541,14 @@ namespace ColumnDataLabel {
                             y: y +
                                 (dataLabelOptions.y || 0) - // (#12985)
                                 // Vertically center
-                                dataLabel.getBBox().height / 2
+                                lineHeight / 2
                         };
 
                         labelPosition.computed.x = x;
-                        labelPosition.computed.y = y;
+                        labelPosition.computed.y = y - topOffset;
 
                         // Detect overflowing data labels
-                        if (pick(dataLabelOptions.crop, true)) {
+                        if (dataLabelOptions.crop ?? true) {
                             dataLabelWidth = dataLabel.getBBox().width;
 
                             let sideOverflow: number|undefined;
@@ -562,7 +619,7 @@ namespace ColumnDataLabel {
 
 
             this.points.forEach((point): void => {
-                (point.dataLabels || []).forEach((dataLabel): void => {
+                point.dataLabels?.forEach((dataLabel, i): void => {
                     // #8864: every connector can have individual options
                     const {
                             connectorColor,
@@ -571,7 +628,7 @@ namespace ColumnDataLabel {
                         labelPosition = dataLabel.dataLabelPosition;
 
                     // Draw the connector
-                    if (connectorWidth) {
+                    if (isNumber(connectorWidth)) {
                         let isNew;
 
                         connector = dataLabel.connector;
@@ -592,7 +649,7 @@ namespace ColumnDataLabel {
                                                 ''
                                         )
                                     )
-                                    .add(series.dataLabelsGroup);
+                                    .add(series.dataLabelsGroups?.[i]);
                             }
 
                             if (!chart.styledMode) {
@@ -601,7 +658,7 @@ namespace ColumnDataLabel {
                                     'stroke': (
                                         connectorColor ||
                                         point.color ||
-                                        Palette.neutralColor60
+                                        'var(--highcharts-neutral-color-60)'
                                     )
                                 });
                             }
@@ -625,7 +682,7 @@ namespace ColumnDataLabel {
     /**
      * Perform the final placement of the data labels after we have verified
      * that they fall within the plot area.
-     * @private
+     * @internal
      */
     function placeDataLabels(
         this: PieSeries
@@ -647,8 +704,7 @@ namespace ColumnDataLabel {
                                 )
                             ) + 'px',
                             textOverflow: (
-                                (dataLabel.options?.style || {})
-                                    .textOverflow ||
+                                dataLabel.options?.style?.textOverflow ||
                                 'ellipsis'
                             )
                         });
@@ -673,7 +729,7 @@ namespace ColumnDataLabel {
      * Verify whether the data labels are allowed to draw, or we should run more
      * translation and data label positioning to keep them inside the plot area.
      * Returns true when data labels are ready to draw.
-     * @private
+     * @internal
      */
     function verifyDataLabelOverflow(
         this: PieSeries,
@@ -759,4 +815,5 @@ namespace ColumnDataLabel {
  *
  * */
 
+/** @internal */
 export default ColumnDataLabel;

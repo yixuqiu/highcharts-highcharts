@@ -1,10 +1,12 @@
 /* *
  *
- *  (c) 2010-2024 Torstein Honsi
+ *  (c) 2010-2026 Highsoft AS
+ *  Author: Torstein Hønsi
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  * */
 
@@ -17,8 +19,6 @@
  * */
 
 import type FlagsSeriesOptions from './FlagsSeriesOptions';
-
-import { Palette } from '../../Core/Color/Palettes.js';
 
 /* *
  *
@@ -34,9 +34,12 @@ import { Palette } from '../../Core/Color/Palettes.js';
  *         Flags on a line series
  *
  * @extends      plotOptions.column
- * @excluding    animation, borderColor, borderWidth,
- *               colorByPoint, cropThreshold, dataGrouping, pointPadding,
- *               pointWidth, turboThreshold
+ * @excluding    animation, boostBlending, boostThreshold, borderColor,
+ *               borderWidth, colorByPoint, cropThreshold, dataGrouping, depth,
+ *               edgeColor, edgeWidth, groupZPadding, lowMarker,
+ *               nullInteraction, onPoint, pointPadding, pointWidth,
+ *               startFromThreshold, threshold, trackByArea, turboThreshold,
+ *               zoomEnabled
  * @product      highstock
  * @optionparent plotOptions.flags
  */
@@ -65,6 +68,16 @@ const FlagsSeriesDefaults: FlagsSeriesOptions = {
      * @validvalue ["y", "open", "high", "low", "close"]
      * @apioption  plotOptions.flags.onKey
      */
+
+    /**
+     * What type of legend symbol to render for this series. For flags
+     * series, the default is `flag-icon`, a pole with a pennant.
+     *
+     * @default   flag-icon
+     * @product   highstock
+     * @apioption plotOptions.flags.legendSymbol
+     */
+    legendSymbol: 'flag-icon',
 
     /**
      * The id of the series that the flags should be drawn on. If no id
@@ -100,8 +113,9 @@ const FlagsSeriesDefaults: FlagsSeriesOptions = {
      * @sample {highstock} stock/plotoptions/flags/
      *         Different shapes
      *
-     * @type    {Highcharts.FlagsShapeValue}
+     * @declare Highcharts.FlagsShapeValue
      * @product highstock
+     * @type    {"circlepin"|"flag"|"squarepin"}
      */
     shape: 'flag',
 
@@ -139,10 +153,9 @@ const FlagsSeriesDefaults: FlagsSeriesOptions = {
         pointFormat: '{point.text}'
     },
 
-    /**
-     * @type {number|null}
-     */
-    threshold: null,
+    /** @ignore-option */
+    threshold: null, // Don't stretch the Y axis like column does
+
 
     /**
      * The text to display on each flag. This can be defined on series
@@ -200,10 +213,10 @@ const FlagsSeriesDefaults: FlagsSeriesOptions = {
     /**
      * The fill color for the flags.
      *
-     * @type    {Highcharts.ColorString|Highcharts.GradientColorObject|Highcharts.PatternObject}
+     * @type    {Highcharts.ColorType}
      * @product highstock
      */
-    fillColor: Palette.backgroundColor,
+    fillColor: 'var(--highcharts-background-color)',
 
     /**
      * The color of the line/border of the flag.
@@ -211,7 +224,7 @@ const FlagsSeriesDefaults: FlagsSeriesOptions = {
      * In styled mode, the stroke is set in the
      * `.highcharts-flag-series.highcharts-point` rule.
      *
-     * @type      {Highcharts.ColorString|Highcharts.GradientColorObject|Highcharts.PatternObject}
+     * @type      {Highcharts.ColorType}
      * @default   #000000
      * @product   highstock
      * @apioption plotOptions.flags.lineColor
@@ -235,18 +248,18 @@ const FlagsSeriesDefaults: FlagsSeriesOptions = {
             /**
              * The color of the line/border of the flag.
              *
-             * @type    {Highcharts.ColorString|Highcharts.GradientColorObject|Highcharts.PatternObject}
+             * @type    {Highcharts.ColorType}
              * @product highstock
              */
-            lineColor: Palette.neutralColor100,
+            lineColor: 'var(--highcharts-neutral-color-100)',
 
             /**
              * The fill or background color of the flag.
              *
-             * @type    {Highcharts.ColorString|Highcharts.GradientColorObject|Highcharts.PatternObject}
+             * @type    {Highcharts.ColorType}
              * @product highstock
              */
-            fillColor: Palette.highlightColor20
+            fillColor: 'var(--highcharts-highlight-color-20)'
         }
     },
 
@@ -257,10 +270,12 @@ const FlagsSeriesDefaults: FlagsSeriesOptions = {
      * `.highcharts-flag-series .highcharts-point` rule.
      *
      * @type    {Highcharts.CSSObject}
-     * @default {"fontSize": "11px", "fontWeight": "bold"}
+     * @default { "color": "var(--highcharts-neutral-color-100)", "fontSize": "0.7em", "fontWeight": "bold" }
      * @product highstock
      */
     style: {
+        /** @ignore-option */
+        color: 'var(--highcharts-neutral-color-100)',
         /** @ignore-option */
         fontSize: '0.7em',
         /** @ignore-option */
@@ -275,12 +290,21 @@ const FlagsSeriesDefaults: FlagsSeriesOptions = {
  * specified, it is inherited from [chart.type](#chart.type).
  *
  * @extends   series,plotOptions.flags
- * @excluding animation, borderColor, borderRadius, borderWidth, colorByPoint,
- *            connectNulls, cropThreshold, dashStyle, dataGrouping, dataParser,
- *            dataURL, gapSize, gapUnit, linecap, lineWidth, marker,
- *            pointPadding, pointWidth, step, turboThreshold, useOhlcData
+ * @excluding animation, boostBlending, boostThreshold, borderColor,
+ *            borderWidth, colorByPoint, connectNulls, cropThreshold,
+ *            dashStyle, dataGrouping, depth, edgeColor, edgeWidth, gapSize,
+ *            gapUnit, groupZPadding, linecap, lowMarker, marker,
+ *            nullInteraction, onPoint, pointPadding, pointWidth,
+ *            startFromThreshold, step, threshold, trackByArea,
+ *            turboThreshold, useOhlcData, zoomEnabled
  * @product   highstock
  * @apioption series.flags
+ */
+
+/**
+ * @excluding changeDecimals, valueDecimals, valuePrefix, valueSuffix
+ * @product   highstock
+ * @apioption series.flags.tooltip
  */
 
 /**
@@ -304,6 +328,7 @@ const FlagsSeriesDefaults: FlagsSeriesOptions = {
  *    }]
  *    ```
  *
+ * @basic
  * @type      {Array<*>}
  * @extends   series.line.data
  * @excluding dataLabels, marker, name, y
@@ -315,9 +340,17 @@ const FlagsSeriesDefaults: FlagsSeriesOptions = {
  * The fill color of an individual flag. By default it inherits from
  * the series color.
  *
- * @type      {Highcharts.ColorString|Highcharts.GradientColorObject|Highcharts.PatternObject}
+ * @type      {Highcharts.ColorType}
  * @product   highstock
  * @apioption series.flags.data.fillColor
+ */
+
+/**
+ * The shape of an individual flag.
+ *
+ * @type      {string}
+ * @product   highstock
+ * @apioption series.flags.data.shape
  */
 
 /**

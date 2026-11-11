@@ -1,12 +1,13 @@
 /* *
  *
- *  (c) 2016-2024 Highsoft AS
+ *  (c) 2016-2026 Highsoft AS
  *
  *  Author: Lars A. V. Cabrera
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  * */
 
@@ -21,8 +22,7 @@
 import type GanttPoint from './GanttPoint';
 import type GanttSeriesOptions from './GanttSeriesOptions';
 
-import U from '../../Core/Utilities.js';
-const { isNumber } = U;
+import { isNumber } from '../../Shared/Utilities.js';
 
 /* *
  *
@@ -40,6 +40,18 @@ const { isNumber } = U;
  * @optionparent plotOptions.gantt
  */
 const GanttSeriesDefaults: GanttSeriesOptions = {
+
+    /**
+     * A partial fill for each point, typically used to visualize how much
+     * of a task is performed.
+     *
+     * @see [completed](#series.gantt.data.completed)
+     *
+     * @sample gantt/demo/progress-indicator
+     *         Gantt with progress indicator
+     *
+     * @apioption plotOptions.gantt.partialFill
+     */
 
     // Options - default options merged with parent
 
@@ -125,7 +137,6 @@ const GanttSeriesDefaults: GanttSeriesOptions = {
             enabled: true,
             symbol: 'arrow-filled',
             radius: 4,
-            fill: '#fa0',
             align: 'left' as const
         },
 
@@ -145,9 +156,6 @@ const GanttSeriesDefaults: GanttSeriesOptions = {
  * A `gantt` series.
  *
  * @extends   series,plotOptions.gantt
- * @excluding boostThreshold, dashStyle, findNearestPointBy,
- *            getExtremesFromAll, marker, negativeColor, pointInterval,
- *            pointIntervalUnit, pointPlacement, pointStart
  * @product   gantt
  * @requires  highcharts-gantt
  * @apioption series.gantt
@@ -156,11 +164,11 @@ const GanttSeriesDefaults: GanttSeriesOptions = {
 /**
  * Data for a Gantt series.
  *
+ * @basic
  * @declare   Highcharts.GanttPointOptionsObject
  * @type      {Array<*>}
  * @extends   series.xrange.data
- * @excluding className, connect, dataLabels, events,
- *            partialFill, selected, x, x2
+ * @excluding className, connect, dataLabels, events, selected, x, x2
  * @product   gantt
  * @apioption series.gantt.data
  */
@@ -179,17 +187,17 @@ const GanttSeriesDefaults: GanttSeriesOptions = {
  */
 
 /**
- * The start time of a task.
+ * The start time of a task. May be a timestamp or a date string.
  *
- * @type      {number}
+ * @type      {number|string}
  * @product   gantt
  * @apioption series.gantt.data.start
  */
 
 /**
- * The end time of a task.
+ * The end time of a task. May be a timestamp or a date string.
  *
- * @type      {number}
+ * @type      {number|string}
  * @product   gantt
  * @apioption series.gantt.data.end
  */
@@ -212,8 +220,8 @@ const GanttSeriesDefaults: GanttSeriesOptions = {
  */
 
 /**
- * Progress indicator, how much of the task completed. If it is a number, the
- * `fill` will be applied automatically.
+ * Progress indicator, how much of the task completed. When set as a number,
+ * works as `{ amount: number }`.
  *
  * @sample {gantt} gantt/demo/progress-indicator
  *         Progress indicator
@@ -237,7 +245,7 @@ const GanttSeriesDefaults: GanttSeriesOptions = {
  * The fill of the progress indicator. Defaults to a darkened variety of the
  * main color.
  *
- * @type      {Highcharts.ColorString|Highcharts.GradientColorObject|Highcharts.PatternObject}
+ * @type      {Highcharts.ColorType}
  * @apioption series.gantt.data.completed.fill
  */
 
@@ -284,12 +292,7 @@ const GanttSeriesDefaults: GanttSeriesOptions = {
  * @apioption series.gantt.data.parent
  */
 
-/**
- * @excluding afterAnimate
- * @apioption series.gantt.events
- */
-
-''; // Detachs doclets above
+''; // Keep above doclets in JS file
 
 /* *
  *

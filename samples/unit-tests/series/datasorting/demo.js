@@ -22,13 +22,13 @@ QUnit.test('Data sorting ', function (assert) {
         series = chart.series[0];
 
     assert.strictEqual(
-        series.xData[0],
+        series.getColumn('x')[0],
         2,
         'Series should be correctly sorted.'
     );
 
     assert.strictEqual(
-        chart.series[1].xData[0],
+        chart.series[1].getColumn('x')[0],
         2,
         `Navigator series data should be correctly set and sorted on initial
         load, #20318`
@@ -44,7 +44,7 @@ QUnit.test('Data sorting ', function (assert) {
     });
 
     assert.strictEqual(
-        series.xData[0],
+        series.getColumn('x')[0],
         0,
         `Series data should be set and sorted correctly after chart update
         with dataSorting and dataGrouping enabled, #19715.`
@@ -78,10 +78,10 @@ QUnit.test('Data sorting ', function (assert) {
         ['A', 4]
     ]);
 
-    assert.strictEqual(
-        series.points[0].name,
-        'A',
-        'Points should be correctly matched by name.'
+    assert.deepEqual(
+        series.points.map(point => [point.name, point.x]),
+        [['C', 1], ['A', 0]],
+        'Points should be correctly matched by name (#25312).'
     );
 
     chart.update(
@@ -175,7 +175,7 @@ QUnit.test('Data sorting with sortKey', function (assert) {
         },
         function (chart) {
             assert.deepEqual(
-                chart.series[0].xData,
+                chart.series[0].getColumn('x'),
                 [0, 2, 1],
                 'Data should be sorted by y value.'
             );
@@ -192,12 +192,71 @@ QUnit.test('Data sorting with sortKey', function (assert) {
             });
 
             assert.deepEqual(
-                chart.series[0].xData,
+                chart.series[0].getColumn('x'),
                 [1, 0, 2],
                 'Data should be sorted by custom.myValue value.'
             );
         }
     );
+});
+
+QUnit.test('Data sorting and animations', function (assert) {
+    const names = [
+        'Anna', 'Tim', 'Laura'
+    ];
+
+    let run = 0;
+    function getRandomData() {
+        const data = [];
+
+        for (let i = 0; i < names.length; i++) {
+            const y = (run === 0 ? i + 1 : 3.1 - i);
+            data.push([names[i], y]);
+        }
+        run++;
+        return data;
+    }
+
+    const chart = Highcharts.chart('container', {
+
+        chart: {
+            type: 'bar'
+        },
+
+        xAxis: {
+            type: 'category',
+            min: 0,
+            labels: {
+                animate: true
+            }
+        },
+
+        series: [{
+            dataSorting: {
+                enabled: true,
+                sortKey: 'y'
+            },
+            data: getRandomData()
+        }]
+
+    });
+
+    chart.series[0].points.forEach(point => {
+        point.graphic.pointName = point.name;
+    });
+
+    chart.series[0].setData(
+        getRandomData(),
+        true
+    );
+
+    chart.series[0].points.forEach(point => {
+        assert.strictEqual(
+            point.graphic.pointName,
+            point.name,
+            'Point should be matched by name and keep the same graphic.'
+        );
+    });
 });
 
 QUnit.test('Data sorting with drilldown', function (assert) {

@@ -1,10 +1,12 @@
 /* *
  *
- *  (c) 2010-2024 Torstein Honsi
+ *  (c) 2010-2026 Highsoft AS
+ *  Author: Torstein Hønsi
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  * */
 
@@ -20,15 +22,9 @@ import type AreaSplineRangePoint from './AreaSplineRangePoint';
 import type AreaSplineRangeSeriesOptions from './AreaSplineRangeSeriesOptions';
 
 import AreaRangeSeries from '../AreaRange/AreaRangeSeries.js';
+import SplineSeries from '../Spline/SplineSeries.js';
 import SeriesRegistry from '../../Core/Series/SeriesRegistry.js';
-const {
-    spline: { prototype: splineProto }
-} = SeriesRegistry.seriesTypes;
-import U from '../../Core/Utilities.js';
-const {
-    merge,
-    extend
-} = U;
+import { extend, merge } from '../../Shared/Utilities.js';
 
 /* *
  *
@@ -39,7 +35,6 @@ const {
 /**
  * The areasplinerange series type.
  *
- * @private
  * @class
  * @name Highcharts.seriesTypes.areasplinerange
  *
@@ -53,6 +48,7 @@ class AreaSplineRangeSeries extends AreaRangeSeries {
      *
      * */
 
+    /** @internal */
     public static defaultOptions: AreaSplineRangeSeriesOptions = merge(
         AreaRangeSeries.defaultOptions
     );
@@ -77,11 +73,11 @@ class AreaSplineRangeSeries extends AreaRangeSeries {
 
 interface AreaSplineRangeSeries extends AreaRangeSeries {
     pointClass: typeof AreaSplineRangePoint;
-    getPointSpline: typeof splineProto.getPointSpline;
+    getPointSpline: typeof SplineSeries.prototype.getPointSpline;
 }
 
 extend(AreaSplineRangeSeries.prototype, {
-    getPointSpline: splineProto.getPointSpline
+    getPointSpline: SplineSeries.prototype.getPointSpline
 });
 
 /* *
@@ -90,9 +86,6 @@ extend(AreaSplineRangeSeries.prototype, {
  *
  * */
 
-/**
- * @private
- */
 declare module '../../Core/Series/SeriesType' {
     interface SeriesTypeRegistry {
         areasplinerange: typeof AreaSplineRangeSeries;
@@ -158,7 +151,7 @@ export default AreaSplineRangeSeries;
  * option is not specified, it is inherited from [chart.type](#chart.type).
  *
  * @extends   series,plotOptions.areasplinerange
- * @excluding dataParser, dataURL, stack, step, boostThreshold, boostBlending
+ * @excluding stack, step, boostThreshold, boostBlending
  * @product   highcharts highstock
  * @requires  highcharts-more
  * @apioption series.areasplinerange
@@ -220,6 +213,7 @@ export default AreaSplineRangeSeries;
  * @sample {highcharts} highcharts/series/data-array-of-objects/
  *         Config objects
  *
+ * @basic
  * @type      {Array<Array<(number|string),number>|Array<(number|string),number,number>|*>}
  * @extends   series.arearange.data
  * @product   highcharts highstock

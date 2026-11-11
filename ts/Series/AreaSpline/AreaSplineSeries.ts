@@ -1,10 +1,12 @@
 /* *
  *
- *  (c) 2010-2024 Torstein Honsi
+ *  (c) 2010-2026 Highsoft AS
+ *  Author: Torstein Hønsi
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  * */
 
@@ -20,16 +22,9 @@ import type AreaSplineSeriesOptions from './AreaSplineSeriesOptions';
 import type AreaSplinePoint from './AreaSplinePoint';
 
 import SplineSeries from '../Spline/SplineSeries.js';
+import AreaSeries from '../Area/AreaSeries.js';
 import SeriesRegistry from '../../Core/Series/SeriesRegistry.js';
-const {
-    area: AreaSeries,
-    area: { prototype: areaProto }
-} = SeriesRegistry.seriesTypes;
-import U from '../../Core/Utilities.js';
-const {
-    extend,
-    merge
-} = U;
+import { extend, merge } from '../../Shared/Utilities.js';
 
 /* *
  *
@@ -40,7 +35,6 @@ const {
 /**
  * AreaSpline series type.
  *
- * @private
  * @class
  * @name Highcharts.seriesTypes.areaspline
  *
@@ -54,6 +48,7 @@ class AreaSplineSeries extends SplineSeries {
      *
      * */
 
+    /** @internal */
     public static defaultOptions: AreaSplineSeriesOptions = merge(
         SplineSeries.defaultOptions,
         AreaSeries.defaultOptions
@@ -77,15 +72,18 @@ class AreaSplineSeries extends SplineSeries {
  * */
 interface AreaSplineSeries extends SplineSeries {
     pointClass: typeof AreaSplinePoint;
-    getGraphPath: typeof areaProto.getGraphPath,
-    getStackPoints: typeof areaProto.getStackPoints;
-    drawGraph: typeof areaProto.drawGraph;
+    /** @internal */
+    getGraphPath: typeof AreaSeries.prototype.getGraphPath,
+    /** @internal */
+    getStackPoints: typeof AreaSeries.prototype.getStackPoints;
+    /** @internal */
+    drawGraph: typeof AreaSeries.prototype.drawGraph;
 }
 
 extend(AreaSplineSeries.prototype, {
-    getGraphPath: areaProto.getGraphPath,
-    getStackPoints: areaProto.getStackPoints,
-    drawGraph: areaProto.drawGraph
+    getGraphPath: AreaSeries.prototype.getGraphPath,
+    getStackPoints: AreaSeries.prototype.getStackPoints,
+    drawGraph: AreaSeries.prototype.drawGraph
 });
 
 /* *
@@ -159,7 +157,7 @@ export default AreaSplineSeries;
  *
  *
  * @extends   series,plotOptions.areaspline
- * @excluding dataParser, dataURL, step, boostThreshold, boostBlending
+ * @excluding step, boostThreshold, boostBlending
  * @product   highcharts highstock
  * @apioption series.areaspline
  */
@@ -225,6 +223,7 @@ export default AreaSplineSeries;
  * @sample {highcharts} highcharts/series/data-array-of-objects/
  *         Config objects
  *
+ * @basic
  * @type      {Array<number|Array<(number|string),(number|null)>|null|*>}
  * @extends   series.line.data
  * @product   highcharts highstock

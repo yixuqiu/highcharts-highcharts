@@ -1,6 +1,5 @@
 /* *
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  * */
 
@@ -12,15 +11,39 @@
  *
  * */
 
+import type {
+    AnnotationOptions,
+    AnnotationTypeOptions
+} from '../AnnotationOptions';
 import type { AnnotationPointType } from '../AnnotationSeries';
+import type Controllable from '../Controllables/Controllable';
 import type Axis from '../../../Core/Axis/Axis';
 import type PositionObject from '../../../Core/Renderer/PositionObject';
 
 import Annotation from '../Annotation.js';
 import CrookedLine from './CrookedLine.js';
+import D from '../../../Core/Defaults.js';
+const { defaultOptions } = D;
 import MockPoint from '../MockPoint.js';
-import U from '../../../Core/Utilities.js';
-const { merge } = U;
+import { AnnotationMockPointFunction } from '../AnnotationOptions';
+import { isNumber, merge } from '../../../Shared/Utilities.js';
+
+if (defaultOptions.annotations?.types) {
+    /**
+     * Options for the infinity line annotation type.
+     *
+     * @sample highcharts/annotations-advanced/infinity-line/
+     *         Infinity line
+     *
+     * @extends      annotations.types.crookedLine
+     * @product      highstock
+     * @requires     modules/annotations-advanced
+     * @optionparent annotations.types.infinityLine
+     */
+    defaultOptions.annotations.types.infinityLine = merge(
+        defaultOptions.annotations.types.crookedLine
+    );
+}
 
 /* *
  *
@@ -28,6 +51,7 @@ const { merge } = U;
  *
  * */
 
+/** @internal */
 class InfinityLine extends CrookedLine {
 
     /* *
@@ -45,27 +69,39 @@ class InfinityLine extends CrookedLine {
      *
      * */
 
-    private static edgePoint(startIndex: number, endIndex: number): Function {
-        return function (target: any): PositionObject {
+    private static edgePoint(
+        startIndex: number,
+        endIndex: number
+    ): AnnotationMockPointFunction {
+        return function (target: Controllable): PositionObject {
             const annotation = target.annotation,
-                type = annotation.options.typeOptions.type;
+                type = annotation.options.typeOptions?.type;
 
-            let points = annotation.points;
+            let points = annotation.points as Array<MockPoint>;
 
-            if (type === 'horizontalLine' || type === 'verticalLine') {
+            const firstPoint = points[0];
+
+            if (
+                (type === 'horizontalLine' || type === 'verticalLine') &&
+                isNumber(firstPoint.x) &&
+                isNumber(firstPoint.y)
+            ) {
+                const { x: firstX, y: firstY } = firstPoint,
+                    { xAxis, yAxis } = firstPoint.getOptions();
+
                 // Horizontal and vertical lines have only one point,
                 // make a copy of it:
                 points = [
-                    points[0],
+                    firstPoint,
                     new MockPoint(
                         annotation.chart,
-                        points[0].target,
+                        firstPoint.target,
                         {
                             // Add 0 or 1 to x or y depending on type
-                            x: points[0].x + +(type === 'horizontalLine'),
-                            y: points[0].y + +(type === 'verticalLine'),
-                            xAxis: points[0].options.xAxis,
-                            yAxis: points[0].options.yAxis
+                            x: firstX + +(type === 'horizontalLine'),
+                            y: firstY + +(type === 'verticalLine'),
+                            xAxis,
+                            yAxis
                         }
                     )
                 ];
@@ -184,8 +220,8 @@ class InfinityLine extends CrookedLine {
         const line = this.initShape(
             merge(typeOptions.line, {
                 type: 'path',
-                points: points,
-                className: 'highcharts-infinity-lines'
+                className: 'highcharts-infinity-lines',
+                points
             }),
             0
         );
@@ -201,13 +237,10 @@ class InfinityLine extends CrookedLine {
  *
  * */
 
+/** @internal */
 interface InfinityLine {
     defaultOptions: CrookedLine['defaultOptions'];
 }
-InfinityLine.prototype.defaultOptions = merge(
-    CrookedLine.prototype.defaultOptions,
-    {}
-);
 
 /* *
  *
@@ -216,10 +249,20 @@ InfinityLine.prototype.defaultOptions = merge(
  * */
 
 namespace InfinityLine {
-    export interface Options extends CrookedLine.Options{
+    /**
+     * Options for the infinity line annotation type.
+     *
+     * @sample highcharts/annotations-advanced/infinity-line/
+     *         Infinity line
+     *
+     * @extends      annotations.types.crookedLine
+     * @product      highstock
+     * @optionparent annotations.types.infinityLine
+     */
+    export interface Options extends AnnotationOptions {
         typeOptions: TypeOptions;
     }
-    export interface TypeOptions extends CrookedLine.TypeOptions {
+    export interface TypeOptions extends AnnotationTypeOptions {
         type: string;
     }
 }
@@ -230,6 +273,7 @@ namespace InfinityLine {
  *
  * */
 
+/** @internal */
 declare module './AnnotationType'{
     interface AnnotationTypeRegistry {
         infinityLine: typeof InfinityLine;
@@ -245,22 +289,3 @@ Annotation.types.infinityLine = InfinityLine;
  * */
 
 export default InfinityLine;
-
-/* *
- *
- *  API Declarations
- *
- * */
-
-/**
- * An infinity line annotation.
- *
- * @sample highcharts/annotations-advanced/infinity-line/
- *         Infinity Line
- *
- * @extends   annotations.crookedLine
- * @product   highstock
- * @apioption annotations.infinityLine
- */
-
-(''); // Keeps doclets above in transpiled file

@@ -1,25 +1,15 @@
-function grabComponent(name) {
-    cy.get('.highcharts-dashboards-edit-tools-btn').contains('Add').click({ force: true});
-    cy.get('.highcharts-dashboards-edit-grid-items')
-        .children()
-        .contains(name)
-        .trigger('mousedown', { force: true });
-}
-
-function dropComponent(elementName) {
-    cy.get(elementName).first().trigger('mouseenter', {force: true});
-    cy.get(elementName).first().trigger('mousemove', 'right', {force: true});
-    cy.get(elementName).first().trigger('mouseup', 'right', {force: true});
-}
-
 describe('Add components through UI', () => {
     beforeEach(() => {
         cy.visit('/dashboards/cypress/add-layout');
         cy.viewport(1200, 1000);
         cy.toggleEditMode();
 
-        Cypress.on('uncaught:exception', () => {
-            cy.log('Uncaught exception. Check the console for more details.');
+        Cypress.on('uncaught:exception', (err) => {
+            // Avoid using cy.* commands inside this handler; keep it synchronous
+            // to not interfere with Cypress command queue.
+            // Log to console for debugging and prevent test failure.
+            // eslint-disable-next-line no-console
+            console.warn('Uncaught exception in test:', err);
             return false;
         })
     });
@@ -37,8 +27,8 @@ describe('Add components through UI', () => {
     });
 
     it('should be able to add a layout', function() {
-        grabComponent('layout');
-        dropComponent('#dashboard-col-0');
+        cy.grabComponent('Row');
+        cy.dropComponent('#dashboard-col-0');
         cy.board().then((board) => {
             assert.equal(
                 board.layouts.length,
@@ -50,14 +40,14 @@ describe('Add components through UI', () => {
 
     it('should be able to add a HTML component', function() {
 
-        // drop next to datagrid
-        grabComponent('HTML');
-        dropComponent('#dashboard-col-2');
+        // drop next to grid
+        cy.grabComponent('HTML');
+        cy.dropComponent('#dashboard-col-2');
         cy.hideSidebar(); // Hide sidebar to avoid interference with the next test.
 
         // drop between two top cells
-        grabComponent('HTML');
-        dropComponent('#dashboard-col-1');
+        cy.grabComponent('HTML');
+        cy.dropComponent('#dashboard-col-1');
 
         cy.hideSidebar(); // Hide sidebar to avoid interference with the next test.
         cy.board().then((board) => {
@@ -80,21 +70,22 @@ describe('Add components through UI', () => {
                 `New component's type should be 'HTML'`
             );
 
-            // HTML next to datagrid
+            // HTML next to grid
             const rowHeight = m[m.length - 2].cell.row.container.getBoundingClientRect().height;
             const cellContentHeight = m[m.length - 2].component.contentElement.getBoundingClientRect().height;
 
             assert.ok(
                 rowHeight > cellContentHeight,
-                'The HTML Component has the same height as DataGrid'
+                'The HTML Component has the same height as Grid'
             );
 
             // HTML Component next to containers
             const firstCellHeight = m[0].component.contentElement.getBoundingClientRect().height;
             const secondCellHeight = m[m.length - 1].component.contentElement.getBoundingClientRect().height;
 
-            assert.ok(
-                firstCellHeight === secondCellHeight,
+            assert.strictEqual(
+                Math.floor(firstCellHeight),
+                Math.floor(secondCellHeight),
                 'The HTML Component has the same height as siblings'
             );
         });
@@ -102,13 +93,44 @@ describe('Add components through UI', () => {
         cy.get('.highcharts-dashboards-edit-menu.highcharts-dashboards-edit-toolbar-cell').children().should('be.visible')
     });
 
-    it('should be able to add a chart component and resize it', function() {
-        // Act
-        grabComponent('chart');
-        dropComponent('#dashboard-col-0')
-        cy.hideSidebar(); // Hide sidebar to avoid interference with the next test.
+    it('Board should not crash when removing added component', function() {
+        // Act- add HTML component
+        cy.grabComponent('HTML');
+        cy.dropComponent('#dashboard-col-2');
+        cy.hideSidebar();
+        // Remove HTML component
+        cy.get('.highcharts-dashboards-edit-menu-destroy').first().click();
+        cy.get('.highcharts-dashboards-edit-confirmation-popup-confirm-btn').click({ force: true, multiple: true });
+        // Act- add HTML component again
+        cy.grabComponent('HTML');
+        cy.dropComponent('#dashboard-col-1');
 
         // Assert
+        cy.get('.highcharts-dashboards-edit-sidebar').should('exist');
+    });
+
+    it('should be able to add a chart component and resize it', function() {
+        // Act
+        cy.grabComponent('chart');
+        cy.dropComponent('#dashboard-col-0')
+
+        // Assert
+        cy.get('.highcharts-dashboards-edit-accordion')
+            .contains('Chart options')
+            .click();
+        // Legend toggle
+        cy.get('.highcharts-dashboards-edit-toggle-container')
+            .eq(1)
+            .find('input[type="checkbox"]')
+            .should('be.checked');
+        // Data labels toggle
+        cy.get('.highcharts-dashboards-edit-toggle-container')
+            .eq(4)
+            .find('input[type="checkbox"]')
+            .should('not.be.checked');
+
+        // Assert
+        cy.hideSidebar(); // Hide sidebar to avoid interference with the next test.
         cy.board().then((board) => {
             assert.equal(
                 board.layouts[0].rows[0].cells.length,
@@ -133,9 +155,9 @@ describe('Add components through UI', () => {
         });
     });
 
-    it('DataGrid component should be added.', function() {
-        grabComponent('DataGrid');
-        dropComponent('#dashboard-col-0')
+    it('Grid component should be added.', function() {
+        cy.grabComponent('Grid');
+        cy.dropComponent('#dashboard-col-0')
         cy.hideSidebar(); // Hide sidebar to avoid interference with the next test.
         cy.board().then((board) => {
             assert.equal(
@@ -147,22 +169,22 @@ describe('Add components through UI', () => {
                 component = m[m.length - 1].component;
             assert.equal(
                 component.type,
-                'DataGrid',
-                `New component's type should be 'DataGrid'.`
+                'Grid',
+                `New component's type should be 'Grid'.`
             );
 
             // check values connector
             assert.deepEqual(
-                m[m.length - 2].component.dataGrid.columnNames,
-                component.dataGrid.columnNames,
-                `DataGrid should display values from CSV data table.`
+                m[m.length - 2].component.grid.columnIds,
+                component.grid.columnIds,
+                `Grid should display values from CSV data table.`
             );
         });
     });
 
     it('KPI component is added.', function() {
-        grabComponent('KPI');
-        dropComponent('#dashboard-col-0')
+        cy.grabComponent('KPI');
+        cy.dropComponent('#dashboard-col-0')
         cy.hideSidebar(); // Hide sidebar to avoid interference with the next test.
         cy.board().then((board) => {
             assert.equal(
@@ -190,8 +212,8 @@ describe('Add components through UI', () => {
         cy.get('.highcharts-dashboards-edit-menu-destroy').first().click({ force: true });
         cy.get('.highcharts-dashboards-edit-confirmation-popup-confirm-btn').click({ force: true });
 
-        grabComponent('chart');
-        dropComponent('.highcharts-dashboards-wrapper');
+        cy.grabComponent('chart');
+        cy.dropComponent('.highcharts-dashboards-wrapper');
         cy.hideSidebar(); // Hide sidebar to avoid interference with the next test.
         cy.board().then((board) => {
             assert.equal(

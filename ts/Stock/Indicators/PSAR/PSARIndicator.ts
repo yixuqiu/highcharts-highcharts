@@ -2,11 +2,13 @@
  *
  *  Parabolic SAR indicator for Highcharts Stock
  *
- *  (c) 2010-2024 Grzegorz Blachliński
+ *  (c) 2010-2026 Highsoft AS
+ *  Author: Grzegorz Blachliński
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  * */
 
@@ -18,6 +20,7 @@
  *
  * */
 
+import type { IndicatorLinkedSeriesBase } from '../IndicatorBase';
 import type IndicatorValuesObject from '../IndicatorValuesObject';
 import type LineSeries from '../../../Series/Line/LineSeries';
 import type {
@@ -26,14 +29,9 @@ import type {
 } from './PSAROptions';
 import type PSARPoint from './PSARPoint';
 
+import SMAIndicator from '../SMA/SMAIndicator.js';
 import SeriesRegistry from '../../../Core/Series/SeriesRegistry.js';
-const {
-    sma: SMAIndicator
-} = SeriesRegistry.seriesTypes;
-import U from '../../../Core/Utilities.js';
-const {
-    merge
-} = U;
+import { merge } from '../../../Shared/Utilities.js';
 
 /* *
  *
@@ -43,16 +41,12 @@ const {
 
 // Utils:
 
-/**
- *
- */
+/** @internal */
 function toFixed(a: number, n: number): number {
     return parseFloat(a.toFixed(n));
 }
 
-/**
- *
- */
+/** @internal */
 function calculateDirection(
     previousDirection: number, low: number, high: number, PSAR: number
 ): number {
@@ -75,9 +69,7 @@ function calculateDirection(
  * maxAcc - maximum acceleration factor
  * initAcc - initial acceleration factor
  */
-/**
- *
- */
+/** @internal */
 function getAccelerationFactor(
     dir: number,
     pDir: number,
@@ -100,9 +92,7 @@ function getAccelerationFactor(
     return initAcc;
 }
 
-/**
- *
- */
+/** @internal */
 function getExtremePoint(
     high: number,
     low: number,
@@ -115,16 +105,12 @@ function getExtremePoint(
     return (low < previousExtremePoint) ? low : previousExtremePoint;
 }
 
-/**
- *
- */
+/** @internal */
 function getEPMinusPSAR(EP: number, PSAR: number): number {
     return EP - PSAR;
 }
 
-/**
- *
- */
+/** @internal */
 function getAccelerationFactorMultiply(
     accelerationFactor: number,
     EPMinusSAR: number
@@ -144,9 +130,7 @@ function getAccelerationFactorMultiply(
  * pHigh - previous high
  * pEP - previous extreme point
  */
-/**
- *
- */
+/** @internal */
 function getPSAR(
     pdir: number,
     sDir: number,
@@ -180,7 +164,6 @@ function getPSAR(
 /**
  * The Parabolic SAR series type.
  *
- * @private
  * @class
  * @name Highcharts.seriesTypes.psar
  *
@@ -199,15 +182,16 @@ class PSARIndicator extends SMAIndicator {
      * option to be set and should be loaded
      * after `stock/indicators/indicators.js` file.
      *
-     * @sample stock/indicators/psar
+     * @sample {highstock} stock/indicators/psar
      *         Parabolic SAR Indicator
      *
      * @extends      plotOptions.sma
      * @since        6.0.0
      * @product      highstock
-     * @requires     stock/indicators/indicators
-     * @requires     stock/indicators/psar
+     * @requires     indicators/indicators
+     * @requires     indicators/psar
      * @optionparent plotOptions.psar
+     * @internal
      */
     public static defaultOptions: PSAROptions = merge(SMAIndicator.defaultOptions, {
         lineWidth: 0,
@@ -268,6 +252,7 @@ class PSARIndicator extends SMAIndicator {
      * */
 
     public data!: Array<PSARPoint>;
+    /** @internal */
     public nameComponents: Array<string>|undefined = void 0;
     public points!: Array<PSARPoint>;
     public options!: PSAROptions;
@@ -278,8 +263,9 @@ class PSARIndicator extends SMAIndicator {
      *
      * */
 
+    /** @internal */
     public getValues<TLinkedSeries extends LineSeries>(
-        series: TLinkedSeries,
+        series: TLinkedSeries&IndicatorLinkedSeriesBase,
         params: PSARParamsOptions
     ): (IndicatorValuesObject<TLinkedSeries>|undefined) {
         const xVal: Array<number> = (series.xData as any),
@@ -461,9 +447,8 @@ export default PSARIndicator;
  * @extends   series,plotOptions.psar
  * @since     6.0.0
  * @product   highstock
- * @excluding dataParser, dataURL
- * @requires  stock/indicators/indicators
- * @requires  stock/indicators/psar
+ * @requires  indicators/indicators
+ * @requires  indicators/psar
  * @apioption series.psar
  */
 

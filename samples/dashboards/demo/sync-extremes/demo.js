@@ -1,3 +1,8 @@
+Highcharts.setOptions({
+    chart: {
+        styledMode: true
+    }
+});
 const data = [
     ['Delhi', 31.18, 1484, 250],
     ['Tokyo', 37.33, 2194, 2017],
@@ -26,14 +31,12 @@ Dashboards.board('container', {
         connectors: [{
             id: 'Population',
             type: 'JSON',
-            options: {
-                columnNames: [
-                    'City', 'Population (mln)', 'Metro Area (km²)',
-                    'Highest Elevation (m)'
-                ],
-                firstRowAsNames: false,
-                data
-            }
+            columnIds: [
+                'City', 'Population (mln)', 'Metro Area (km²)',
+                'Highest Elevation (m)'
+            ],
+            firstRowAsNames: false,
+            data
         }]
     },
     gui: {
@@ -250,12 +253,14 @@ Dashboards.board('container', {
         connector: {
             id: 'Population'
         },
-        type: 'DataGrid',
+        type: 'Grid',
         sync: {
             extremes: true
         },
-        dataGridOptions: {
-            editable: false
+        gridOptions: {
+            credits: {
+                enabled: false
+            }
         }
     }]
 }, true);

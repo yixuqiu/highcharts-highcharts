@@ -2,11 +2,12 @@
  *
  *  Highcharts Breadcrumbs module
  *
- *  Authors: Grzegorz Blachlinski, Karol Kolodziej
+ *  Authors: Grzegorz Blachliński, Karol Kołodziej
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  * */
 
@@ -24,7 +25,6 @@ import type {
 } from './BreadcrumbsOptions';
 import type Chart from '../../Core/Chart/Chart.js';
 import type Options from '../../Core/Options';
-import type SVGAttributes from '../../Core/Renderer/SVG/SVGAttributes';
 import type SVGElement from '../../Core/Renderer/SVG/SVGElement';
 
 import BreadcrumbsDefaults from './BreadcrumbsDefaults.js';
@@ -32,8 +32,7 @@ import F from '../../Core/Templating.js';
 const { format } = F;
 import H from '../../Core/Globals.js';
 const { composed } = H;
-import U from '../../Core/Utilities.js';
-const {
+import {
     addEvent,
     defined,
     extend,
@@ -41,9 +40,8 @@ const {
     isString,
     merge,
     objectEach,
-    pick,
     pushUnique
-} = U;
+} from '../../Shared/Utilities.js';
 
 /* *
  *
@@ -51,16 +49,21 @@ const {
  *
  * */
 
-declare module '../../Core/Chart/ChartLike' {
-    interface ChartLike {
-        breadcrumbsBottomMargin?: boolean;
-        breadcrumbsTopMargin?: boolean;
+/** @internal */
+declare module '../../Core/Chart/ChartBase' {
+    interface ChartBase {
         breadcrumbs?: Breadcrumbs;
     }
 }
+
 declare module '../../Core/Options' {
     interface LangOptions {
-        breadcrumbsToLabel?: string;
+        /**
+         * The text for the main breadcrumb.
+         *
+         * @since   10.0.0
+         * @product highcharts highmaps
+         */
         mainBreadcrumb?: string;
     }
 }
@@ -73,7 +76,7 @@ declare module '../../Core/Options' {
 
 /**
  * Shift the drillUpButton to make the space for resetZoomButton, #8095.
- * @private
+ * @internal
  */
 function onChartAfterShowResetZoom(
     this: Chart
@@ -98,7 +101,7 @@ function onChartAfterShowResetZoom(
 
 /**
  * Remove resize/afterSetExtremes at chart destroy.
- * @private
+ * @internal
  */
 function onChartDestroy(
     this: Chart
@@ -111,7 +114,7 @@ function onChartDestroy(
 
 /**
  * Logic for making space for the buttons above the plot area
- * @private
+ * @internal
  */
 function onChartGetMargins(
     this: Chart
@@ -146,9 +149,7 @@ function onChartGetMargins(
     }
 }
 
-/**
- * @private
- */
+/** @internal */
 function onChartRedraw(
     this: Chart
 ): void {
@@ -157,7 +158,7 @@ function onChartRedraw(
 
 /**
  * After zooming out, shift the drillUpButton to the previous position, #8095.
- * @private
+ * @internal
  */
 function onChartSelection(
     this: Chart,
@@ -180,7 +181,7 @@ function onChartSelection(
 /**
  * The Breadcrumbs class
  *
- * @private
+ * @internal
  * @class
  * @name Highcharts.Breadcrumbs
  *
@@ -237,7 +238,7 @@ class Breadcrumbs {
 
     public constructor(
         chart: Chart,
-        userOptions?: Partial<BreadcrumbsOptions>
+        userOptions?: BreadcrumbsOptions
     ) {
         const chartOptions = merge(
             chart.options.drilldown &&
@@ -275,11 +276,7 @@ class Breadcrumbs {
     /**
      * Update Breadcrumbs properties, like level and list.
      *
-     * @requires  modules/breadcrumbs
-     *
      * @function Highcharts.Breadcrumbs#updateProperties
-     * @param {Highcharts.Breadcrumbs} this
-     *        Breadcrumbs class.
      */
     public updateProperties(
         list: Array<BreadcrumbOptions>
@@ -291,14 +288,6 @@ class Breadcrumbs {
 
     /**
      * Set breadcrumbs list.
-     * @function Highcharts.Breadcrumbs#setList
-     *
-     * @requires  modules/breadcrumbs
-     *
-     * @param {Highcharts.Breadcrumbs} this
-     *        Breadcrumbs class.
-     * @param {Highcharts.BreadcrumbsOptions} list
-     *        Breadcrumbs list.
      */
     public setList(
         list: Array<BreadcrumbOptions>
@@ -309,11 +298,7 @@ class Breadcrumbs {
     /**
      * Calculate level on which chart currently is.
      *
-     * @requires  modules/breadcrumbs
-     *
      * @function Highcharts.Breadcrumbs#setLevel
-     * @param {Highcharts.Breadcrumbs} this
-     *        Breadcrumbs class.
      */
     public setLevel(): void {
         this.level = this.list.length && this.list.length - 1;
@@ -322,11 +307,7 @@ class Breadcrumbs {
     /**
      * Get Breadcrumbs level
      *
-     * @requires  modules/breadcrumbs
-     *
      * @function Highcharts.Breadcrumbs#getLevel
-     * @param {Highcharts.Breadcrumbs} this
-     *        Breadcrumbs class.
      */
     public getLevel(): number {
         return this.level;
@@ -335,12 +316,8 @@ class Breadcrumbs {
     /**
      * Default button text formatter.
      *
-     * @requires  modules/breadcrumbs
-     *
      * @function Highcharts.Breadcrumbs#getButtonText
-     * @param {Highcharts.Breadcrumbs} this
-     *        Breadcrumbs class.
-     * @param {Highcharts.Breadcrumbs} breadcrumb
+     * @param {Highcharts.BreadcrumbsOptions} breadcrumb
      *        Breadcrumb.
      * @return {string}
      *         Formatted text.
@@ -352,15 +329,12 @@ class Breadcrumbs {
             chart = breadcrumbs.chart,
             breadcrumbsOptions = breadcrumbs.options,
             lang = chart.options.lang,
-            textFormat = pick(
-                breadcrumbsOptions.format,
+            textFormat = breadcrumbsOptions.format ?? (
                 breadcrumbsOptions.showFullPath ?
-                    '{level.name}' : '← {level.name}'
+                    '{level.name}' :
+                    '← {level.name}'
             ),
-            defaultText = lang && pick(
-                lang.drillUpText,
-                lang.mainBreadcrumb
-            );
+            defaultText = lang && (lang.drillUpText ?? lang.mainBreadcrumb);
         let returnText = breadcrumbsOptions.formatter &&
             breadcrumbsOptions.formatter(breadcrumb) ||
                 format(
@@ -389,11 +363,7 @@ class Breadcrumbs {
     /**
      * Redraw.
      *
-     * @requires  modules/breadcrumbs
-     *
      * @function Highcharts.Breadcrumbs#redraw
-     * @param {Highcharts.Breadcrumbs} this
-     *        Breadcrumbs class.
      */
     public redraw(): void {
         if (this.isDirty) {
@@ -410,11 +380,7 @@ class Breadcrumbs {
     /**
      * Create a group, then draw breadcrumbs together with the separators.
      *
-     * @requires  modules/breadcrumbs
-     *
      * @function Highcharts.Breadcrumbs#render
-     * @param {Highcharts.Breadcrumbs} this
-     *        Breadcrumbs class.
      */
     public render(): void {
 
@@ -446,11 +412,7 @@ class Breadcrumbs {
     /**
      * Draw breadcrumbs together with the separators.
      *
-     * @requires  modules/breadcrumbs
-     *
      * @function Highcharts.Breadcrumbs#renderFullPathButtons
-     * @param {Highcharts.Breadcrumbs} this
-     *        Breadcrumbs class.
      */
     public renderFullPathButtons(): void {
         // Make sure that only one type of button is visible.
@@ -467,10 +429,7 @@ class Breadcrumbs {
      * Render Single button - when showFullPath is not used. The button is
      * similar to the old drillUpButton
      *
-     * @requires  modules/breadcrumbs
-     *
      * @function Highcharts.Breadcrumbs#renderSingleButton
-     * @param {Highcharts.Breadcrumbs} this Breadcrumbs class.
      */
     public renderSingleButton(): void {
         const breadcrumbs = this,
@@ -510,11 +469,9 @@ class Breadcrumbs {
     /**
      * Update group position based on align and it's width.
      *
-     * @requires  modules/breadcrumbs
-     *
-     * @function Highcharts.Breadcrumbs#renderSingleButton
-     * @param {Highcharts.Breadcrumbs} this
-     *        Breadcrumbs class.
+     * @function Highcharts.Breadcrumbs#alignBreadcrumbsGroup
+     * @param {number} [xOffset]
+     *        Optional horizontal offset.
      */
     public alignBreadcrumbsGroup(xOffset?: number): void {
         const breadcrumbs = this;
@@ -547,7 +504,7 @@ class Breadcrumbs {
                 newPositions.x += positionOptions.width;
             }
 
-            newPositions.y = pick(newPositions.y, this.yOffset, 0);
+            newPositions.y = (newPositions.y ?? this.yOffset ?? 0);
 
             breadcrumbs.group.align(
                 newPositions,
@@ -560,16 +517,12 @@ class Breadcrumbs {
     /**
      * Render a button.
      *
-     * @requires  modules/breadcrumbs
-     *
      * @function Highcharts.Breadcrumbs#renderButton
-     * @param {Highcharts.Breadcrumbs} this
-     *        Breadcrumbs class.
      * @param {Highcharts.Breadcrumbs} breadcrumb
      *        Current breadcrumb
-     * @param {Highcharts.Breadcrumbs} posX
+     * @param {number} posX
      *        Initial horizontal position
-     * @param {Highcharts.Breadcrumbs} posY
+     * @param {number} posY
      *        Initial vertical position
      * @return {SVGElement|void}
      *        Returns the SVG button
@@ -582,14 +535,21 @@ class Breadcrumbs {
         const breadcrumbs = this,
             chart = this.chart,
             breadcrumbsOptions = breadcrumbs.options,
-            buttonTheme = merge(breadcrumbsOptions.buttonTheme);
+            // The `style` option is CSS for the button text, so it belongs in
+            // the theme's `style` rather than being applied afterwards. A
+            // later `setState` re-applies the normal state style, which would
+            // otherwise wipe it (#25357).
+            buttonTheme = merge(
+                breadcrumbsOptions.buttonTheme,
+                chart.styledMode ? void 0 : { style: breadcrumbsOptions.style }
+            );
 
         const button: SVGElement = chart.renderer
             .button(
                 breadcrumbs.getButtonText(breadcrumb),
                 posX,
                 posY,
-                function (e: (Event|any)): void {
+                function (e: any /* @todo (Event|any) */): void {
                     // Extract events from button object and call
                     const buttonEvents = breadcrumbsOptions.events &&
                         breadcrumbsOptions.events.click;
@@ -599,11 +559,15 @@ class Breadcrumbs {
                         callDefaultEvent = buttonEvents.call(
                             breadcrumbs,
                             e as any,
-                            breadcrumb
+                            breadcrumb,
+                            // Keep `ctx` for callback parity with arrow functions.
+                            // Not documented in public API because Breadcrumbs
+                            // is an internal class.
+                            breadcrumbs
                         );
                     }
 
-                    // (difference in behaviour of showFullPath and drillUp)
+                    // (difference in behavior of showFullPath and drillUp)
                     if (callDefaultEvent !== false) {
                         // For single button we are not going to the button
                         // level, but the one level up
@@ -620,23 +584,16 @@ class Breadcrumbs {
             .addClass('highcharts-breadcrumbs-button')
             .add(breadcrumbs.group);
 
-        if (!chart.styledMode) {
-            button.attr(breadcrumbsOptions.style as SVGAttributes);
-        }
         return button;
     }
 
     /**
      * Render a separator.
      *
-     * @requires  modules/breadcrumbs
-     *
      * @function Highcharts.Breadcrumbs#renderSeparator
-     * @param {Highcharts.Breadcrumbs} this
-     *        Breadcrumbs class.
-     * @param {Highcharts.Breadcrumbs} posX
+     * @param {number} posX
      *        Initial horizontal position
-     * @param {Highcharts.Breadcrumbs} posY
+     * @param {number} posY
      *        Initial vertical position
      * @return {Highcharts.SVGElement}
      *        Returns the SVG button
@@ -670,21 +627,8 @@ class Breadcrumbs {
         return separator;
     }
 
-    /**
-     * Update.
-     * @function Highcharts.Breadcrumbs#update
-     *
-     * @requires  modules/breadcrumbs
-     *
-     * @param {Highcharts.Breadcrumbs} this
-     *        Breadcrumbs class.
-     * @param {Highcharts.BreadcrumbsOptions} options
-     *        Breadcrumbs class.
-     * @param {boolean} redraw
-     *        Redraw flag
-     */
     public update(
-        options: DeepPartial<BreadcrumbsOptions>
+        options: BreadcrumbsOptions
     ): void {
         merge(true, this.options, options);
         this.destroy();
@@ -694,11 +638,6 @@ class Breadcrumbs {
     /**
      * Update button text when the showFullPath set to false.
      * @function Highcharts.Breadcrumbs#updateSingleButton
-     *
-     * @requires  modules/breadcrumbs
-     *
-     * @param {Highcharts.Breadcrumbs} this
-     *        Breadcrumbs class.
      */
     public updateSingleButton(): void {
         const chart = this.chart,
@@ -714,11 +653,7 @@ class Breadcrumbs {
     /**
      * Destroy the chosen breadcrumbs group
      *
-     * @requires  modules/breadcrumbs
-     *
      * @function Highcharts.Breadcrumbs#destroy
-     * @param {Highcharts.Breadcrumbs} this
-     *        Breadcrumbs class.
      */
     public destroy(): void {
 
@@ -738,11 +673,7 @@ class Breadcrumbs {
     /**
      * Destroy the elements' buttons and separators.
      *
-     * @requires  modules/breadcrumbs
-     *
      * @function Highcharts.Breadcrumbs#destroyListElements
-     * @param {Highcharts.Breadcrumbs} this
-     *        Breadcrumbs class.
      */
     public destroyListElements(
         force?: boolean
@@ -771,11 +702,7 @@ class Breadcrumbs {
     /**
      * Destroy the single button if exists.
      *
-     * @requires  modules/breadcrumbs
-     *
      * @function Highcharts.Breadcrumbs#destroySingleButton
-     * @param {Highcharts.Breadcrumbs} this
-     *        Breadcrumbs class.
      */
     public destroySingleButton(): void {
         if (this.chart.drillUpButton) {
@@ -786,11 +713,7 @@ class Breadcrumbs {
     /**
      * Reset state for all buttons in elementList.
      *
-     * @requires  modules/breadcrumbs
-     *
      * @function Highcharts.Breadcrumbs#resetElementListState
-     * @param {Highcharts.Breadcrumbs} this
-     *        Breadcrumbs class.
      */
     public resetElementListState(): void {
         objectEach(
@@ -804,12 +727,7 @@ class Breadcrumbs {
     /**
      * Update rendered elements inside the elementList.
      *
-     * @requires  modules/breadcrumbs
-     *
      * @function Highcharts.Breadcrumbs#updateListElements
-     *
-     * @param {Highcharts.Breadcrumbs} this
-     *        Breadcrumbs class.
      */
     public updateListElements(): void {
         const breadcrumbs = this,
@@ -913,6 +831,7 @@ class Breadcrumbs {
  *
  * */
 
+/** @internal */
 namespace Breadcrumbs {
     export type BreadcrumbElement = {
         button?: SVGElement,
@@ -928,6 +847,7 @@ namespace Breadcrumbs {
  *
  * */
 
+/** @internal */
 export default Breadcrumbs;
 
 /* *
@@ -941,23 +861,17 @@ export default Breadcrumbs;
  *
  * @callback Highcharts.BreadcrumbsClickCallbackFunction
  *
- * @param {Highcharts.Event} event
+ * @param {Event} event
  * Event.
  *
- * @param {Highcharts.BreadcrumbOptions} options
+ * @param {Highcharts.BreadcrumbOptions} breadcrumb
  * Breadcrumb options.
- *
- * @param {global.Event} e
- * Event arguments.
  */
 
 /**
  * Callback function to format the breadcrumb text from scratch.
  *
  * @callback Highcharts.BreadcrumbsFormatterCallbackFunction
- *
- * @param {Highcharts.Event} event
- * Event.
  *
  * @param {Highcharts.BreadcrumbOptions} options
  * Breadcrumb options.
@@ -1014,18 +928,6 @@ export default Breadcrumbs;
  * Y offset of a Breadcrumbs group.
  * @name Highcharts.BreadcrumbsAlignOptions#y
  * @type {number}
- */
-
-/**
- * Options for all breadcrumbs.
- *
- * @interface Highcharts.BreadcrumbsOptions
- */
-
-/**
- * Button theme.
- * @name Highcharts.BreadcrumbsOptions#buttonTheme
- * @type { SVGAttributes | undefined }
  */
 
 (''); // Keeps doclets above in JS file

@@ -1,3 +1,10 @@
+---
+description: >-
+  Represent start and end positions along the x-axis, commonly as dates,
+  with the y value selecting a row. The article covers partial completion
+  and combining these ranges with other cartesian series.
+---
+
 X-range series
 ===
 
@@ -9,7 +16,7 @@ The X-range series requires the following module [modules/xrange.js](https://cod
 
 _For more detailed samples and documentation check the [API.](https://api.highcharts.com/highcharts/plotOptions.xrange)_
 
-<iframe style="width: 100%; height: 332px; border: none;" src=https://www.highcharts.com/samples/embed/highcharts/demo/x-range allow="fullscreen"></iframe>
+<iframe style="width: 100%; height: 332px; border: none;" src="https://www.highcharts.com/samples/embed/highcharts/demo/x-range" allow="fullscreen"></iframe>
 
 Click [here](https://jsfiddle.net/gh/get/library/pure/highcharts/highcharts/tree/master/samples/highcharts/css/x-range/) to check the code.
 

@@ -1,10 +1,11 @@
 /* *
  *
- *  (c) 2009-2024 Highsoft AS
+ *  (c) 2009-2026 Highsoft AS
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  *  Authors:
  *  - Sophie Bremer
@@ -21,7 +22,7 @@
  * */
 
 
-import type Globals from '../../Globals';
+import type { DeepPartial } from '../../../Shared/Types';
 import type Options from './KPIComponentOptions';
 
 import Component from '../Component.js';
@@ -33,7 +34,7 @@ import Component from '../Component.js';
  *
  * */
 
-const KPIComponentDefaults: Globals.DeepPartial<Options> = {
+const KPIComponentDefaults: DeepPartial<Options> = {
     type: 'KPI',
     className: [
         Component.defaultOptions.className,
@@ -41,22 +42,27 @@ const KPIComponentDefaults: Globals.DeepPartial<Options> = {
     ].join(' '),
     minFontSize: 20,
     thresholdColors: ['#f45b5b', '#90ed7d'],
-    editableOptions:
-        (Component.defaultOptions.editableOptions || []).concat(
-            [{
-                name: 'Value',
-                type: 'input',
-                propertyPath: ['value']
-            }, {
-                name: 'Column name',
-                type: 'input',
-                propertyPath: ['columnName']
-            }, {
-                name: 'Value format',
-                type: 'input',
-                propertyPath: ['valueFormat']
-            }]
-        ),
+    editableOptions: [
+        {
+            name: 'connectorName',
+            propertyPath: ['connector', 'id'],
+            type: 'select'
+        },
+        ...Component.defaultOptions.editableOptions || [],
+        {
+            name: 'Value',
+            type: 'input',
+            propertyPath: ['value']
+        }, {
+            name: 'Column name',
+            type: 'input',
+            propertyPath: ['columnId']
+        }, {
+            name: 'Value format',
+            type: 'input',
+            propertyPath: ['valueFormat']
+        }
+    ],
     linkedValueTo: {
         enabled: true,
         seriesIndex: 0,

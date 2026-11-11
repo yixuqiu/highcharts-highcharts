@@ -104,16 +104,14 @@ function copyFile(fileSourcePath, fileTargetPath) {
 }
 
 /**
- * Deletes a directory.
+ * Deletes a directory recursivly.
  *
  * @param {string} directoryPath
  *        Directory path
  *
- * @param {boolean} [includeEntries]
- *        Set to true to remove containing entries as well
- *
- * @param {Function | undefined} [filterCallback]
- *        Callback to return `true` for files to delete.
+ * @param {Function} [filterCallback]
+ *        Callback to return `true` for files to delete, otherwise will
+ *        eventually fail.
  *
  * @return {void}
  *
@@ -121,31 +119,28 @@ function copyFile(fileSourcePath, fileTargetPath) {
  */
 function deleteDirectory(
     directoryPath,
-    includeEntries = true,
-    filterCallback = void 0
+    filterCallback
 ) {
     if (!FS.existsSync(directoryPath)) {
         return;
     }
 
-    if (includeEntries) {
-        if (!filterCallback) {
-            FS.rmSync(directoryPath, { recursive: true });
-            return;
-        }
-
+    if (filterCallback) {
         getDirectoryPaths(directoryPath).forEach(
-            path => deleteDirectory(path, true, filterCallback)
+            path => deleteDirectory(path, filterCallback)
         );
 
         for (const filePath of getFilePaths(directoryPath)) {
             if (filterCallback(filePath) === true) {
-                deleteFile(filePath, true);
+                deleteFile(filePath);
             }
         }
+
+        FS.rmdirSync(directoryPath);
+    } else {
+        FS.rmSync(directoryPath, { recursive: true });
     }
 
-    FS.rmdirSync(directoryPath);
 }
 
 /**
@@ -246,7 +241,7 @@ function getDirectoryPaths(directoryPath, includeSubDirectories) {
     let entryPath;
     let entryStat;
 
-    if (FS.existsSync(directoryPath)) {
+    if (isDirectory(directoryPath)) {
         FS.readdirSync(directoryPath).forEach(entry => {
 
             entryPath = Path.join(directoryPath, entry);
@@ -266,6 +261,28 @@ function getDirectoryPaths(directoryPath, includeSubDirectories) {
     }
 
     return directoryPaths;
+}
+
+/**
+ * Get file content.
+ *
+ * @param {string} filePath
+ * File path to read from.
+ *
+ * @param {boolean} [asJSON]
+ * Whether to parse as JSON.
+ *
+ * @return {string|*}
+ * UTF-8 content or JSON.
+ */
+function getFile(filePath, asJSON) {
+    let data = FS.readFileSync(filePath, 'utf8');
+
+    if (asJSON) {
+        data = JSON.parse(data);
+    }
+
+    return data;
 }
 
 /**
@@ -310,7 +327,7 @@ function getFilePaths(directoryPath, includeSubDirectories) {
     let entryPath;
     let entryStat;
 
-    if (FS.existsSync(directoryPath)) {
+    if (isDirectory(directoryPath)) {
         FS.readdirSync(directoryPath).forEach(entry => {
 
             entryPath = Path.join(directoryPath, entry);
@@ -417,6 +434,28 @@ function isFile(
 
 
 /**
+ * Extracts the last path item. Detects posix paths.
+ *
+ * @param {string} path
+ * Path to extract from.
+ *
+ * @return {string}
+ * Last path item.
+ */
+function lastPath(
+    path
+) {
+    return (
+        Path.sep !== Path.posix.sep &&
+        path.includes(PSEP) &&
+        path.split(PSEP).length > path.split(SEP).length ?
+            Path.posix.basename(path) :
+            Path.basename(path)
+    );
+}
+
+
+/**
  * Creates a path, if it not exists.
  *
  * @param {string} path
@@ -502,33 +541,190 @@ function moveAllFiles(
 
 
 /**
+ * Normalize target file path based on source file path.
+ *
+ * @param {string} sourcePath
+ * File path to use as reference for normalization.
+ *
+ * @param {string} targetPath
+ * File path to normalize.
+ *
+ * @param {boolean} [toPosix]
+ * Convert to a POSIX-uniform path, if set to `true`.
+ *
+ * @return {string}
+ * Normalize target file path.
+ */
+function normalizePath(
+    sourcePath,
+    targetPath,
+    toPosix
+) {
+
+    sourcePath = Path.posix.dirname(path(sourcePath, true));
+    targetPath = path(targetPath, true);
+
+    if (
+        !targetPath.startsWith('./') &&
+        !targetPath.startsWith('../')
+    ) {
+        targetPath = Path.posix.relative(sourcePath, targetPath);
+    }
+
+    return path(Path.posix.join(sourcePath, targetPath), toPosix);
+}
+
+
+/**
+ * Extracts the upper path without the last path item. Detects posix paths.
+ *
+ * @param {string} path
+ * Path to extract from.
+ *
+ * @return {string}
+ * Upper parent path.
+ */
+function parentPath(
+    path
+) {
+    return (
+        Path.sep !== Path.posix.sep &&
+        path.includes(PSEP) &&
+        path.split(PSEP).length > path.split(SEP).length ?
+            Path.posix.dirname(path) :
+            Path.dirname(path)
+    );
+}
+
+
+/**
  * Converts from POSIX path to the system-specific path by default. Set the flag
  * to convert to POSIX.
  *
- * @param {string} path
- *        Path to convert.
+ * @param {string|Array<string>} pathToConvert
+ * Path to convert.
  *
- * @param {boolean} toPosix
- *        Convert to a POSIX-uniform path, if set to `true`.
+ * @param {boolean} [toPosix]
+ * Convert to a POSIX-uniform path, if set to `true`.
  *
  * @return {string}
- *         Converted path.
+ * Converted path.
  */
 function path(
-    path,
+    pathToConvert,
     toPosix
 ) {
+
     if (Path.sep !== Path.posix.sep) {
+
+        if (typeof pathToConvert !== 'string') {
+            pathToConvert = Path.join(
+                ...pathToConvert.map(ptc => path(ptc, toPosix))
+            );
+        }
+
         return (
             toPosix ?
-                path.replaceAll(SEP, PSEP) :
-                path.replaceAll(PSEP, SEP)
+                pathToConvert.replaceAll(SEP, PSEP) :
+                pathToConvert.replaceAll(PSEP, SEP)
         );
     }
 
-    return path;
+    if (typeof pathToConvert !== 'string') {
+        pathToConvert = Path.join(...pathToConvert);
+    }
+
+    return pathToConvert;
 }
 
+/**
+ * Removes path elements that could result in a folder escape. Use this on any
+ * path coming from an HTTP request before joining it with a root folder.
+ *
+ * The URL parser resolves all dot segments, including percent-encoded ones,
+ * and clamps at the root, so the result always starts with a separator and
+ * can never escape the folder it gets joined with.
+ *
+ * @param {string} pathToSanitize
+ * Path to sanitize.
+ *
+ * @return {string}
+ * Sanitized path.
+ */
+function sanitizePath(pathToSanitize) {
+    return (new URL(pathToSanitize, 'http://localhost')).pathname;
+}
+
+/**
+ * Set file content.
+ *
+ * @param {string} filePath
+ * File path to write to.
+ *
+ * @param {string|*} [data]
+ * UTF-8 content or JSON.
+ */
+function setFile(filePath, data) {
+
+    if (typeof data !== 'string') {
+        data = JSON.stringify(data, null, 4);
+    }
+
+    FS.writeFileSync(filePath, data, 'utf8');
+
+}
+
+/**
+ * Update UTF-8 content through one open file, preserving its identity.
+ *
+ * @param {string} filePath
+ * File to update.
+ * @param {Function} transform
+ * Return new content, or undefined to leave the file unchanged.
+ * @param {object} [options]
+ * Update options.
+ * @param {boolean} [options.optional=false]
+ * Skip files missing when opened.
+ */
+function updateFile(filePath, transform, { optional = false } = {}) {
+    let descriptor, writeError;
+    try {
+        descriptor = FS.openSync(filePath, 'r+');
+    } catch (error) {
+        if (optional && error.code === 'ENOENT') {
+            return;
+        }
+        if (!['EACCES', 'EPERM', 'EROFS'].includes(error.code)) {
+            throw error;
+        }
+        // Read-only outputs can still be intentionally left unchanged.
+        writeError = error;
+        descriptor = FS.openSync(filePath, 'r');
+    }
+    try {
+        const content = transform(FS.readFileSync(descriptor, 'utf8'));
+        if (typeof content === 'undefined') {
+            return;
+        }
+        if (writeError) {
+            throw writeError;
+        }
+        const bytes = Buffer.from(content, 'utf8');
+        let offset = 0;
+        while (offset < bytes.length) {
+            const written = FS.writeSync(
+                descriptor, bytes, offset, bytes.length - offset, offset
+            );
+            if (!written) {
+                throw new Error(`Could not finish writing ${filePath}`);
+            }
+            offset += written;
+        }
+        FS.ftruncateSync(descriptor, bytes.length);
+    } finally {
+        FS.closeSync(descriptor);
+    }
+}
 
 /* *
  *
@@ -544,13 +740,20 @@ module.exports = {
     deleteFile,
     getDirectoryHash,
     getDirectoryPaths,
+    getFile,
     getFileHash,
     getFilePaths,
     gzipFile,
     isDirectory,
     isDotEntry,
     isFile,
+    lastPath,
     makePath,
     moveAllFiles,
-    path
+    normalizePath,
+    parentPath,
+    path,
+    sanitizePath,
+    setFile,
+    updateFile
 };

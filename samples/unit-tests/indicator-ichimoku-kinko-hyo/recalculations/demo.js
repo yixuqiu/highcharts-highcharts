@@ -331,9 +331,9 @@ QUnit.test('Test algorithm on data updates.', function (assert) {
     ]);
 
     assert.strictEqual(
-        chart.series[0].points.length,
         chart.series[1].points.length -
             chart.series[1].options.params.periodSenkouSpanB + 2,
+        chart.series[0].points.length,
         'After addPoint number of Ichimoku points is correct'
     );
 
@@ -470,9 +470,9 @@ QUnit.test('Test algorithm on data updates.', function (assert) {
     dataPoints[dataPoints.length - 1].remove();
 
     assert.strictEqual(
-        dataPoints.length,
-        chart.series[1].yData.length -
+        chart.series[1].dataTable.rowCount -
             chart.series[1].options.params.periodSenkouSpanB + 2,
+        dataPoints.length,
         'After removePoint number of Ichimoku points is correct'
     );
 

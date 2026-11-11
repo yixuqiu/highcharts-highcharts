@@ -1,17 +1,17 @@
 module.exports = {
     docs: {
-        Highcharts: ['index'],
+        Highcharts: [
+            'public-index'
+        ],
         'Getting started': [
             'getting-started/system-requirements',
             'getting-started/installation',
-            'getting-started/installation-with-esm',
-            'getting-started/install-from-npm',
-            'getting-started/installation-with-amd-commonjs',
             'getting-started/your-first-chart',
             'getting-started/how-to-set-options',
             'getting-started/frequently-asked-questions',
             'getting-started/how-to-create-custom-highcharts-packages',
-            'getting-started/optional-dependencies'
+            'getting-started/optional-dependencies',
+            'getting-started/version-12'
         ],
         'Chart concepts': [
             'chart-concepts/understanding-highcharts',
@@ -29,17 +29,22 @@ module.exports = {
             'chart-concepts/drilldown',
             'chart-concepts/3d-charts',
             'chart-concepts/responsive',
-            'chart-concepts/security'
+            'chart-concepts/security',
+            'chart-concepts/dataviz-glossary',
+            'chart-concepts/common-events'
         ],
         'Stock': [
             'stock/getting-started-stock',
             'stock/understanding-highcharts-stock',
             'stock/stock-tools',
+            'stock/advanced-annotations',
             'stock/candlestick-chart',
             'stock/compare',
             'stock/cumulative-sum',
             'stock/hollow-candlestick-chart',
             'stock/heikinashi',
+            'stock/renko',
+            'stock/pointandfigure',
             'stock/data-grouping',
             'stock/depth-chart',
             'stock/flag-series',
@@ -61,6 +66,7 @@ module.exports = {
             'maps/create-custom-maps',
             'maps/custom-geojson-maps',
             'maps/adding-points-and-lines',
+            'maps/map-drill-down',
             'maps/map-series',
             'maps/mapline-series',
             'maps/mappoint-series',
@@ -81,14 +87,18 @@ module.exports = {
         'Dashboards': [
             'dashboards/installation',
             'dashboards/your-first-dashboard',
-            'dashboards/dashboards-with-angular',
-            'dashboards/dashboards-with-react',
-            'dashboards/dashboards-with-vue',
+            {
+                'Wrappers': [
+                    'dashboards/wrappers/dashboards-with-angular',
+                    'dashboards/wrappers/dashboards-with-react',
+                    'dashboards/wrappers/dashboards-with-vue',
+                ]
+            },
             'dashboards/layout-description',
             'dashboards/style-by-css',
             'dashboards/edit-mode',
             'dashboards/types-of-components',
-            'dashboards/datagrid-component',
+            'dashboards/grid-component',
             'dashboards/kpi-component',
             'dashboards/highcharts-component',
             'dashboards/html-component',
@@ -105,12 +115,99 @@ module.exports = {
             'dashboards/get-options',
             'dashboards/frequently-asked-questions',
         ],
-        'DataGrid': [
-            'datagrid/general',
+        'Grid': [
+            'grid/general',
+            'grid/installation',
+            'grid/grid-key',
+            'grid/understanding-grid',
+            {
+                'Columns': [
+                    'grid/columns/index',
+                    'grid/columns/styling-and-theming',
+                    'grid/columns/header',
+                    'grid/columns/grouping',
+                    'grid/columns/resizing-and-width',
+                    'grid/columns/sorting',
+                    'grid/columns/filtering',
+                    'grid/columns/virtualization'
+                ]
+            },
+            {
+                'Rows': [
+                    'grid/rows/index',
+                    'grid/rows/data',
+                    'grid/rows/tree-view',
+                    'grid/rows/grouping',
+                    'grid/rows/summary-rows',
+                    'grid/rows/pinning',
+                    'grid/rows/selection',
+                    'grid/rows/pagination',
+                    'grid/rows/virtualization',
+                    'grid/rows/performance'
+                ]
+            },
+            {
+                'Cells': [
+                    'grid/cells/index',
+                    'grid/cells/styling-and-theming',
+                    'grid/cells/formatting',
+                    'grid/context-menu'
+                ]
+            },
+            {
+                'Editing': [
+                    'grid/editing/index',
+                    'grid/editing/renderers',
+                    'grid/editing/validation',
+                    'grid/editing/custom-renderers'
+                ]
+            },
+            {
+                'Theming': [
+                    'grid/theming/index',
+                    'grid/theming/grid-variables',
+                    'grid/theming/element-variables',
+                    'grid/theming/conditional',
+                    'grid/theming/custom-icons'
+                ]
+            },
+            'grid/responsive-grid',
+            {
+                'Data handling': [
+                    'grid/data-handling/overview',
+                    'grid/data-handling/clientside',
+                    'grid/data-handling/serverside',
+                    'grid/data-handling/connectors'
+                ]
+            },
+            'grid/events',
+            'grid/accessibility',
+            'grid/internationalization',
+            'grid/exporting',
+            'grid/sparklines',
+            {
+                'Frameworks': [
+                    'grid/frameworks/index',
+                    'grid/frameworks/angular',
+                    'grid/frameworks/nextjs',
+                    {
+                        'React': [
+                            'grid/frameworks/react/getting-started',
+                            'grid/frameworks/react/grid',
+                            'grid/frameworks/react/components',
+                            'grid/frameworks/react/column',
+                            'grid/frameworks/react/data',
+                            'grid/frameworks/react/styling'
+                        ]
+                    },
+                    'grid/frameworks/vue'
+                ]
+            }
         ],
         'Chart and series types': [
             'chart-and-series-types/chart-types',
             'chart-and-series-types/combining-chart-types',
+            'chart-and-series-types/contour',
             'chart-and-series-types/3d-cylinder',
             'chart-and-series-types/funnel-3d',
             'chart-and-series-types/pyramid-3d',
@@ -165,7 +262,8 @@ module.exports = {
         'Advanced chart features': [
             'advanced-chart-features/renderer',
             'advanced-chart-features/annotations-module',
-            'advanced-chart-features/annotations-and-fibonacci-retracements',
+            'advanced-chart-features/creating-advanced-annotations',
+            'advanced-chart-features/annotations-gui',
             'advanced-chart-features/boost-module',
             'advanced-chart-features/breadcrumbs',
             'advanced-chart-features/data-sorting',
@@ -188,14 +286,65 @@ module.exports = {
         'Working with data': [
             'working-with-data/data-intro',
             'working-with-data/data-compression',
+            'working-with-data/using-datatables-in-series',
             'working-with-data/data-module',
             'working-with-data/custom-preprocessing',
             'working-with-data/live-data',
             'working-with-data/data-from-a-database',
             'working-with-data/getting-data-across-domains-jsonp',
-            'working-with-data/server-side-data-grouping'
+            'working-with-data/server-side-data-grouping',
+            {
+                'Morningstar Connectors': [
+                    'morningstar/morningstar',
+                    {
+                        'Direct Web Services': [
+                            'morningstar/dws/time-series-connector',
+                            {
+                                'Investment Details Connector': [
+                                    'morningstar/dws/investments-details-connector',
+                                    'morningstar/dws/asset-allocation-breakdown',
+                                    'morningstar/dws/country-and-regional-exposure-breakdown',
+                                    'morningstar/dws/equity-style-box',
+                                    'morningstar/dws/equity-residual-risk',
+                                    'morningstar/dws/equity-aggregates-residual-risk',
+                                    'morningstar/dws/equity-sectors-breakdown',
+                                    'morningstar/dws/fixed-income-sectors-breakdown',
+                                    'morningstar/dws/prospectus-fees'
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        'Enterprise Component APIs': [
+                            'morningstar/goal-analysis',
+                            'morningstar/risk-score',
+                            'morningstar/security-details',
+                            'morningstar/security-compare',
+                            'morningstar/x-ray',
+                            'morningstar/performance',
+                            'morningstar/hypo-performance',
+                            {
+                                'Time Series': [
+                                    'morningstar/time-series/time-series',
+                                    'morningstar/time-series/cumulative-return',
+                                    'morningstar/time-series/dividend',
+                                    'morningstar/time-series/growth',
+                                    'morningstar/time-series/ohlcv',
+                                    'morningstar/time-series/price'
+                                ],
+                                'Screeners': [
+                                    'morningstar/screeners/screener',
+                                    'morningstar/screeners/find-similar-screener',
+                                    'morningstar/screeners/investment-screener'
+                                ]
+                            }
+                        ]
+                    }
+                ]
+            }
         ],
         'Chart design and style': [
+            'chart-design-and-style/branding',
             'chart-design-and-style/design-and-style',
             'chart-design-and-style/colors',
             'chart-design-and-style/pattern-fills',
@@ -226,6 +375,57 @@ module.exports = {
         ],
         'Extending Highcharts': [
             'extending-highcharts/extending-highcharts'
+        ],
+        'Flutter': [
+            'flutter/getting-started',
+            'flutter/your-first-chart',
+            'flutter/highcharts-bundling'
+        ],
+        'React': [
+            'react/getting-started',
+            {
+                'Components': [
+                    'react/components/chart',
+                    'react/components/series-types',
+                    {
+                        'Chart elements': [
+                            'react/components/chart-elements/title',
+                            'react/components/chart-elements/subtitle',
+                            'react/components/chart-elements/credits',
+                            'react/components/chart-elements/legend',
+                            'react/components/chart-elements/plotoptions',
+                            'react/components/chart-elements/palette',
+                            'react/components/chart-elements/tooltip',
+                            'react/components/chart-elements/datatable',
+                            'react/components/chart-elements/xaxis',
+                            'react/components/chart-elements/yaxis'
+                        ],
+                        'Modules': [
+                            'react/components/modules/accessibility',
+                            'react/components/modules/exporting',
+                            'react/components/modules/data',
+                            'react/components/modules/boost',
+                            'react/components/modules/drilldown',
+                            'react/components/modules/brokenaxis',
+                            'react/components/modules/draggablepoints',
+                            'react/components/modules/serieslabel',
+                            'react/components/modules/stocktools',
+                        ]
+                    },
+                    'react/components/technical-indicators'
+                ]
+            },
+            'react/data-handling',
+            'react/chart-instance',
+            'react/typescript',
+            'react/component-wrapping',
+            'react/highcharts-instance',
+            'react/options-component-format',
+            'react/nextjs',
+            'react/bundling-and-tree-shaking',
+            'react/component-children',
+            'react/v4-migration-guide',
+            'react/v5-migration-guide'
         ]
     }
 };

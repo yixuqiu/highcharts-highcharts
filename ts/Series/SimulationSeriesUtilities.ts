@@ -1,6 +1,5 @@
 /* *
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  * */
 
@@ -15,14 +14,8 @@ import type NetworkgraphSeries from './Networkgraph/NetworkgraphSeries';
 import type PackedBubbleSeries from './PackedBubble/PackedBubbleSeries';
 import type SVGElement from '../Core/Renderer/SVG/SVGElement';
 
-import U from '../Core/Utilities.js';
-const {
-    merge,
-    syncTimeout
-} = U;
-
-import A from '../Core/Animation/AnimationUtilities.js';
-const { animObject } = A;
+import { animObject } from '../Core/Animation/AnimationUtilities.js';
+import { syncTimeout } from '../Shared/Utilities.js';
 
 type SimulationSeries = (NetworkgraphSeries | PackedBubbleSeries);
 
@@ -30,7 +23,7 @@ type SimulationSeries = (NetworkgraphSeries | PackedBubbleSeries);
  * Create a setTimeout for the first drawDataLabels()
  * based on the dataLabels.animation.defer value
  * for series which have enabled simulation.
- * @private
+ * @internal
  */
 function initDataLabelsDefer(this: SimulationSeries): void {
     const dlOptions = this.options.dataLabels;
@@ -55,14 +48,15 @@ function initDataLabelsDefer(this: SimulationSeries): void {
  * Initialize the SVG group for the DataLabels with correct opacities
  * and correct styles so that the animation for the series that have
  * simulation enabled works fine.
- * @private
+ * @internal
  */
 function initDataLabels(this: SimulationSeries): SVGElement {
     const series = this,
         dlOptions = series.options.dataLabels;
 
     if (!series.dataLabelsGroup) {
-        const dataLabelsGroup = this.initDataLabelsGroup();
+        // Those series support only one group of data labels (index 0)
+        const dataLabelsGroup = this.initDataLabelsGroup(0, dlOptions);
 
         // Apply the dataLabels.style not only to the
         // individual dataLabels but also to the entire group
@@ -74,6 +68,13 @@ function initDataLabels(this: SimulationSeries): SVGElement {
         dataLabelsGroup.attr({ opacity: 0 });
 
         if (series.visible) { // #2597, #3023, #3024
+            // #19663, initial data labels animation
+            if (series.options.animation && dlOptions?.animation) {
+                dataLabelsGroup.animate({ opacity: 1 }, dlOptions.animation);
+            } else {
+                dataLabelsGroup.attr({ opacity: 1 });
+            }
+
             dataLabelsGroup.show();
         }
 
@@ -81,18 +82,19 @@ function initDataLabels(this: SimulationSeries): SVGElement {
     }
 
     // Place it on first and subsequent (redraw) calls
-    series.dataLabelsGroup.attr(
-        merge(
-            { opacity: 1 },
-            this.getPlotBox('data-labels')
-        )
-    );
+    series.dataLabelsGroup.attr({
+        opacity: 1,
+        ...this.getPlotBox('data-labels')
+    });
     return series.dataLabelsGroup;
 }
 
+
+/** @internal */
 const DataLabelsDeferUtils = {
     initDataLabels,
     initDataLabelsDefer
 };
 
+/** @internal */
 export default DataLabelsDeferUtils;

@@ -1,14 +1,15 @@
 /* *
  *
- *  (c) 2010-2024 Highsoft AS
+ *  (c) 2010-2026 Highsoft AS
  *
  *  Author: Sebastian Domas
  *
  *  Chaikin Money Flow indicator for Highcharts Stock
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  * */
 
@@ -25,17 +26,13 @@ import type {
     CMFParamsOptions
 } from './CMFOptions';
 import type CMFPoint from './CMFPoint';
+import type { IndicatorLinkedSeriesBase } from '../IndicatorBase';
 import type IndicatorValuesObject from '../IndicatorValuesObject';
 import type LineSeries from '../../../Series/Line/LineSeries';
 
+import SMAIndicator from '../SMA/SMAIndicator.js';
 import SeriesRegistry from '../../../Core/Series/SeriesRegistry.js';
-const {
-    sma: SMAIndicator
-} = SeriesRegistry.seriesTypes;
-import U from '../../../Core/Utilities.js';
-const {
-    merge
-} = U;
+import { merge } from '../../../Shared/Utilities.js';
 
 /* *
  *
@@ -46,7 +43,6 @@ const {
 /**
  * The CMF series type.
  *
- * @private
  * @class
  * @name Highcharts.seriesTypes.cmf
  *
@@ -63,16 +59,17 @@ class CMFIndicator extends SMAIndicator {
     /**
      * Chaikin Money Flow indicator (cmf).
      *
-     * @sample stock/indicators/cmf/
+     * @sample {highstock} stock/indicators/cmf/
      *         Chaikin Money Flow indicator
      *
      * @extends      plotOptions.sma
      * @since        6.0.0
      * @excluding    animationLimit
      * @product      highstock
-     * @requires     stock/indicators/indicators
-     * @requires     stock/indicators/cmf
+     * @requires     indicators/indicators
+     * @requires     indicators/cmf
      * @optionparent plotOptions.cmf
+     * @internal
      */
     public static defaultOptions: CMFOptions = merge(SMAIndicator.defaultOptions, {
         /**
@@ -97,9 +94,13 @@ class CMFIndicator extends SMAIndicator {
     public data!: Array<CMFPoint>;
     public options!: CMFOptions;
     public points!: Array<CMFPoint>;
+    /** @internal */
     public volumeSeries!: LineSeries;
+    /** @internal */
     public linkedParent!: LineSeries;
+    /** @internal */
     public yData!: Array<Array<number>>;
+    /** @internal */
     public nameBase: string = 'Chaikin Money Flow';
 
     /* *
@@ -111,7 +112,7 @@ class CMFIndicator extends SMAIndicator {
     /**
      * Checks if the series and volumeSeries are accessible, number of
      * points.x is longer than period, is series has OHLC data
-     * @private
+     * @internal
      * @param {Highcharts.CMFIndicator} this indicator to use.
      * @return {boolean} True if series is valid and can be computed,
      * otherwise false.
@@ -128,21 +129,19 @@ class CMFIndicator extends SMAIndicator {
                     )
             ),
             isSeriesOHLC: (boolean|undefined) = (
-                series &&
-                series.yData &&
-                (series.yData as any)[0].length === 4
+                series?.pointArrayMap?.length === 4
             );
 
         /**
-         * @private
+         * @internal
          * @param {Highcharts.Series} serie to check length validity on.
          * @return {boolean|undefined} true if length is valid.
          */
         function isLengthValid(
             serie: LineSeries
         ): (boolean|undefined) {
-            return serie.xData &&
-                serie.xData.length >= (options.params as any).period;
+            return serie.dataTable.rowCount >=
+                (options.params as any).period;
         }
 
         return !!(
@@ -155,7 +154,7 @@ class CMFIndicator extends SMAIndicator {
 
     /**
      * Returns indicator's data.
-     * @private
+     * @internal
      * @param {Highcharts.CMFIndicator} this indicator to use.
      * @param {Highcharts.Series} series to calculate values from
      * @param {Highcharts.CMFIndicatorParamsOptions} params to pass
@@ -164,7 +163,7 @@ class CMFIndicator extends SMAIndicator {
      */
     public getValues<TLinkedSeries extends LineSeries>(
         this: CMFIndicator,
-        series: TLinkedSeries,
+        series: TLinkedSeries&IndicatorLinkedSeriesBase,
         params: CMFParamsOptions
     ): (IndicatorValuesObject<TLinkedSeries>|undefined) {
         if (!this.isValid()) {
@@ -174,14 +173,14 @@ class CMFIndicator extends SMAIndicator {
         return this.getMoneyFlow<TLinkedSeries>(
             series.xData as number[],
             series.yData,
-            (this.volumeSeries.yData as any),
+            this.volumeSeries.getColumn('y'),
             (params.period as any
             )
         );
     }
 
     /**
-     * @private
+     * @internal
      *
      * @param {Array<number>} xData
      * x timestamp values
@@ -200,7 +199,7 @@ class CMFIndicator extends SMAIndicator {
      */
     public getMoneyFlow<TLinkedSeries extends LineSeries>(
         xData: Array<number>,
-        seriesYData: TLinkedSeries['yData'],
+        seriesYData: IndicatorLinkedSeriesBase['yData'],
         volumeSeriesYData: Array<number>,
         period: number
     ): IndicatorValuesObject<TLinkedSeries> {
@@ -219,7 +218,7 @@ class CMFIndicator extends SMAIndicator {
          * Calculates money flow volume, changes i, nullIndex vars from
          * upper scope!
          *
-         * @private
+         * @internal
          *
          * @param {Array<number>} ohlc
          * OHLC point
@@ -247,7 +246,7 @@ class CMFIndicator extends SMAIndicator {
 
 
             /**
-             * @private
+             * @internal
              * @param {number} h
              * High value
              * @param {number} l
@@ -366,9 +365,8 @@ export default CMFIndicator;
  * @extends   series,plotOptions.cmf
  * @since     6.0.0
  * @product   highstock
- * @excluding dataParser, dataURL
- * @requires  stock/indicators/indicators
- * @requires  stock/indicators/cmf
+ * @requires  indicators/indicators
+ * @requires  indicators/cmf
  * @apioption series.cmf
  */
 

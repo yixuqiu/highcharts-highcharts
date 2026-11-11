@@ -1,10 +1,12 @@
 /* *
  *
- *  (c) 2010-2024 Torstein Honsi
+ *  (c) 2010-2026 Highsoft AS
+ *  Author: Torstein Hønsi
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  * */
 
@@ -16,24 +18,27 @@
  *
  * */
 
-import type Chart from './Chart/Chart';
+import type TimeBase from '../Shared/TimeBase';
+import type { LangOptionsCore } from '../Shared/LangOptionsCore';
 
-import D from './Defaults.js';
+import langDefaults from './LangDefaults.js';
+import { defaultTime } from './TimeDefaults.js';
+import G from './Globals.js';
 const {
-    defaultOptions,
-    defaultTime
-} = D;
-import U from './Utilities.js';
-const {
+    pageLang
+} = G;
+import {
+    correctFloat,
     extend,
     getNestedProperty,
     isArray,
     isNumber,
     isObject,
-    pick,
-    pInt
-} = U;
+    isString,
+    ucfirst
+} from '../Shared/Utilities.js';
 
+/** @internal */
 interface MatchObject {
     body?: string;
     ctx: any;
@@ -47,13 +52,15 @@ interface MatchObject {
     startInner: number;
 }
 
+/** @internal */
 const helpers: Record<string, Function> = {
     // Built-in helpers
     add: (a: number, b: number): number => a + b,
-    divide: (a: number, b: number): number|string => (b !== 0 ? a / b : ''),
+    divide: (a: number, b: number): number | string =>
+        (b !== 0 ? correctFloat(a / b) : ''),
     // eslint-disable-next-line eqeqeq
     eq: (a: unknown, b: unknown): boolean => a == b,
-    each: function (arr: string[]|object[]|undefined): string|false {
+    each: function (arr: string[] | object[] | undefined): string | false {
         const match = arguments[arguments.length - 1];
         return isArray(arr) ?
             arr.map((item, i): string => format(match.body, extend(
@@ -67,21 +74,30 @@ const helpers: Record<string, Function> = {
     },
     ge: (a: number, b: number): boolean => a >= b,
     gt: (a: number, b: number): boolean => a > b,
-    'if': (condition: string[]|undefined): boolean => !!condition,
+    'if': (condition: string[] | undefined): boolean => !!condition,
     le: (a: number, b: number): boolean => a <= b,
     lt: (a: number, b: number): boolean => a < b,
-    multiply: (a: number, b: number): number => a * b,
+    multiply: (a: number, b: number): number => correctFloat(a * b, 15),
     // eslint-disable-next-line eqeqeq
     ne: (a: unknown, b: unknown): boolean => a != b,
     subtract: (a: number, b: number): number => a - b,
-    unless: (condition: string[]|undefined): boolean => !condition
+    ucfirst,
+    unless: (condition: string[] | undefined): boolean => !condition
 };
+
+const numberFormatCache: Record<string, Intl.NumberFormat> = {};
 
 /* *
  *
  *  Functions
  *
  * */
+
+/**
+ * Internal convenience function.
+ * @internal
+ */
+const isQuotedString = (str: string): boolean => /^["'].+["']$/.test(str);
 
 /**
  * Formats a JavaScript date timestamp (milliseconds since Jan 1st 1970) into a
@@ -124,7 +140,7 @@ const helpers: Record<string, Function> = {
  * @param {number} timestamp
  *        The JavaScript timestamp.
  *
- * @param {boolean} [capitalize=false]
+ * @param {boolean} [upperCaseFirst=false]
  *        Upper case first letter in the return.
  *
  * @return {string}
@@ -133,9 +149,9 @@ const helpers: Record<string, Function> = {
 function dateFormat(
     format: string,
     timestamp: number,
-    capitalize?: boolean
+    upperCaseFirst?: boolean
 ): string {
-    return defaultTime.dateFormat(format, timestamp, capitalize);
+    return defaultTime.dateFormat(format, timestamp, upperCaseFirst);
 }
 
 /**
@@ -158,25 +174,29 @@ function dateFormat(
  *        The context, a collection of key-value pairs where each key is
  *        replaced by its value.
  *
- * @param {Highcharts.Chart} [chart]
- *        A `Chart` instance used to get numberFormatter and time.
+ * @param {Highcharts.Chart} [owner]
+ *        A `Chart` or `Grid` instance used to get numberFormatter and time.
  *
  * @return {string}
  *         The formatted string.
  */
-function format(str = '', ctx: any, chart?: Chart): string {
+function format(
+    str = '',
+    ctx: any,
+    owner?: Templating.Owner
+): string {
 
-    const regex = /\{([a-zA-Z0-9\:\.\,;\-\/<>%_@"'= #\(\)]+)\}/g,
+    const regex = /\{([^{}]+)\}/g,
         // The sub expression regex is the same as the top expression regex,
         // but except parens and block helpers (#), and surrounded by parens
         // instead of curly brackets.
-        subRegex = /\(([a-zA-Z0-9\:\.\,;\-\/<>%_@"'= ]+)\)/g,
+        subRegex = /\(([^()]+)\)/g,
         matches = [],
         floatRegex = /f$/,
-        decRegex = /\.([0-9])/,
-        lang = defaultOptions.lang,
-        time = chart && chart.time || defaultTime,
-        numberFormatter = chart && chart.numberFormatter || numberFormat;
+        decRegex = /\.(\d)/,
+        lang = owner?.options?.lang || langDefaults,
+        time = owner?.time || defaultTime,
+        numberFormatter = owner?.numberFormatter || numberFormat.bind(owner);
 
     /*
      * Get a literal or variable value inside a template expression. May be
@@ -196,26 +216,30 @@ function format(str = '', ctx: any, chart?: Chart): string {
         if ((n = Number(key)).toString() === key) {
             return n;
         }
+        if (isQuotedString(key)) {
+            return key.slice(1, -1);
+        }
 
         // Variables and constants
         return getNestedProperty(key, ctx);
     };
 
-    let match: RegExpExecArray|null,
-        currentMatch: MatchObject|undefined,
+    let match: RegExpExecArray | null,
+        currentMatch: MatchObject | undefined,
         depth = 0,
-        hasSub: boolean|undefined;
+        hasSub: boolean | undefined;
 
     // Parse and create tree
     while ((match = regex.exec(str)) !== null) {
         // When a sub expression is found, it is evaluated first, and the
         // results recursively evaluated until no subexpression exists.
-        const subMatch = subRegex.exec(match[1]);
+        const mainMatch = match,
+            subMatch = subRegex.exec(match[1]);
         if (subMatch) {
             match = subMatch;
             hasSub = true;
         }
-        if (!currentMatch || !currentMatch.isBlock) {
+        if (!currentMatch?.isBlock) {
             currentMatch = {
                 ctx,
                 expression: match[1],
@@ -228,7 +252,9 @@ function format(str = '', ctx: any, chart?: Chart): string {
         }
 
         // Identify helpers
-        const fn = match[1].split(' ')[0].replace('#', '');
+        const fn = (
+            currentMatch.isBlock ? mainMatch : match
+        )[1].split(' ')[0].replace('#', '');
         if (helpers[fn]) {
 
             // Block helper, only 0 level is handled
@@ -263,7 +289,7 @@ function format(str = '', ctx: any, chart?: Chart): string {
                     currentMatch.body = body;
                     currentMatch.startInner = match.index + match[0].length;
 
-                // The body exists already, so this is the else section
+                    // The body exists already, so this is the else section
                 } else {
                     currentMatch.elseBody = body;
                 }
@@ -277,7 +303,7 @@ function format(str = '', ctx: any, chart?: Chart): string {
                 depth--;
             }
 
-        // Common expression
+            // Common expression
         } else if (!currentMatch.isBlock) {
             matches.push(currentMatch);
         }
@@ -299,7 +325,31 @@ function format(str = '', ctx: any, chart?: Chart): string {
             // Pass the helpers the amount of arguments defined by the function,
             // then the match as the last argument.
             const args: unknown[] = [match],
-                parts = expression.split(' ');
+                parts: Array<string> = [],
+                len = expression.length;
+
+            let start = 0,
+                startChar;
+            for (i = 0; i <= len; i++) {
+                const char = expression.charAt(i);
+
+                // Start of string
+                if (!startChar && (char === '"' || char === '\'')) {
+                    startChar = char;
+
+                    // End of string
+                } else if (startChar === char) {
+                    startChar = '';
+                }
+
+                if (
+                    !startChar &&
+                    (char === ' ' || i === len)
+                ) {
+                    parts.push(expression.substr(start, i - start));
+                    start = i + 1;
+                }
+            }
 
             i = helpers[fn].length;
             while (i--) {
@@ -311,19 +361,21 @@ function format(str = '', ctx: any, chart?: Chart): string {
             // Block helpers may return true or false. They may also return a
             // string, like the `each` helper.
             if (match.isBlock && typeof replacement === 'boolean') {
-                replacement = format(replacement ? body : elseBody, ctx, chart);
+                replacement = format(
+                    replacement ? body : elseBody, ctx, owner
+                );
             }
 
 
-        // Simple variable replacement
+            // Simple variable replacement
         } else {
-            const valueAndFormat = expression.split(':');
+            const valueAndFormat = isQuotedString(expression) ?
+                [expression] : expression.split(':');
 
             replacement = resolveProperty(valueAndFormat.shift() || '');
 
             // Format the replacement
             if (valueAndFormat.length && typeof replacement === 'number') {
-
                 const segment = valueAndFormat.join(':');
 
                 if (floatRegex.test(segment)) { // Float
@@ -343,10 +395,17 @@ function format(str = '', ctx: any, chart?: Chart): string {
                     replacement = time.dateFormat(segment, replacement);
                 }
             }
+
+            // Use string literal in order to be preserved in the outer
+            // expression
+            subRegex.lastIndex = 0;
+            if (subRegex.test(match.find) && isString(replacement)) {
+                replacement = `"${replacement}"`;
+            }
         }
-        str = str.replace(match.find, pick(replacement, ''));
+        str = str.replace(match.find, (replacement ?? ''));
     });
-    return hasSub ? format(str, ctx, chart) : str;
+    return hasSub ? format(str, ctx, owner) : str;
 }
 
 /**
@@ -376,6 +435,7 @@ function format(str = '', ctx: any, chart?: Chart): string {
  *         The formatted number.
  */
 function numberFormat(
+    this: Templating.Owner | void,
     number: number,
     decimals: number,
     decimalPoint?: string,
@@ -384,84 +444,88 @@ function numberFormat(
     number = +number || 0;
     decimals = +decimals;
 
-    let ret,
-        fractionDigits;
+    let ret: string,
+        fractionDigits: number,
+        [mantissa, exp] = number.toString().split('e').map(Number);
 
-    const lang = defaultOptions.lang,
+    const lang = this?.options?.lang || langDefaults,
         origDec = (number.toString().split('.')[1] || '').split('e')[0].length,
-        exponent = number.toString().split('e'),
-        firstDecimals = decimals;
+        firstDecimals = decimals,
+        options: Intl.NumberFormatOptions = {};
+
+    decimalPoint ??= lang.decimalPoint;
+    thousandsSep ??= lang.thousandsSep;
 
     if (decimals === -1) {
         // Preserve decimals. Not huge numbers (#3793).
         decimals = Math.min(origDec, 20);
     } else if (!isNumber(decimals)) {
         decimals = 2;
-    } else if (decimals && exponent[1] && exponent[1] as any < 0) {
+    } else if (decimals && exp < 0) {
         // Expose decimals from exponential notation (#7042)
-        fractionDigits = decimals + +exponent[1];
+        fractionDigits = decimals + exp;
         if (fractionDigits >= 0) {
             // Remove too small part of the number while keeping the notation
-            exponent[0] = (+exponent[0]).toExponential(fractionDigits)
-                .split('e')[0];
+            mantissa = +mantissa.toExponential(fractionDigits).split('e')[0];
             decimals = fractionDigits;
         } else {
             // `fractionDigits < 0`
-            exponent[0] = exponent[0].split('.')[0] || 0 as any;
+            mantissa = Math.floor(mantissa);
 
             if (decimals < 20) {
                 // Use number instead of exponential notation (#7405)
-                number = (exponent[0] as any * Math.pow(10, exponent[1] as any))
-                    .toFixed(decimals) as any;
+                number = +(mantissa * Math.pow(10, exp)).toFixed(decimals);
             } else {
                 // Or zero
                 number = 0;
             }
-            exponent[1] = 0 as any;
+            exp = 0;
         }
     }
 
-    // Add another decimal to avoid rounding errors of float numbers. (#4573)
-    // Then use toFixed to handle rounding.
-    const roundedNumber = (
-        Math.abs(exponent[1] ? exponent[0] as any : number) +
-        Math.pow(10, -Math.max(decimals, origDec) - 1)
-    ).toFixed(decimals);
+    if (exp) {
+        decimals ??= 2;
+        number = mantissa;
+    }
 
-    // A string containing the positive integer component of the number
-    const strinteger = String(pInt(roundedNumber));
+    if (isNumber(decimals) && decimals >= 0) {
+        options.minimumFractionDigits = decimals;
+        options.maximumFractionDigits = decimals;
+    }
+    if (thousandsSep === '') {
+        options.useGrouping = false;
+    }
 
-    // Leftover after grouping into thousands. Can be 0, 1 or 2.
-    const thousands = strinteger.length > 3 ? strinteger.length % 3 : 0;
+    const hasSeparators = thousandsSep || decimalPoint,
+        locale = hasSeparators ?
+            'en' : (this?.locale || lang.locale || pageLang),
+        cacheKey = JSON.stringify(options) + locale,
+        nf = numberFormatCache[cacheKey] ??=
+            new Intl.NumberFormat(locale, options);
 
-    // Language
-    decimalPoint = pick(decimalPoint, lang.decimalPoint);
-    thousandsSep = pick(thousandsSep, lang.thousandsSep);
+    ret = nf.format(number);
 
-    // Start building the return
-    ret = number < 0 ? '-' : '';
+    // If thousandsSep or decimalPoint are set, fall back to using English
+    // format with string replacement for the separators.
+    if (hasSeparators) {
+        ret = ret
+            // Preliminary step to avoid re-swapping (#22402)
+            .replace(/([,\.])/g, '_$1')
+            .replace(/_\,/g, thousandsSep ?? ',')
+            .replace('_.', decimalPoint ?? '.');
+    }
 
-    // Add the leftover after grouping into thousands. For example, in the
-    // number 42 000 000, this line adds 42.
-    ret += thousands ? strinteger.substr(0, thousands) + thousandsSep : '';
-
-    if (+exponent[1] < 0 && !firstDecimals) {
+    if (
+        // Remove signed zero (#20564)
+        (!decimals && +ret === 0) ||
+        // Small numbers, no decimals (#14023)
+        (exp < 0 && !firstDecimals)
+    ) {
         ret = '0';
-    } else {
-        // Add the remaining thousands groups, joined by the thousands separator
-        ret += strinteger
-            .substr(thousands)
-            .replace(/(\d{3})(?=\d)/g, '$1' + thousandsSep);
     }
 
-    // Add the decimal point and the decimal component
-    if (decimals) {
-        // Get the decimal component
-        ret += decimalPoint + roundedNumber.slice(-decimals);
-    }
-
-    if (exponent[1] && +ret !== 0) {
-        ret += 'e' + exponent[1];
+    if (exp && +ret !== 0) {
+        ret += 'e' + (exp < 0 ? '' : '+') + exp;
     }
 
     return ret;
@@ -482,8 +546,64 @@ const Templating = {
 
 namespace Templating {
     export interface FormatterCallback<T> {
-        (this: T): string;
+        (this: T, ...args: Array<any>): string;
+    }
+    export interface OwnerOptions {
+        /**
+         * Language options. See {@link Highcharts.LangOptions} for details.
+         */
+        lang?: LangOptionsCore;
+    }
+    export interface Owner {
+        /**
+         * The chart options. See {@link Highcharts.Options} for details.
+         */
+        options?: OwnerOptions;
+        /**
+         * The time object. See {@link Highcharts.Time} for details.
+         */
+        time?: TimeBase;
+        /**
+         * A function to format numbers. See {@link Highcharts.numberFormat} for
+         * details.
+         */
+        numberFormatter?: Function;
+        /**
+         * The locale to use for number formatting.
+         */
+        locale?: string | string[];
     }
 }
 
 export default Templating;
+
+/* *
+ * API Declarations
+ * */
+
+/**
+ * The Highcharts.TemplatingObject interface provides a structure for defining
+ * helpers. Helpers can be used as conditional blocks or functions within
+ * expressions. Highcharts includes several built-in helpers and supports
+ * the addition of custom helpers.
+ *
+ * @see [More information](
+ * https://www.highcharts.com/docs/chart-concepts/templating#helpers)
+ *
+ * @interface Highcharts.TemplatingObject
+ *//**
+ * @example
+ * // Define a custom helper to return the absolute value of a number
+ * Highcharts.Templating.helpers.abs = value => Math.abs(value);
+ *
+ * // Usage in a format string
+ * format: 'Absolute value: {abs point.y}'
+ *
+ * @name Highcharts.TemplatingObject#helpers
+ * @type {Record<string, Function>}
+ *//**
+ * @name Highcharts.Templating
+ * @type {Highcharts.TemplatingObject}
+ */
+
+(''); // Keeps doclets above in file

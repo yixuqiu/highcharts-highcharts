@@ -1,10 +1,12 @@
 /* *
  *
- *  (c) 2010-2024 Torstein Honsi
+ *  (c) 2010-2026 Highsoft AS
+ *  Author: Torstein Hønsi
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  * */
 
@@ -19,19 +21,18 @@
 import type BubblePointOptions from './BubblePointOptions';
 import type BubbleSeries from './BubbleSeries';
 import type SVGPath from '../../Core/Renderer/SVG/SVGPath';
+
 import Point from '../../Core/Series/Point.js';
-import SeriesRegistry from '../../Core/Series/SeriesRegistry.js';
-const {
-    seriesTypes: {
-        scatter: {
-            prototype: {
-                pointClass: ScatterPoint
-            }
-        }
-    }
-} = SeriesRegistry;
-import U from '../../Core/Utilities.js';
-const { extend } = U;
+import ScatterSeries from '../Scatter/ScatterSeries.js';
+import { extend } from '../../Shared/Utilities.js';
+
+/* *
+ *
+ *  Constants
+ *
+ * */
+
+const ScatterPoint = ScatterSeries.prototype.pointClass;
 
 /* *
  *
@@ -49,6 +50,7 @@ class BubblePoint extends ScatterPoint {
 
     public options!: BubblePointOptions;
 
+    /** @internal */
     public series!: BubbleSeries;
 
     /* *
@@ -57,20 +59,38 @@ class BubblePoint extends ScatterPoint {
      *
      * */
 
-    /* eslint-disable valid-jsdoc */
 
     /**
-     * @private
+     * @internal
      */
     public haloPath(size: number): SVGPath {
+        const computedSize = (
+            size && this.marker ?
+                this.marker.radius ||
+                0 :
+                0
+        ) + size;
+
+        if (this.series.chart.inverted) {
+            const pos = this.pos() || [0, 0],
+                { xAxis, yAxis, chart } = this.series,
+                diameter = computedSize * 2;
+
+            return chart.renderer.symbols.circle(
+                (xAxis?.len || 0) - pos[1] - computedSize,
+                (yAxis?.len || 0) - pos[0] - computedSize,
+                diameter,
+                diameter
+            );
+        }
+
         return Point.prototype.haloPath.call(
             this,
             // #6067
-            size === 0 ? 0 : (this.marker ? this.marker.radius || 0 : 0) + size
+            computedSize
         );
     }
 
-    /* eslint-enable valid-jsdoc */
 
 }
 

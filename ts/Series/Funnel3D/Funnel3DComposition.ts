@@ -2,13 +2,14 @@
  *
  *  Highcharts funnel3d series module
  *
- *  (c) 2010-2024 Highsoft AS
+ *  (c) 2010-2026 Highsoft AS
  *
  *  Author: Kacper Madej
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  * */
 
@@ -31,13 +32,16 @@ import type SVGRenderer3D from '../../Core/Renderer/SVG/SVGRenderer3D';
 
 import SVGElement3DFunnel from './SVGElement3DFunnel.js';
 import H from '../../Core/Globals.js';
-const { charts } = H;
-import U from '../../Core/Utilities.js';
 const {
-    error,
+    charts,
+    composed
+} = H;
+import {
     extend,
-    merge
-} = U;
+    merge,
+    pushUnique
+} from '../../Shared/Utilities.js';
+import { error } from '../../Core/Utilities.js';
 
 /* *
  *
@@ -45,8 +49,9 @@ const {
  *
  * */
 
-declare module '../../Core/Renderer/SVG/SVGElementLike' {
-    interface SVGElementLike {
+/** @internal */
+declare module '../../Core/Renderer/SVG/SVGElementBase' {
+    interface SVGElementBase {
         finishedOnAdd?: boolean;
         lowerGroup?: SVGElement;
         upperGroup?: SVGElement;
@@ -56,13 +61,15 @@ declare module '../../Core/Renderer/SVG/SVGElementLike' {
     }
 }
 
-declare module '../../Core/Renderer/SVG/SVGRendererLike' {
-    interface SVGRendererLike {
+/** @internal */
+declare module '../../Core/Renderer/SVG/SVGRendererBase' {
+    interface SVGRendererBase {
         funnel3d(shapeArgs: SVGAttributes): SVGElement;
         funnel3dPath(shapeArgs: SVGAttributes): Funnel3DPathsObject;
     }
 }
 
+/** @internal */
 interface Funnel3DPathsObject extends SVGPath3D {
     backLower: SVGPath;
     backUpper: SVGPath;
@@ -78,14 +85,13 @@ interface Funnel3DPathsObject extends SVGPath3D {
  *
  * */
 
-/** @private */
-function compose(
+/** @internal */
+export function composeFunnel3D(
     SVGRendererClass: typeof SVGRenderer
 ): void {
-    const rendererProto =
-        SVGRendererClass.prototype as SVGRenderer3D.Composition;
+    const rendererProto = SVGRendererClass.prototype;
 
-    if (!rendererProto.funnel3d) {
+    if (pushUnique(composed, 'Funnel3dSeries')) {
         rendererProto.Element3D.types.funnel3d = SVGElement3DFunnel;
 
         extend(rendererProto, {
@@ -93,10 +99,9 @@ function compose(
             funnel3dPath: rendererFunnel3dPath
         });
     }
-
 }
 
-/** @private */
+/** @internal */
 function rendererFunnel3d(
     this: SVGRenderer3D.Composition,
     shapeArgs: SVGAttributes
@@ -147,7 +152,7 @@ function rendererFunnel3d(
 
 /**
  * Generates paths and zIndexes.
- * @private
+ * @internal
  */
 function rendererFunnel3dPath(
     this: SVGRenderer3D.Composition,
@@ -314,15 +319,3 @@ function rendererFunnel3dPath(
 
     return ret;
 }
-
-/* *
- *
- *  Default Export
- *
- * */
-
-const Funnel3DComposition = {
-    compose
-};
-
-export default Funnel3DComposition;

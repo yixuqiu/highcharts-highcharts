@@ -1,11 +1,3 @@
-QUnit.test('tooltip', function (assert) {
-    assert.strictEqual(
-        Highcharts.Series.types.solidgauge.prototype.noSharedTooltip,
-        true,
-        'noSharedTooltip: true. #5354'
-    );
-});
-
 QUnit.test('Solid gauge yAxis.update (#5895)', function (assert) {
     const gaugeOptions = {
         chart: {
@@ -166,7 +158,13 @@ QUnit.test('Solid gauge animated color', function (assert) {
     }
 });
 
-QUnit.test('Solid gauge: legend', function (assert) {
+QUnit.test('Solid gauge: defaults & legend', function (assert) {
+    assert.strictEqual(
+        Highcharts.Series.types.solidgauge.prototype.noSharedTooltip,
+        true,
+        'solidgauge\'s noSharedTooltip should be true by default (#5354).'
+    );
+
     const chart = Highcharts.chart('container', {
         chart: {
             type: 'solidgauge'
@@ -227,24 +225,24 @@ QUnit.test('Solid gauge updates', function (assert) {
         }
     });
 
-    const chart = Highcharts.chart('container', {
-            chart: {
-                type: 'solidgauge'
-            },
+    let chart = Highcharts.chart('container', {
+        chart: {
+            type: 'solidgauge'
+        },
 
-            yAxis: [{
-                min: 0,
-                max: 20
-            }],
+        yAxis: [{
+            min: 0,
+            max: 20
+        }],
 
-            series: [
-                {
-                    name: 'Speed',
-                    data: [10]
-                }
-            ]
-        }),
-        point = chart.series[0].points[0],
+        series: [
+            {
+                name: 'Speed',
+                data: [10]
+            }
+        ]
+    });
+    const point = chart.series[0].points[0],
         yAxis = chart.yAxis[0];
 
     assert.deepEqual(
@@ -259,7 +257,7 @@ QUnit.test('Solid gauge updates', function (assert) {
             minorTickLength,
             distance
         ],
-        `Axis options set by setOptions should overwrite defaults, #16112 and 
+        `Axis options set by setOptions should overwrite defaults, #16112 and
         #20804.`
     );
 
@@ -293,4 +291,40 @@ QUnit.test('Solid gauge updates', function (assert) {
 
     // Reset
     Highcharts.defaultOptions.yAxis.labels.style.color = resetTo;
+
+    chart = Highcharts.chart('container', {
+        chart: {
+            type: 'solidgauge'
+        },
+        yAxis: {
+            min: 0,
+            max: 100
+        },
+        series: [{
+            rounded: false,
+            animation: false,
+            data: [{
+                radius: '100%',
+                innerRadius: 90,
+                y: 100
+            }]
+        }, {
+            rounded: true,
+            animation: false,
+            data: [{
+                radius: '100%',
+                innerRadius: 90,
+                color: 'red',
+                y: 100
+            }]
+        }]
+    });
+
+    assert.close(
+        chart.series[0].points[0].graphic.getBBox().x,
+        chart.series[1].points[0].graphic.getBBox().x,
+        0.5,
+        `Solid Gauge series set to 100% should looks the same for rounded and
+        non-rounded gauge, #21429.`
+    );
 });

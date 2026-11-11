@@ -1,10 +1,11 @@
 /* *
  *
- *  (c) 2009-2024 Highsoft AS
+ *  (c) 2009-2026 Highsoft AS
  *
- *  License: www.highcharts.com/license
+ *  Integration of this software requires a license.
+ *  - For commercial use, see www.highcharts.com/license
+ *  - For non-commercial, see www.highcharts.com/license-eula
  *
- *  !!!!!!! SOURCE GETS TRANSPILED BY TYPESCRIPT. EDIT TS FILE ONLY. !!!!!!!
  *
  *  Authors:
  *  - Sophie Bremer
@@ -21,7 +22,10 @@
  * */
 
 
-import type Component from '../Component';
+import type {
+    ConnectorOptions as ComponentConnectorOptions,
+    Options as ComponentOptions
+} from '../Component';
 import type AST from '../../../Core/Renderer/HTML/AST';
 
 /* *
@@ -30,11 +34,11 @@ import type AST from '../../../Core/Renderer/HTML/AST';
  *
  * */
 
-export interface Options extends Component.Options {
+export interface Options extends ComponentOptions {
     /**
      * Connector options
      */
-    connector?: Component.ConnectorOptions;
+    connector?: ComponentConnectorOptions;
 
     /**
      * Array of HTML elements, declared as string or node.
@@ -56,7 +60,7 @@ export interface Options extends Component.Options {
      * {@link https://jsfiddle.net/gh/get/library/pure/highcharts/highcharts/tree/master/samples/dashboards/html-component/nested-elements/ | HTML component with nested images.}
      *
      */
-    elements?: (AST.Node | string)[];
+    elements?: (AST.Node)[];
 
     /**
      * The HTML content of the component. If the `elements` option is set, the
@@ -67,7 +71,7 @@ export interface Options extends Component.Options {
      * html: `
      *      <div>
      *          <h1>Custom HTML</h1>
-     *          <span id="custom-html-div">Custom HTML added as string </span>
+     *          <span id="custom-html-div">Custom HTML added as string</span>
      *      </div>
      * `
      * ```

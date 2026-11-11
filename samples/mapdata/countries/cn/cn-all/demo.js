@@ -8,14 +8,15 @@
     // property by default. See API docs for 'joinBy' for more info on linking
     // data and map.
     const data = [
-        ['cn-3664', 10], ['cn-gd', 11], ['cn-sh', 12], ['cn-zj', 13],
-        ['cn-ha', 14], ['cn-xz', 15], ['cn-yn', 16], ['cn-ah', 17],
-        ['cn-hu', 18], ['cn-sa', 19], ['cn-cq', 20], ['cn-gz', 21],
-        ['cn-hn', 22], ['cn-sc', 23], ['cn-sx', 24], ['cn-he', 25],
-        ['cn-jx', 26], ['cn-nm', 27], ['cn-gx', 28], ['cn-hl', 29],
-        ['cn-fj', 30], ['cn-bj', 31], ['cn-hb', 32], ['cn-ln', 33],
-        ['cn-sd', 34], ['cn-tj', 35], ['cn-js', 36], ['cn-qh', 37],
-        ['cn-gs', 38], ['cn-xj', 39], ['cn-jl', 40], ['cn-nx', 41]
+        ['cn-qh', 10], ['cn-xj', 11], ['cn-gs', 12], ['cn-nm', 13],
+        ['cn-jl', 14], ['cn-hl', 15], ['cn-gx', 16], ['cn-gz', 17],
+        ['cn-ha', 18], ['cn-tw', 19], ['cn-zj', 20], ['cn-fj', 21],
+        ['cn-gd', 22], ['cn-bj', 23], ['cn-ln', 24], ['cn-he', 25],
+        ['cn-tj', 26], ['cn-sd', 27], ['cn-ah', 28], ['cn-js', 29],
+        ['cn-sh', 30], ['cn-sc', 31], ['cn-cq', 32], ['cn-hn', 33],
+        ['cn-yn', 34], ['cn-sn', 35], ['cn-nx', 36], ['cn-sx', 37],
+        ['cn-hb', 38], ['cn-jx', 39], ['cn-hk', 40], ['cn-mo', 41],
+        ['cn-hi', 42], ['cn-xz', 43]
     ];
 
     // Create the chart
@@ -29,7 +30,7 @@
         },
 
         subtitle: {
-            text: 'Source map: <a href="http://code.highcharts.com/mapdata/countries/cn/cn-all.topo.json">China</a>'
+            text: 'Source map: <a href="https://code.highcharts.com/mapdata/countries/cn/cn-all.topo.json">China</a>'
         },
 
         mapNavigation: {
